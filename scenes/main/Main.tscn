@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://dwigg7nrf6ckh"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
+blend_mode = 3
+
+[node name="Main" type="Node" unique_id=1028254611]
+
+[node name="UILayer" type="CanvasLayer" parent="." unique_id=921052177]
+layer = 10
+
+[node name="HUD" type="Node" parent="UILayer" unique_id=1486657303]
+
+[node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
+
+[node name="Journal" type="Node" parent="UILayer" unique_id=915716484]
+
+[node name="ColorGrade" type="CanvasLayer" parent="." unique_id=807741779]
+layer = 5
+
+[node name="ColorRect" type="ColorRect" parent="ColorGrade" unique_id=972504048]
+material = SubResource("CanvasItemMaterial_vyk5b")
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.039215688, 0.09411765, 0.15686275, 1)
+
+[node name="GameWorld" type="Node2D" parent="." unique_id=1890764090]
+
+[node name="CaveBackground" type="Node2D" parent="GameWorld" unique_id=1010122964]
+
+[node name="IsometricGrid" type="Node2D" parent="GameWorld" unique_id=1599751758]
+y_sort_enabled = true
+
+[node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
+y_sort_enabled = true
+
+[node name="Camera2D" type="Camera2D" parent="GameWorld" unique_id=1586411989]
+
+[node name="Events" type="Node" parent="." unique_id=1501814951]
