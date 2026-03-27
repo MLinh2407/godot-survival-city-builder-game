@@ -4,7 +4,7 @@ signal day_changed(new_day: int)
 signal time_changed(time_string: String)
 
 var current_day: int = 1
-var day_length_seconds: float = 60.0 
+var day_length_seconds: float = 90.0 
 var time_elapsed: float = 0.0
 
 var _last_time_str: String = ""
