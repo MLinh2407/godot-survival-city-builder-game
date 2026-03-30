@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "note": "All entries written in Kael's voice. First-person. Factual and heavy. No editorialising. Each entry fires as a permanent Colony Journal entry when the character's alive flag is set FALSE.",
+  "deaths": [
+    {
+      "character_id": "yuna_tran",
+      "display_name": "Yuna Tran",
+      "trigger_condition": "med_clinic_never_built OR med_clinic_never_upgraded_before_day_20, AND total_population < 600 by Day 20",
+      "trigger_day": 20,
+      "flag_set": "yuna_alive = FALSE",
+      "journal_entry": {
+        "title": "Day 20",
+        "body": "Yuna collapsed in the medical bay at 1130. She had been running triage without a working clinic for nineteen days, with supplies meant for fifty people managing four times that number. She was the only trained doctor in Grid-7. The colony lost the passive Morale from her presence and the systematic treatment capacity that a staffed Med Clinic provides. Those losses are already showing in the numbers. I did not build what she needed in time. That is what happened."
+      }
+    },
+    {
+      "character_id": "rook",
+      "display_name": "Rook",
+      "trigger_condition": "Option B taken on Day 24 AND reconciliation dialogue not taken before Day 33",
+      "trigger_day": 33,
+      "flag_set": "rook_alive = FALSE",
+      "journal_entry": {
+        "title": "Day 33",
+        "body": "The reconciliation window closed at 2200 on Day 33. Rook left Grid-7 by the south access corridor sometime during the night. He left his equipment manifest on the operations desk — correctly filed, inventory complete. Nobody stopped him. Nobody saw him go. He had been running the colony's informal scavenging network since Day 8 and he was seventeen years old and he is not here anymore. The Colony Journal will reflect his name as absent from Day 34 forward."
+      }
+    },
+    {
+      "character_id": "vasquez",
+      "display_name": "Director Harlan Vasquez",
+      "trigger_condition": "player accepted Vasquez trade (Option A, Day 11) AND survival_rate < 0.50 before Day 30",
+      "trigger_day": 30,
+      "flag_set": "vasquez_alive = FALSE",
+      "journal_entry": {
+        "title": "Day 30",
+        "body": "Vasquez's channel went quiet at 0600. His last scheduled transmission did not come through. Grid-9's supply drop did not arrive. The radio stayed on for six hours before I logged it as a confirmed silence. He sent three engineers to help the colony and his colony's survival rate apparently fell below the point where that was sustainable. The food income from the Vasquez arrangement is no longer active. Grid-9 is not responding."
+      }
+    },
+    {
+      "character_id": "meridian",
+      "display_name": "MERIDIAN",
+      "trigger_condition": "Archive Hall never built, OR Day 35 storm hits (permanent offline regardless)",
+      "trigger_day": 35,
+      "flag_set": "meridian_alive = FALSE",
+      "journal_entry": {
+        "title": "Day 35 — Final Entry Before Storm",
+        "body": "MERIDIAN's terminal went dark at 0215 on Day 35, before the storm hit. The last thing it logged was a resource efficiency projection for Day 36 that will not be used. It was an AI built by the Syndicate to manage logistics for a corporation that no longer exists in a city that no longer functions, and it spent its last operational period optimising food production for eight hundred people in a tunnel. The Archive Hall terminal is offline. The data MERIDIAN held about the colony is gone with it."
+      }
+    }
+  ]
+}
