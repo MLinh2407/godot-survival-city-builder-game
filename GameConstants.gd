@@ -32,6 +32,7 @@ const CRITICAL_THRESHOLD: float        = 0.10   # 10% → red HUD, critical SFX
 # FOOD
 # ══════════════════════════════════════════════════════════════════════════════
 
+const STARTING_FOOD: float             = 25000.0 
 const BASE_FOOD_RATE: float            = 8.0    # Hydroponic Bay T1 at full staff/day
 const UPGRADED_FOOD_RATE: float        = 14.0   # Hydroponic Bay T2 at full staff/day
 const FOOD_STARVATION_DELAY: int       = 2      # consecutive days at Food=0 before deaths
@@ -56,12 +57,20 @@ const GEOTHERMAL_POWER_T2: float       = 14.0
 const GEOTHERMAL_WORKER_SLOTS: int     = 0
 
 const RELAY_HUB_POWER_DRAW: float      = 1.0    # kW consumed by each Relay Hub
+const HYDROPONIC_POWER_DRAW: float     = 4.0    # High draw for LED grow lights
+const WATER_RECYCLER_POWER_DRAW: float = 3.0    # Pumps and filtration
+const MED_CLINIC_POWER_DRAW: float     = 2.0    # Medical equipment and lighting
+const ARCHIVE_HALL_POWER_DRAW: float   = 2.0    # Servers and terminals
+const RATION_STORE_POWER_DRAW: float   = 1.0    # Inventory screens/cooling
+const SHELTER_POWER_DRAW: float        = 1.0    # Basic lighting and heating
+# Memorial Wall draws 0 power (it uses a passive neon candle)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MORALE
 # ══════════════════════════════════════════════════════════════════════════════
 
+const STARTING_MORALE: float                    = 50.0   
 const MED_CLINIC_MORALE_PASSIVE: float          = 15.0   # +/day while staffed
 const MED_CLINIC_WORKER_RECOVERY: int           = 1      # available_workers recovered passively
 const MED_CLINIC_WORKER_RECOVERY_DAYS: int      = 3      # every N days (GDD: "per 3–4 days")
@@ -71,6 +80,7 @@ const MEMORIAL_WALL_MORALE_DAILY: float         = 3.0    # +/day permanently aft
 const SHELTER_MORALE_AT_CAPACITY_T1: float      = 5.0    # +/day at or below capacity
 const SHELTER_MORALE_AT_CAPACITY_T2: float      = 8.0
 const SHELTER_MORALE_OVERFLOW_PENALTY: float    = -3.0   # per day when overflow > threshold
+const RATION_AUTO_MORALE_PENALTY: float         = -2.0   # per day when auto-rationing is active
 const SHELTER_OVERFLOW_THRESHOLD: int           = 100    # overflow headroom before penalty starts
 
 const MORALE_DESERTION_THRESHOLD: float         = 10.0   # Morale below this → passive desertion
@@ -159,6 +169,9 @@ const MEMORIAL_WALL_SLOTS: int                  = 0    # permanent passive
 const MATERIALS_PASSIVE_MIN: int                = 1
 const MATERIALS_PASSIVE_MAX: int                = 2
 const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia sanctioned Day 24
+const UPGRADE_COST_BASE: int                    = 25  # base materials cost for T1→T2 upgrade
+const UPGRADE_COST_HIGH: int                    = 40  # For critical buildings like Water Recycler/Med Clinic
+const REPAIR_COST_BASE: int                     = 10  # base materials cost to repair a damaged building
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -211,3 +224,24 @@ const AMBIENT_VOLUME_RATIO: float               = 0.50  # ambient at 50% of musi
 # ══════════════════════════════════════════════════════════════════════════════
 
 const WEEKLY_SUMMARY_DAYS: Array[int]           = [7, 14, 21, 28, 35]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INITIALIZATION & DEBUG
+# ══════════════════════════════════════════════════════════════════════════════
+
+func _ready() -> void:
+	print("══════════════════════════════════════════════════════════════════════════════")
+	print(" INITIALIZING GAME CONSTANTS ")
+	print("══════════════════════════════════════════════════════════════════════════════")
+	
+	# Dynamically fetch all constants defined in this script
+	var constants_map: Dictionary = get_script().get_script_constant_map()
+	
+	# Loop through and print each one
+	for key in constants_map.keys():
+		print(key, ": ", constants_map[key])
+		
+	print("══════════════════════════════════════════════════════════════════════════════")
+	print(" ALL CONSTANTS LOADED SUCCESSFULLY ")
+	print("══════════════════════════════════════════════════════════════════════════════")
