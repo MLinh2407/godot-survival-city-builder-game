@@ -63,6 +63,8 @@ const RELAY_HUB_POWER_DRAW: float      = 1.0    # kW consumed by each Relay Hub
 # ══════════════════════════════════════════════════════════════════════════════
 
 const MED_CLINIC_MORALE_PASSIVE: float          = 15.0   # +/day while staffed
+const MED_CLINIC_WORKER_RECOVERY: int           = 1      # available_workers recovered passively
+const MED_CLINIC_WORKER_RECOVERY_DAYS: int      = 3      # every N days (GDD: "per 3–4 days")
 const ARCHIVE_HALL_MORALE_PASSIVE: float        = 8.0    # +/day while built
 const MEMORIAL_WALL_MORALE_BUILD: float         = 20.0   # one-time bonus on placement
 const MEMORIAL_WALL_MORALE_DAILY: float         = 3.0    # +/day permanently after build
@@ -140,13 +142,13 @@ const MERIDIAN_MORALE_DRAIN: float              = 1.0   # −Morale/day ongoing
 
 const COAL_GENERATOR_SLOTS: int                 = 6
 const GEOTHERMAL_TAP_SLOTS: int                 = 0    # passive
-const RELAY_HUB_SLOTS: int                      = 2
+const RELAY_HUB_SLOTS: int                      = 8
 const HYDROPONIC_BAY_SLOTS: int                 = 10
 const RATION_STORE_SLOTS: int                   = 0    # passive
-const WATER_RECYCLER_SLOTS: int                 = 4
-const MED_CLINIC_SLOTS: int                     = 6
+const WATER_RECYCLER_SLOTS: int                 = 12
+const MED_CLINIC_SLOTS: int                     = 14
 const SHELTER_BLOCK_SLOTS: int                  = 0    # no worker assignment
-const ARCHIVE_HALL_SLOTS: int                   = 4
+const ARCHIVE_HALL_SLOTS: int                   = 12
 const MEMORIAL_WALL_SLOTS: int                  = 0    # permanent passive
 
 
