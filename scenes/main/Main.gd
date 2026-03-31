@@ -12,6 +12,10 @@ extends Node
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
 @onready var morale_label: Label = $UILayer/HUD/MoraleLabel
 
+var was_power_critical: bool = false
+var was_food_critical: bool = false
+var was_morale_critical: bool = false
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
@@ -79,7 +83,59 @@ func _on_time_changed(time_string: String) -> void:
 func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
 	if power_label:
 		power_label.text = "Power: " + str(p)
+		
+		var power_is_critical = ResourceManager.power_capacity > 0 and ResourceManager.power_capacity < ResourceManager.power_draw
+		var power_is_warning = ResourceManager.power_capacity > 0 and (p / ResourceManager.power_capacity) <= GameConstants.WARNING_THRESHOLD and not power_is_critical
+		
+		if power_is_critical:
+			power_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+			if not was_power_critical:
+				AudioManager.play_critical_warning()
+				was_power_critical = true
+		elif power_is_warning:
+			power_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+			was_power_critical = false
+		else:
+			power_label.remove_theme_color_override("font_color")
+			was_power_critical = false
+
 	if food_label:
 		food_label.text = "Food: " + str(f)
+		
+		var food_ratio = 0.0
+		if ResourceManager.max_food > 0:
+			food_ratio = f / ResourceManager.max_food
+			
+		var food_is_critical = ResourceManager.max_food > 0 and food_ratio <= GameConstants.CRITICAL_THRESHOLD
+		var food_is_warning = ResourceManager.max_food > 0 and food_ratio <= GameConstants.WARNING_THRESHOLD and not food_is_critical
+		
+		if food_is_critical:
+			food_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+			if not was_food_critical:
+				AudioManager.play_critical_warning()
+				was_food_critical = true
+		elif food_is_warning:
+			food_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+			was_food_critical = false
+		else:
+			food_label.remove_theme_color_override("font_color")
+			was_food_critical = false
+
 	if morale_label:
 		morale_label.text = "Morale: " + str(m)
+		
+		var morale_ratio = m / 100.0
+		var morale_is_critical = morale_ratio <= GameConstants.CRITICAL_THRESHOLD
+		var morale_is_warning = morale_ratio <= GameConstants.WARNING_THRESHOLD and not morale_is_critical
+		
+		if morale_is_critical:
+			morale_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+			if not was_morale_critical:
+				AudioManager.play_critical_warning()
+				was_morale_critical = true
+		elif morale_is_warning:
+			morale_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+			was_morale_critical = false
+		else:
+			morale_label.remove_theme_color_override("font_color")
+			was_morale_critical = false

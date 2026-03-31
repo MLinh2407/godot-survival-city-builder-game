@@ -24,7 +24,7 @@ const STORM_HIT_DAY: int               = 35     # storm lands, game ends
 # RESOURCE THRESHOLDS
 # ══════════════════════════════════════════════════════════════════════════════
 
-const WARNING_THRESHOLD: float         = 0.20   # 20% → yellow HUD, alert SFX
+const WARNING_THRESHOLD: float         = 0.20   # 20% → yellow HUD
 const CRITICAL_THRESHOLD: float        = 0.10   # 10% → red HUD, critical SFX
 
 
@@ -205,6 +205,13 @@ const AMBIENT_FADE_IN: float                    = 0.5   # AudioManager ambient l
 const AMBIENT_FADE_OUT: float                   = 1.0   # AudioManager ambient loop fade-out
 const AMBIENT_VOLUME_RATIO: float               = 0.50  # ambient at 50% of music track volume
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# UI COLORS
+# ══════════════════════════════════════════════════════════════════════════════
+
+const UI_COLOR_WARNING: Color                   = Color.YELLOW
+const UI_COLOR_CRITICAL: Color                  = Color.RED
 
 # ══════════════════════════════════════════════════════════════════════════════
 # WEEKLY SUMMARY DAYS
