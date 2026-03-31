@@ -27,36 +27,46 @@ func _ready() -> void:
 	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
 	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
 	
-	set_speed(1.0, "Speed: 1x")
+	set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
 	
 	# init labels manually in case signal fires before Main is fully ready
 	if power_label and food_label and morale_label:
-		_on_resources_changed(ResourceManager.power, ResourceManager.food, ResourceManager.morale)
+		_on_resources_changed(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 
 func toggle_pause() -> void:
-	get_tree().paused = not get_tree().paused
-	if btn_pause:
-		btn_pause.text = "Resume" if get_tree().paused else "Pause"
+	if TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
+		get_tree().paused = false
+		set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
+	else:
+		get_tree().paused = true
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+		if btn_pause:
+			btn_pause.text = "Resume"
+		if speed_label:
+			speed_label.text = "PAUSED"
 
-func set_speed(multiplier: float, text: String) -> void:
-	Engine.time_scale = multiplier
+func set_speed(speed: int, text: String) -> void:
+	TimeManager.set_game_speed(speed)
+	get_tree().paused = false
+	if btn_pause:
+		btn_pause.text = "Pause"
 	if speed_label:
 		speed_label.text = text
 
 func _on_button_1x_pressed() -> void:
-	set_speed(1.0, "Speed: 1x")
+	set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
 
 func _on_button_2x_pressed() -> void:
-	set_speed(2.0, "Speed: 2x")
+	set_speed(TimeManager.GameSpeed.FAST, "Speed: 2x")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE:
 			toggle_pause()
 		elif event.keycode == KEY_1:
-			set_speed(1.0, "Speed: 1x")
+			set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
 		elif event.keycode == KEY_2:
-			set_speed(2.0, "Speed: 2x")
+			set_speed(TimeManager.GameSpeed.FAST, "Speed: 2x")
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
@@ -66,7 +76,7 @@ func _on_time_changed(time_string: String) -> void:
 	if time_label:
 		time_label.text = time_string
 
-func _on_resources_changed(p: int, f: int, m: int) -> void:
+func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
 	if power_label:
 		power_label.text = "Power: " + str(p)
 	if food_label:

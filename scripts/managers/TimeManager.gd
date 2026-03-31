@@ -2,25 +2,50 @@ extends Node
 
 signal day_changed(new_day: int)
 signal time_changed(time_string: String)
+signal storm_warning_issued
+signal storm_hit
+
+enum GameSpeed { PAUSED, NORMAL, FAST }
+var current_speed: GameSpeed = GameSpeed.NORMAL
 
 var current_day: int = 1
-var day_length_seconds: float = 90.0 
 var time_elapsed: float = 0.0
 
 var _last_time_str: String = ""
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_PAUSABLE
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+func set_game_speed(speed: GameSpeed) -> void:
+	current_speed = speed
+
+func get_current_day_length() -> float:
+	match current_speed:
+		GameSpeed.FAST:
+			return GameConstants.DAY_LENGTH_FAST
+		_:
+			return GameConstants.DAY_LENGTH_SECONDS
 
 func _process(delta: float) -> void:
+	if current_speed == GameSpeed.PAUSED:
+		return
+		
+	var current_day_length = get_current_day_length()
+	
 	time_elapsed += delta
 	
-	if time_elapsed >= day_length_seconds:
-		time_elapsed -= day_length_seconds
+	if time_elapsed >= current_day_length:
+		time_elapsed -= current_day_length
 		current_day += 1
 		day_changed.emit(current_day)
 		
-	var fraction_left = clamp(1.0 - (time_elapsed / day_length_seconds), 0.0, 1.0)
+		# Signal Milestones
+		if current_day == GameConstants.STORM_START_DAY:
+			storm_warning_issued.emit()
+		elif current_day == GameConstants.STORM_HIT_DAY:
+			storm_hit.emit()
+		
+	var fraction_left = clamp(1.0 - (time_elapsed / current_day_length), 0.0, 1.0)
 	var total_ingame_minutes = int(fraction_left * 24.0 * 60.0)
 	var h = total_ingame_minutes / 60
 	var m = total_ingame_minutes % 60
