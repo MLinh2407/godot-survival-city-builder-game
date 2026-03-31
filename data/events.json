@@ -1,0 +1,374 @@
+{
+  "schema_version": "1.0",
+  "note": "hope_order_delta: negative = Hope push (slider moves left), positive = Order push (slider moves right). Range 0–100.",
+  "events": [
+    {
+      "event_id": "cold_night",
+      "trigger_day": 3,
+      "trigger_condition": "always",
+      "setup_text": "A heating relay in the eastern tunnel failed overnight. The temperature in Sector C has dropped below survival threshold. A child was found unresponsive at 0400. The repair crew is standing by — but pulling them from the Hydroponic Bay means food production drops for two days. You have until the next morning cycle to decide.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Pull workers from the Hydroponic Bay. Fix the heating tonight.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Food production rate drops for 2 days. Approximately -6 Food total from reduced yield.",
+              "food_rate_delta_per_day": -3,
+              "food_rate_duration_days": 2,
+              "population_delta": 0,
+              "morale_delta": 0
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Heating restored by 0530. The child is alive. Her name is Lira. I don't know whose she is yet. The food reserves are lower than I'd like but the repair crew didn't sleep and neither did I and everyone in Sector C is still here.",
+              "hope_order_delta": -8
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Maintain food production. The heating will hold at reduced output.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Food production rate unaffected. Population drops by 1.",
+              "food_rate_delta_per_day": 0,
+              "population_delta": -1,
+              "morale_delta": 0
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "The child's name was Amos. He was six years old. The heating crew got there by 0620. Twenty minutes too late. Food reserves are stable. I wrote his name in the log and I am going to leave it there.",
+              "hope_order_delta": 8
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
+    },
+    {
+      "event_id": "the_deserters",
+      "trigger_day": 8,
+      "trigger_condition": "morale < 50",
+      "setup_text": "Forty-three colonists have gathered at the east tunnel gate with their belongings. They want out — not Grid-7, not the rations, not the dark. They're not hostile. A woman near the front says they heard there's another settlement two kilometres east and they'd rather take the risk than wait for things here to get better. They're not wrong about the conditions. They're asking for an answer.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Open the gate. Let them go.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Total population -43. Available workers -6 (working-age adults among the group). Morale recovers +8 over the next 3 days as tension releases.",
+              "population_delta": -43,
+              "available_workers_delta": -6,
+              "morale_recovery_total": 8,
+              "morale_recovery_over_days": 3
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "I opened the gate at 0830. They left in two groups, the families first, then the rest. Nobody looked back. Forty-three people. I stood there until the corridor was empty and then I closed the gate and came back to the operations room and the colony was smaller and quieter and somehow more itself.",
+              "hope_order_delta": -12
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Lock the gate. Security holds position at all exits.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Population unchanged. Morale -12 immediately. Morale decay rate doubles for 2 days. If Morale is still below 30 when lockdown ends, the Unrest Riot sub-event fires automatically.",
+              "population_delta": 0,
+              "available_workers_delta": 0,
+              "morale_delta": -12,
+              "morale_decay_multiplier": 2.0,
+              "morale_decay_duration_days": 2,
+              "conditional_sub_event": {
+                "event_id": "unrest_riot",
+                "condition": "morale < 30 at lockdown end (Day 10)"
+              }
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "The gate stays closed. Security is in position. The forty-three are back in their corridors and they know they were not allowed to leave. I kept the workers. I kept the numbers. The colony tonight is not the same colony it was this morning and I am not sure I can explain the difference to anyone who asks.",
+              "hope_order_delta": 15
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
+    },
+    {
+      "event_id": "the_vasquez_offer",
+      "trigger_day": 11,
+      "trigger_condition": "always",
+      "setup_text": "A transmission on salvaged channel 7. The voice identifies itself as Harlan Vasquez, Director of Grid-9. He's heard about your situation. He's offering food — enough to stabilise production through Act II — in exchange for three engineers for one month. He calls it a trade. His tone is reasonable. He's done this before.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Accept. Send the three engineers to Grid-9.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Food income equivalent to one additional Hydroponic Bay for the rest of the game via Vasquez supply drops. Total population -3. Available workers -3. Permanent — those people do not return.",
+              "food_income_boost": true,
+              "food_income_description": "Periodic Vasquez supply drops equivalent to +1 Hydroponic Bay output",
+              "population_delta": -3,
+              "available_workers_delta": -3,
+              "vasquez_trade_accepted_flag": true,
+              "vasquez_alive_risk": "vasquez_alive set FALSE on Day 30 if survival_rate < 0.50 after accepting"
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told Vasquez yes. Three engineers — Petra, Solano, and the older man whose name I keep forgetting — left this afternoon. The food drops start in two days. The food problem is smaller now. There are three fewer people in the colony. Both of those things are true at the same time.",
+              "hope_order_delta": 10
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Refuse. Grid-7 keeps its people.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No mechanical change. Food pressure continues unchanged. Grid-7 retains full workforce.",
+              "population_delta": 0,
+              "available_workers_delta": 0,
+              "vasquez_trade_accepted_flag": false
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told Vasquez no. He took it without argument, which somehow made it worse. The food situation hasn't changed. The people haven't changed. We have everything we had this morning. I keep telling myself that's the point.",
+              "hope_order_delta": -10
+            }
+          ]
+        },
+        {
+          "id": "option_c",
+          "text": "Counter-offer. Share eastern tunnel intelligence instead of sending people.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No mechanical change to resources or population. Unlocks the Vasquez Late Dialogue sub-event (Days 28–30 Colony Journal). No food boost. No population loss.",
+              "population_delta": 0,
+              "available_workers_delta": 0,
+              "vasquez_late_dialogue_unlocked": true,
+              "vasquez_trade_accepted_flag": false
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Offered Vasquez the eastern tunnel surveys instead. He paused long enough that I thought the channel had dropped. Then: 'Acceptable.' He doesn't think much of us. I gave him maps and kept the engineers and I'm not sure yet whether that was clever or just complicated.",
+              "hope_order_delta": 0
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
+    },
+    {
+      "event_id": "the_fever",
+      "trigger_day": 16,
+      "trigger_condition": "always",
+      "setup_text": "Yuna reported the first cases at 0700 — a respiratory illness moving through the shelter corridors. By midday it's in three sections. Between fifteen and twenty-five colonists are going to be out of rotation. She doesn't need a decision from you. She needs to know if the Med Clinic is staffed.",
+      "choices": [],
+      "conditional_outcomes": [
+        {
+          "condition": "med_clinic_staffed == true",
+          "outcomes": [
+            {
+              "type": "disease",
+              "sick_count_range": [
+                15,
+                25
+              ],
+              "sick_count_modifier": "multiply by 0.70 if water_recycler_upgraded == true",
+              "treatment_rate_per_day": 5,
+              "expected_duration_days": "3–5",
+              "colonist_deaths": 0,
+              "morale_daily_drain": -2,
+              "journal_entry": "The Fever broke on Day 20. Twenty-one sick at peak. Yuna's staff worked through it. Nobody died. The colony is down workers for a week and morale took the hit but the Med Clinic held. She told me later she was worried we'd run out of antivirals. We didn't. Barely."
+            }
+          ]
+        },
+        {
+          "condition": "med_clinic_staffed == false",
+          "outcomes": [
+            {
+              "type": "disease",
+              "sick_count_range": [
+                15,
+                25
+              ],
+              "sick_count_modifier": "multiply by 0.70 if water_recycler_upgraded == true",
+              "treatment_rate_per_day": 0,
+              "deaths_per_day": "1–3",
+              "morale_daily_drain": -2,
+              "journal_entry": "The Fever is in its fourth day and we have no treatment capacity. People are dying at a rate I cannot stop without a staffed Med Clinic. I made a calculation error somewhere in the first two weeks. I am living in it now."
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": 0
+    },
+    {
+      "event_id": "meridian_contact",
+      "trigger_day": 21,
+      "trigger_condition": "always",
+      "setup_text": "Rook's team found something in the deep tunnels three days ago — a Syndicate server node, partially functional. The AI inside calls itself MERIDIAN. It managed logistics for Helix Corporation before The Severance. It's offering to optimise resource distribution across Grid-7. Twenty percent efficiency gain across all production buildings. The price: biometric access to every colonist. Health data, location, behavioural patterns. MERIDIAN says it needs this to do the work correctly. It is probably right.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Grant access. Let MERIDIAN optimise the colony.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "All production building output multiplied by 1.20 for the remainder of the game. Ongoing Morale drain of -1/day from colonist unease. Net mechanical benefit is strongly positive.",
+              "production_multiplier": 1.2,
+              "morale_daily_delta": -1,
+              "meridian_trusted_flag": true,
+              "meridian_alive_flag": "TRUE if archive_hall_built == true"
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told MERIDIAN yes. The efficiency numbers improved within six hours. Yuna asked me what changed and I told her. She didn't say anything for a moment. Then: 'I hope you're right.' I think she's wrong to doubt it. I think she's right to ask.",
+              "hope_order_delta": 12
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Refuse. Grid-7's data stays inside Grid-7.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No efficiency boost. MERIDIAN remains accessible in Archive Hall terminal for optional story dialogue. No mechanical effect from MERIDIAN.",
+              "production_multiplier": 1.0,
+              "meridian_trusted_flag": false,
+              "meridian_alive_flag": "FALSE (not considered active)"
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told MERIDIAN no. It accepted without argument. It is still in the terminal and it still talks sometimes. I'm not sure what I'm protecting by refusing it. I'm not sure I need to be sure.",
+              "hope_order_delta": 0
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
+    },
+    {
+      "event_id": "rooks_militia",
+      "trigger_day": 24,
+      "trigger_condition": "always",
+      "setup_text": "Rook came to the operations room this morning. He's been running a group of twelve — teenagers and young adults — into the collapsed sections of the tunnels. Salvaging Materials from areas the authorised teams won't touch. He's been doing it for two weeks without permission. He's not asking for forgiveness. He's asking for sanction: official status, proper equipment, open operation. He's seventeen years old. He looks exhausted and proud in equal measure and he is waiting for an answer.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Sanction the militia. Give them official status and equipment access.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Passive Materials income +3/day for the remainder of the game. Risk flag: if Med Clinic not upgraded or doubled before Day 33, the Rook Injury sub-event fires (available_workers -2 for 3 days). rook_alive flag remains TRUE.",
+              "materials_per_day_bonus": 3,
+              "rook_injury_risk_flag": true,
+              "rook_injury_condition": "med_clinic_not_upgraded_before_day_33",
+              "rook_alive_flag": "TRUE"
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told Rook yes. Gave him the salvage equipment manifest and official authorisation and told him to keep casualties at zero. He said he would. I believe him. That might be the problem.",
+              "hope_order_delta": -6
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Order them to stop. The collapsed sections are too dangerous.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No Materials bonus. Rook's Morale contribution to colony drops. rook_alive flag set FALSE on Day 33 unless reconciliation dialogue is taken before that date. Reconciliation window: Days 24–33 Colony Journal.",
+              "materials_per_day_bonus": 0,
+              "rook_alive_flag": "FALSE on Day 33 unless reconciliation taken",
+              "reconciliation_window_open": true,
+              "reconciliation_deadline": 33
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "Told Rook no. He heard me out, asked if there was anything he could do instead, and when I said not right now he thanked me and left. He was polite. That was worse than if he'd argued. I don't know what I protected him from. I don't know what I took from him.",
+              "hope_order_delta": 6
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
+    },
+    {
+      "event_id": "the_storm_warning",
+      "trigger_day": 26,
+      "trigger_condition": "always",
+      "setup_text": "MERIDIAN detected it first — or the Archive Hall's salvaged Syndicate weather node if MERIDIAN was refused. Either way the data is the same: an electromagnetic storm, generated by the collapsing remnants of the Helix AI network, is approaching Grid-7. Impact on Day 35. Unshielded electronics will not survive it. Every production building in Grid-7 runs on salvaged electronics. You have nine days. You cannot shield everything. Decide what stays on.",
+      "choices": [],
+      "preparation_phase": {
+        "description": "No binary choice. The player allocates workers and Materials to shield individual buildings over 9 days. Shielding cost: Materials + 2 worker-days per building. Buildings shielded before Day 35 continue operating through and after the storm. Buildings not shielded go permanently offline at Day 35.",
+        "shielding_cost_per_building": {
+          "materials": "variable by building tier",
+          "worker_days": 2
+        },
+        "storm_impact": "All unshielded buildings offline permanently at Day 35. Survival rate calculated immediately after.",
+        "ending_note": "Survival rate at Day 35 is the primary ending gate. Infrastructure decisions from Day 1 onward determine what can be shielded and what cannot."
+      },
+      "hope_order_delta": 0
+    },
+    {
+      "event_id": "the_last_broadcast",
+      "trigger_day": 28,
+      "trigger_condition": "always",
+      "setup_text": "Grid-7's communication systems picked up the final automated shutdown broadcast of the Syndicate's emergency network at 1400. The message was designed for Tier-1 Priority Citizens. It uses the phrase 'undesignated population' to describe the eight hundred and forty-seven people living in these tunnels. The entire colony heard it.",
+      "choices": [],
+      "conditional_outcomes": [
+        {
+          "condition": "all_players",
+          "outcomes": [
+            {
+              "type": "resource",
+              "morale_delta": 8,
+              "description": "Colony-wide Morale +8 from collective defiance and solidarity. The anger is real and it is theirs.",
+              "journal_entry": "At 1400 the Syndicate emergency broadcast came through. It called us 'undesignated population.' Everyone in the colony heard that phrase at the same time. The anger was immediate and it was clean and it was the most unified I have seen eight hundred people since Day 1. Morale went up. I don't think I've ever written that after something like this."
+            }
+          ]
+        },
+        {
+          "condition": "archive_hall_built == true",
+          "outcomes": [
+            {
+              "type": "resource",
+              "materials_delta": 25,
+              "description": "MERIDIAN (or the Archive Hall weather node) analyses a data layer in the broadcast and finds abandoned Syndicate supply cache coordinates in the eastern tunnels. +25 Materials.",
+              "journal_entry": "MERIDIAN found a secondary data layer in the broadcast — supply cache coordinates for Syndicate emergency stations in the eastern tunnels. We sent a retrieval team. Twenty-five Materials recovered. I don't know whether to be grateful or angry that their infrastructure is still being useful."
+            }
+          ]
+        },
+        {
+          "condition": "archive_hall_built == true AND meridian_trusted == true",
+          "outcomes": [
+            {
+              "type": "narrative",
+              "description": "MERIDIAN detects a structured response signal from the north. Not Syndicate. Narrative seed for The Signal secret ending. Triggers the MERIDIAN Signal Detection sub-event journal entry.",
+              "sub_event_triggered": "meridian_signal_detection",
+              "journal_entry": "MERIDIAN flagged something else in the broadcast spectrum. A structured signal — not Syndicate, not noise. From the north. I asked MERIDIAN what it was. It said: 'Unknown. It responded to the broadcast. That means it was listening.' It's in the log. I don't know what to do with it yet."
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": 0
+    }
+  ]
+}

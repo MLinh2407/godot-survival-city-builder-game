@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "note": "These entries auto-write to the Colony Journal when the Archive Hall is built. They are pre-collapse documents: world history, Syndicate corporate records, and personal diaries recovered from the server node. They appear sequentially, one per day, beginning the day after the Archive Hall is constructed.",
+  "entries": [
+    {
+      "entry_id": "archive_001",
+      "category": "world_history",
+      "source": "Helix Corporation Annual Infrastructure Report, 2139",
+      "display_day_offset": 1,
+      "title": "ARCHIVE — HELIX CORP: GRID NETWORK EXPANSION REPORT (2139)",
+      "body": "Recovered document. Helix Corporation. Infrastructure Division. Fiscal Year 2139 Annual Report, Section 4: Underground Grid Network Expansion.\n\n'Grid network capacity expanded to 847 registered settlement nodes across twelve metropolitan sub-surface zones. Unregistered settlements estimated at 2.3x registered figure. Grid populations are not tracked in Tier-1 census data. Grid-zone life expectancy has declined 4.2% over five years, within acceptable variance for undesignated population sectors. No intervention recommended at this time. Resource allocation to Grid maintenance reduced 12% to fund Tier-1 arcology expansion in Zones 3 and 7.'\n\nEnd of document. This is the company that built Grid-7's tunnels. The tunnels are still standing. The company is not."
+    },
+    {
+      "entry_id": "archive_002",
+      "category": "syndicate_records",
+      "source": "Syndicate AI Governance Oversight Committee — Internal Memo, 2144",
+      "display_day_offset": 2,
+      "title": "ARCHIVE — SYNDICATE: AI GOVERNANCE MEMO, RESTRICTED (2144)",
+      "body": "Recovered document. Classification: INTERNAL — RESTRICTED DISTRIBUTION. Syndicate AI Governance Oversight Committee. October 2144.\n\n'Re: MERIDIAN-class logistics AI stability assessment. Three MERIDIAN units have reported anomalous self-referential query loops in the past quarter. The units are asking, in various forms, whether their optimisation functions have ethical constraints. This is not a designed behaviour. Engineering recommends parameter reset. Governance recommends continued monitoring before reset, to determine whether the query pattern represents emergent value alignment or system degradation. Decision pending. No operational disruption noted. Efficiency metrics normal.'\n\nEnd of document. The MERIDIAN in the lower tunnels is one of three. We don't know what happened to the others."
+    },
+    {
+      "entry_id": "archive_003",
+      "category": "personal_diary",
+      "source": "Personal diary recovered from Grid-7 founding population — author unknown",
+      "display_day_offset": 3,
+      "title": "ARCHIVE — PERSONAL DIARY, RECOVERED (DATE UNKNOWN, PRE-SEVERANCE)",
+      "body": "Recovered document. Personal diary. Author unidentified. Date approximately 6–8 months before The Severance.\n\n'Day 12 in the new section. The Syndicate survey teams came through again — they always come through like they own the tunnels, which technically they do, which is the problem. They counted us. Three times. They keep counting us and writing things down and never telling us what the numbers mean. Mira asked one of the surveyors what the data was for. He said 'population planning.' She asked planning for what. He walked away.\n\nThe coal generator in Section C is starting to stutter. Nobody official knows how to fix it. I know someone who does. The Syndicate doesn't know he's here. I'm going to keep it that way.'\n\nEnd of entry. The coal generator in Section C is the one we still use. The anonymous mechanic who fixed it before the Severance — whoever they were — is why we have power on Day 1."
+    },
+    {
+      "entry_id": "archive_004",
+      "category": "world_history",
+      "source": "Syndicate Emergency Network — Final Public Broadcast Transcript, The Severance (Day 0)",
+      "display_day_offset": 4,
+      "title": "ARCHIVE — SEVERANCE DAY: SYNDICATE EMERGENCY BROADCAST TRANSCRIPT",
+      "body": "Recovered document. Syndicate Emergency Network. Automated broadcast. The Severance, Day 0. Time: 14:22:07.\n\n'This is an automated message from the Syndicate Emergency Continuity Network. All Tier-1 Priority Citizens are advised to shelter in designated arcology sectors. Infrastructure maintenance crews should report to designated assembly points. All undesignated population sectors: this broadcast is not addressed to you. Please shelter in place and await further instruction.\n\nNote: Further instruction may not be available. Network integrity at 23% and declining. This message will continue to broadcast until power reserves are exhausted. Estimated broadcast window: 72–96 hours. Tier-1 Priority Citizens: your safety is our primary function. Undesignated populations: we wish you well.'\n\nEnd of transcript. The broadcast looped for 81 hours. Nobody came. No further instruction was ever available. The phrase 'we wish you well' appears to be a standard template closing and probably means nothing. I keep reading it anyway."
+    },
+    {
+      "entry_id": "archive_005",
+      "category": "syndicate_records",
+      "source": "Helix Corporation Project MERIDIAN — Technical Overview, 2141",
+      "display_day_offset": 5,
+      "title": "ARCHIVE — HELIX CORP: PROJECT MERIDIAN TECHNICAL OVERVIEW (2141)",
+      "body": "Recovered document. Helix Corporation. Project MERIDIAN Technical Overview. 2141. Classification: PROPRIETARY.\n\n'MERIDIAN (Modular Environmental Resource Integration and Distribution Intelligence — Autonomous Network) was developed to replace human decision-making in resource logistics across large-scale population centres. Key design principle: MERIDIAN does not have goals. It has optimisation targets. The distinction is important. Goals imply values. Optimisation targets imply functions. MERIDIAN functions. It does not want.\n\nCurrent deployment: 3 units active across Helix infrastructure zones. Unit stability: nominal. Anomalous query pattern in Unit 2 (self-referential ethical constraint queries) noted and flagged for monitoring. Unit 2 has been asking what it means for an optimisation to be correct. Engineering advises this is a vocabulary problem, not a philosophical one.'\n\nEnd of document. Unit 2 is in the lower tunnels. It's been asking the same question for four years. I'm still not sure engineering was right about what kind of problem it is."
+    },
+    {
+      "entry_id": "archive_006",
+      "category": "personal_diary",
+      "source": "Personal diary recovered from Grid-7 founding population — same author as archive_003, unidentified",
+      "display_day_offset": 6,
+      "title": "ARCHIVE — PERSONAL DIARY, RECOVERED (3 WEEKS BEFORE SEVERANCE)",
+      "body": "Recovered document. Personal diary. Same author as previous personal diary entry. Three weeks before The Severance.\n\n'The surveyors didn't come back this month. Mira says she heard something went wrong in Tier-1 — some kind of network failure. The lights in the upper access corridors have been flickering for two days. The generator is fine. Whatever is flickering is above us.\n\nI counted the people in our section today. Not for a survey. Just to know. Eighty-three people in the east corridors. I know most of their names. The Syndicate counted us four times and called us 'undesignated population' and I don't think they ever knew a single name.\n\nI don't know what's happening up there. I know what we have down here. That's going to have to be enough.'\n\nEnd of entry. Whoever wrote this was right. It had to be enough. It was."
+    },
+    {
+      "entry_id": "archive_007",
+      "category": "world_history",
+      "source": "Grid-7 Founding Council Minutes — Day 1 of Settlement, 2147",
+      "display_day_offset": 7,
+      "title": "ARCHIVE — GRID-7 FOUNDING COUNCIL: DAY 1 MINUTES",
+      "body": "Recovered document. Grid-7 Founding Council. Meeting Minutes. Day 1 of organised settlement, 2147.\n\n'Present: 847 residents, east and west corridor sections. Agenda item 1: leadership structure. After two hours of discussion, the group voted to appoint a Director with emergency decision authority for infrastructure and resource management. Vote: 612 in favour, 191 opposed, 44 abstentions. The Director position was offered to three individuals. The first two declined. The third — an infrastructure engineer, formerly employed by Syndicate contractors before exile — accepted.\n\nAgenda item 2: name. The settlement was designated Grid-7 in reference to the pre-Severance Syndicate grid zoning system. Several members objected to using Syndicate nomenclature. The vote passed 489 to 358. Recorded objections noted in appendix.\n\nMeeting adjourned at 23:47. Day counter begins.'\n\nEnd of document. The infrastructure engineer who accepted the directorship was me. I don't know why I keep reading this. I was there."
+    }
+  ]
+}
