@@ -48,6 +48,7 @@ const RATION_AUTO_THRESHOLD: float     = 0.20   # T2 auto-rationing kicks in at 
 # POWER
 # ══════════════════════════════════════════════════════════════════════════════
 
+const STARTING_POWER_RESERVE: float    = 100.0 
 const COAL_POWER_T1: float             = 15.0   # kW produced at T1
 const COAL_POWER_T2: float             = 25.0   # kW produced at T2
 const COAL_WORKER_SLOTS: int           = 6
@@ -126,6 +127,7 @@ const BUILDING_DAMAGE_OUTPUT: float             = 0.30 # damaged output even whe
 # HOPE / ORDER SLIDER
 # ══════════════════════════════════════════════════════════════════════════════
 
+const SLIDER_STARTING_VALUE: float              = 50.0  # Perfect neutral start
 const SLIDER_HOPE_UPPER: float                  = 30.0  # 0–30 = Hope zone
 const SLIDER_ORDER_LOWER: float                 = 70.0  # 70–100 = Order zone
 
@@ -166,6 +168,7 @@ const MEMORIAL_WALL_SLOTS: int                  = 0    # permanent passive
 # MATERIALS
 # ══════════════════════════════════════════════════════════════════════════════
 
+const STARTING_MATERIALS: int                   = 0   
 const MATERIALS_PASSIVE_MIN: int                = 1
 const MATERIALS_PASSIVE_MAX: int                = 2
 const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia sanctioned Day 24
