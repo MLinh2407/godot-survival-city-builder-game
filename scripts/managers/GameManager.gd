@@ -1,14 +1,16 @@
 extends Node
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SIGNALS
+# ══════════════════════════════════════════════════════════════════════════════
+signal day_advanced(new_day: int)
+signal game_over(reason: String) # Triggered by Day 35 storm or 0 Population
+
+# ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
-var current_population: int = GameConstants.STARTING_POPULATION
-var available_workers: int = GameConstants.STARTING_WORKERS
-var sick_count: int = 0
 var current_day: int = 1
-var materials: int = GameConstants.STARTING_MATERIALS
 
 # Float 0-100. Starts at 50 (Neutral)
 var hope_order_slider: float = 50.0 
@@ -25,8 +27,6 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
 # ══════════════════════════════════════════════════════════════════════════════
-# Note: Assuming these data classes were defined in Week 4. 
-# We declare them here so other systems can access them globally.
 
 var population_state: PopulationStateData
 var power_data: ResourceData
@@ -41,6 +41,58 @@ var colonist_vasquez: ColonistData
 var colonist_meridian: ColonistData
 
 func _ready() -> void:
-	# We will instantiate the data classes here if needed, 
-	# or let their respective managers handle the initialization.
+	_initialize_resources()
+	_load_character_data()
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SETUP FUNCTIONS
+# ══════════════════════════════════════════════════════════════════════════════
+func _initialize_resources() -> void:
+	# 1. Initialize Population Data
+	population_state = PopulationStateData.new()
+	population_state.current_population = GameConstants.STARTING_POPULATION
+	population_state.available_workers = GameConstants.STARTING_WORKERS
+	population_state.sick_count = 0
+	
+	# 2. Initialize Economy Data
+	power_data = ResourceData.new()
+	power_data.current_value = GameConstants.STARTING_POWER_RESERVE
+	
+	food_data = ResourceData.new()
+	food_data.current_value = GameConstants.STARTING_FOOD
+	
+	morale_data = ResourceData.new()
+	morale_data.current_value = GameConstants.STARTING_MORALE
+	
+	materials_data = ResourceData.new()
+	materials_data.current_value = GameConstants.STARTING_MATERIALS
+	
+	print("GameManager: All Resources and Population Data Initialized.")
+
+func _load_character_data() -> void:
+	# Load the custom resources your team made in Week 4
+	# (Update these file paths to match your actual project folders)
+	
+	# colonist_kael = load("res://data/characters/kael.tres") as ColonistData
+	# colonist_yuna = load("res://data/characters/yuna.tres") as ColonistData
+	# colonist_rook = load("res://data/characters/rook.tres") as ColonistData
+	# colonist_vasquez = load("res://data/characters/vasquez.tres") as ColonistData
+	# colonist_meridian = load("res://data/characters/meridian.tres") as ColonistData
 	pass
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CORE GAMEPLAY LOOPS
+# ══════════════════════════════════════════════════════════════════════════════
+func advance_to_next_day() -> void:
+	current_day += 1
+	
+	if current_day > GameConstants.TOTAL_DAYS:
+		game_over.emit("timeline_complete")
+		return
+		
+	day_advanced.emit(current_day)
+	print("GameManager: Day advanced to ", current_day)
+
+func get_survival_rate() -> float:
+	# Used by the ending manager on Day 35. Now correctly reads from population_state!
+	return float(population_state.current_population) / float(GameConstants.STARTING_POPULATION)
