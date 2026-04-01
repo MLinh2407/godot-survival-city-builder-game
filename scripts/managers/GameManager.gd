@@ -1,16 +1,14 @@
 extends Node
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIGNALS
-# ══════════════════════════════════════════════════════════════════════════════
-signal day_advanced(new_day: int)
-signal game_over(reason: String) # Triggered by Day 35 storm or 0 Population
-
-# ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
+var current_population: int = GameConstants.STARTING_POPULATION
+var available_workers: int = GameConstants.STARTING_WORKERS
+var sick_count: int = 0
 var current_day: int = 1
+var materials: int = GameConstants.STARTING_MATERIALS
 
 # Float 0-100. Starts at 50 (Neutral)
 var hope_order_slider: float = 50.0 
@@ -29,10 +27,10 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 
 var population_state: PopulationStateData
-var power_data: ResourceData
-var food_data: ResourceData
-var morale_data: ResourceData
-var materials_data: ResourceData
+var resource_power: ResourceData
+var resource_food: ResourceData
+var resource_morale: ResourceData
+var resource_materials: ResourceData
 
 var colonist_kael: ColonistData
 var colonist_yuna: ColonistData
@@ -41,58 +39,59 @@ var colonist_vasquez: ColonistData
 var colonist_meridian: ColonistData
 
 func _ready() -> void:
-	_initialize_resources()
-	_load_character_data()
+	_initialize_data_classes()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SETUP FUNCTIONS
-# ══════════════════════════════════════════════════════════════════════════════
-func _initialize_resources() -> void:
-	# 1. Initialize Population Data
+func _initialize_data_classes() -> void:
+	# 1. Initialize Population State Data
 	population_state = PopulationStateData.new()
-	population_state.current_population = GameConstants.STARTING_POPULATION
-	population_state.available_workers = GameConstants.STARTING_WORKERS
-	population_state.sick_count = 0
-	
-	# 2. Initialize Economy Data
-	power_data = ResourceData.new()
-	power_data.current_value = GameConstants.STARTING_POWER_RESERVE
-	
-	food_data = ResourceData.new()
-	food_data.current_value = GameConstants.STARTING_FOOD
-	
-	morale_data = ResourceData.new()
-	morale_data.current_value = GameConstants.STARTING_MORALE
-	
-	materials_data = ResourceData.new()
-	materials_data.current_value = GameConstants.STARTING_MATERIALS
-	
-	print("GameManager: All Resources and Population Data Initialized.")
+	population_state.total_population = current_population
+	population_state.available_workers = available_workers
+	population_state.sick_count = sick_count
+	population_state.max_workers = GameConstants.MAX_WORKERS_LATE_GAME 
 
-func _load_character_data() -> void:
-	# Load the custom resources your team made in Week 4
-	# (Update these file paths to match your actual project folders)
-	
-	# colonist_kael = load("res://data/characters/kael.tres") as ColonistData
-	# colonist_yuna = load("res://data/characters/yuna.tres") as ColonistData
-	# colonist_rook = load("res://data/characters/rook.tres") as ColonistData
-	# colonist_vasquez = load("res://data/characters/vasquez.tres") as ColonistData
-	# colonist_meridian = load("res://data/characters/meridian.tres") as ColonistData
-	pass
+	# 2. Initialize Resource Data Instances
+	resource_power = ResourceData.new()
+	resource_power.res_name = "Power"
+	resource_power.warning_threshold = GameConstants.WARNING_THRESHOLD
+	resource_power.critical_threshold = GameConstants.CRITICAL_THRESHOLD
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CORE GAMEPLAY LOOPS
-# ══════════════════════════════════════════════════════════════════════════════
-func advance_to_next_day() -> void:
-	current_day += 1
-	
-	if current_day > GameConstants.TOTAL_DAYS:
-		game_over.emit("timeline_complete")
-		return
-		
-	day_advanced.emit(current_day)
-	print("GameManager: Day advanced to ", current_day)
+	resource_food = ResourceData.new()
+	resource_food.res_name = "Food"
+	resource_food.warning_threshold = GameConstants.WARNING_THRESHOLD
+	resource_food.critical_threshold = GameConstants.CRITICAL_THRESHOLD
 
-func get_survival_rate() -> float:
-	# Used by the ending manager on Day 35. Now correctly reads from population_state!
-	return float(population_state.current_population) / float(GameConstants.STARTING_POPULATION)
+	resource_morale = ResourceData.new()
+	resource_morale.res_name = "Morale"
+	resource_morale.warning_threshold = GameConstants.WARNING_THRESHOLD
+	resource_morale.critical_threshold = GameConstants.CRITICAL_THRESHOLD
+
+	resource_materials = ResourceData.new()
+	resource_materials.res_name = "Materials"
+	resource_materials.warning_threshold = 0.0 
+	resource_materials.critical_threshold = 0.0
+
+	# 3. Initialize Colonist Data Instances (with roles added back in)
+	colonist_kael = ColonistData.new()
+	colonist_kael.char_name = "Kael"
+	colonist_kael.role = "Director"
+	colonist_kael.is_alive = true 
+
+	colonist_yuna = ColonistData.new()
+	colonist_yuna.char_name = "Yuna"
+	colonist_yuna.role = "Head Medic"
+	colonist_yuna.is_alive = yuna_alive
+
+	colonist_rook = ColonistData.new()
+	colonist_rook.char_name = "Rook"
+	colonist_rook.role = "Scout"
+	colonist_rook.is_alive = rook_alive
+
+	colonist_vasquez = ColonistData.new()
+	colonist_vasquez.char_name = "Vasquez"
+	colonist_vasquez.role = "Grid-9 Director"
+	colonist_vasquez.is_alive = vasquez_alive
+
+	colonist_meridian = ColonistData.new()
+	colonist_meridian.char_name = "MERIDIAN"
+	colonist_meridian.role = "Fragmented AI"
+	colonist_meridian.is_alive = meridian_alive
