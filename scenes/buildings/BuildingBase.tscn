@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cpk3w4dhromgg"]
+
+[node name="BuildingBase" type="Node2D" unique_id=2121470720]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1951350025]
+offset = Vector2(0, -128)
