@@ -72,26 +72,26 @@ func _initialize_data_classes() -> void:
 
 	# 3. Initialize Colonist Data Instances (with roles added back in)
 	colonist_kael = ColonistData.new()
-	colonist_kael.char_name = "Kael"
+	colonist_kael.character_name = "Kael"
 	colonist_kael.role = "Director"
 	colonist_kael.is_alive = true 
 
 	colonist_yuna = ColonistData.new()
-	colonist_yuna.char_name = "Yuna"
+	colonist_yuna.character_name = "Yuna"
 	colonist_yuna.role = "Head Medic"
 	colonist_yuna.is_alive = yuna_alive
 
 	colonist_rook = ColonistData.new()
-	colonist_rook.char_name = "Rook"
+	colonist_rook.character_name = "Rook"
 	colonist_rook.role = "Scout"
 	colonist_rook.is_alive = rook_alive
 
 	colonist_vasquez = ColonistData.new()
-	colonist_vasquez.char_name = "Vasquez"
+	colonist_vasquez.character_name = "Vasquez"
 	colonist_vasquez.role = "Grid-9 Director"
 	colonist_vasquez.is_alive = vasquez_alive
 
 	colonist_meridian = ColonistData.new()
-	colonist_meridian.char_name = "MERIDIAN"
+	colonist_meridian.character_name = "MERIDIAN"
 	colonist_meridian.role = "Fragmented AI"
 	colonist_meridian.is_alive = meridian_alive

@@ -7,6 +7,7 @@ extends Resource
 @export var total_population: int = 847   
 @export var available_workers: int = 68  
 @export var sick_count: int = 0           # Colonists alive but unable to work (Sick pool)
+@export var max_workers: int = 0
 
 # Outbreak state
 @export var outbreak_active: bool = false  # True when sick_count > 0 and event has fired
