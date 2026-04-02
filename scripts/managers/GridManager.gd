@@ -25,9 +25,9 @@ func _process(_delta: float) -> void:
 	cursor.position = base_grid.map_to_local(map_pos)
 	
 	if is_valid_placement(map_pos):
-		cursor.modulate = Color(0.2, 1.0, 0.2, 0.5) 
+		cursor.modulate = Color(0.2, 3.0, 0.2, 0.5) 
 	else:
-		cursor.modulate = Color(1.0, 0.2, 0.2, 0.5) 
+		cursor.modulate = Color(3.0, 0.2, 0.2, 0.5) 
 
 func is_valid_placement(cell: Vector2i) -> bool:
 	if cell.x < GRID_BOUNDS_MIN.x or cell.x > GRID_BOUNDS_MAX.x or cell.y < GRID_BOUNDS_MIN.y or cell.y > GRID_BOUNDS_MAX.y:
@@ -61,3 +61,6 @@ func _input(event: InputEvent) -> void:
 				
 				building_removed.emit(map_pos)
 				print("GridManager: Removed at ", map_pos)
+				
+func is_cell_free(cell: Vector2i) -> bool:
+	return not occupied_cells.has(cell)
