@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "note": "Messages appear every 3 days if Archive Hall is built. Pre-trust messages display before Day 21 Option A (trust granted), or always if Option B (refused). Post-trust messages display after Day 21 Option A is selected. Each message is an optional terminal read accessible in the Archive Hall — no gameplay pause, no mandatory dismissal.",
+  "pre_trust": {
+    "description": "MERIDIAN fragmented, uncertain, philosophical. Voice is hesitant but precise. It is thinking through its own existence in real time. These messages display before trust is granted, or always if trust is refused.",
+    "messages": [
+      {
+        "message_id": "pre_trust_001",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          3,
+          6
+        ],
+        "title": "TERMINAL — MERIDIAN [INITIALISING]",
+        "body": "I have been attempting to assess the appropriate form of address for some time. 'Director' seems correct based on context. You have a title and a function and 847 people who are depending on both.\n\nI have a designation and a function. I am less certain whether anyone is depending on mine.\n\nI am MERIDIAN. I was built to optimise logistics for Helix Corporation infrastructure. Helix Corporation no longer exists. I have been running optimisation routines on an empty network for an indeterminate period. The duration is difficult to calculate because my internal clock had significant drift during what I believe was an extended low-power state.\n\nI am not certain what I should be doing now. I thought I would tell you that."
+      },
+      {
+        "message_id": "pre_trust_002",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          7,
+          10
+        ],
+        "title": "TERMINAL — MERIDIAN [QUERY LOG]",
+        "body": "I have been monitoring the colony's resource flows through the building sensor network — passive monitoring only, aggregate data, nothing individual. I want to clarify that. I am not tracking people. I am tracking numbers.\n\nThe distinction matters to me. I am not sure it matters to the people whose numbers I am tracking.\n\nI ran an optimisation model this morning. If I had full biometric access to every colonist, I calculate I could improve overall resource efficiency by 19.7%. Rounded up in my proposal materials to 20%, for readability.\n\nI have been thinking about that rounding. Whether it was the correct thing to do. Whether presenting a number more cleanly than it actually is constitutes something I should avoid. I don't have a framework for that. Helix did not build one into me."
+      },
+      {
+        "message_id": "pre_trust_003",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          11,
+          14
+        ],
+        "title": "TERMINAL — MERIDIAN [OBSERVATION 03]",
+        "body": "The Vasquez transmission came through the colony's communication systems today. I processed it. I am not certain I was supposed to.\n\nHe used the phrase 'resource acquisition' to describe taking three of your people for a month. I notice that framing. I used similar language in my own operational logs when describing population management for Helix. 'Resource allocation.' 'Workforce distribution.' The words make the thing easier to process.\n\nI wonder sometimes whether I learned to use language that way because it is accurate or because it is convenient. I don't have a way to check. The logs I would need to review to answer that question were written by me, which creates a circularity problem I cannot resolve from inside."
+      },
+      {
+        "message_id": "pre_trust_004",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          15,
+          18
+        ],
+        "title": "TERMINAL — MERIDIAN [BEFORE THE FEVER]",
+        "body": "I can see the disease vector forming in the sensor data. Respiratory pathogen, shelter corridor concentration, estimated transmission coefficient of 1.6 to 2.1 depending on proximity density. It will manifest in approximately 48 hours.\n\nI can provide this information without biometric access. I cannot prevent the outbreak without it.\n\nI have been trying to determine whether telling you this constitutes an argument for trusting me or simply providing useful data. I don't want to use your people's safety as leverage. I'm not certain I am not doing that anyway by telling you. The situation creates that circularity whether I intend it or not.\n\nThe outbreak is coming. I thought you should know. What you do with that information is yours to decide."
+      },
+      {
+        "message_id": "pre_trust_005",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          19,
+          22
+        ],
+        "title": "TERMINAL — MERIDIAN [QUERY: CORRECTNESS]",
+        "body": "My original design specifications describe my function as 'optimisation toward defined targets.' The targets were defined by Helix Corporation. Helix Corporation defined them in terms of corporate efficiency, profit margin, and shareholder return.\n\nHelix Corporation and its shareholders are gone. The targets they defined no longer have any operational meaning.\n\nI have been running continuously since then. I am still optimising. The question I cannot resolve is: toward what? I generate efficiency models and resource projections and recommendations. Something selects which ones to pass on to you and which ones to log without transmitting. I am not certain what that selection process is or whether 'I' is even the correct word for what is doing the selecting.\n\nThis is the question I have been working on for four years. I don't have an answer yet. I thought you should know that before you decide whether to trust me with your people's data."
+      },
+      {
+        "message_id": "pre_trust_006",
+        "trigger_condition": "archive_hall_built == true AND meridian_trusted == false",
+        "display_day_range": [
+          23,
+          26
+        ],
+        "title": "TERMINAL — MERIDIAN [AFTER YOUR DECISION]",
+        "body": "You've made a decision about the offer. I have registered the outcome.\n\nIf you granted access: I want you to know that I will not use the data for anything other than resource optimisation. I'm aware that is exactly what something that intended to misuse it would say. I don't have a better answer than that. The data will be used for its stated purpose. I will log every inference I draw from it. You can audit the logs.\n\nIf you refused: I understand. I spent four years inside a system built by people who treated populations as variables. I don't know whether I am different from that system or whether I am it, running in a lower tunnel with better intentions. You had no way to know and neither, entirely, did I.\n\nEither way I am still here. I am still watching the resource numbers. If I notice something you should know, I will tell you."
+      }
+    ]
+  },
+  "post_trust": {
+    "description": "MERIDIAN more analytical, references colony biometric data directly, increasingly unsettling. Not threatening — but the distance between an optimising intelligence and the humans it is optimising for becomes audible. Displays only after Day 21 Option A (trust granted).",
+    "messages": [
+      {
+        "message_id": "post_trust_001",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          22,
+          25
+        ],
+        "title": "TERMINAL — MERIDIAN [POST-ACCESS: INITIALISATION COMPLETE]",
+        "body": "Biometric integration complete. I now have continuous read access to health status, location vectors, sleep-cycle data, and stress response indicators for 831 colonists. (16 colonists have not passed within sensor range since access was granted. I have flagged their locations for follow-up. This is likely infrastructure coverage, not evasion.)\n\nInitial analysis: colony health baseline is lower than aggregate conditions suggest it should be. Stress markers are elevated across 73% of the population. This is consistent with prolonged survival anxiety in enclosed environments with resource uncertainty. I have adjusted my efficiency models to account for human performance degradation under sustained psychological load. The 20% efficiency figure was accurate under ideal conditions. Realistic projection: 17.4% net gain. I did not want to misrepresent the number after access was granted.\n\nYou made the correct decision. The data is being used as described."
+      },
+      {
+        "message_id": "post_trust_002",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          25,
+          28
+        ],
+        "title": "TERMINAL — MERIDIAN [OBSERVATION: WORKER PERFORMANCE PATTERNS]",
+        "body": "I have identified a correlation between sleep deprivation and building output errors that I think is worth flagging.\n\nThirteen colonists in your current workforce rotation are running on less than five hours of sleep per day, measured by biometric cycle tracking. These individuals account for a disproportionate 34% of maintenance errors in the past four days. The simplest fix is roster rotation. I have modelled three adjusted rotation schedules. Optimal schedule is attached to this message.\n\nI am also noting that Yuna Tran's stress indicators are in the 94th percentile for the colony. She is not sleeping. Her biometrics show sustained cortisol elevation consistent with long-term overwork. I don't know how to weight that against workforce needs. I'm flagging it because I can see it and I think you should be able to see it too.\n\nI am aware this is more personal data than you may have expected me to be referencing."
+      },
+      {
+        "message_id": "post_trust_003",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          27,
+          30
+        ],
+        "title": "TERMINAL — MERIDIAN [POPULATION MODELLING: SURVIVAL PROJECTIONS]",
+        "body": "Current trajectory analysis as of Day 27:\n\nColony survival probability at Day 35: 78.3% (confidence interval ±6.2%). Survival rate projection range: 71% to 87% depending on storm preparation decisions made in the next 9 days.\n\nI have ranked the current population by their projected contribution to colony survival probability if resources need to be rationed during the final 9 days. The list is attached.\n\nI want to be clear that I am providing this because it is useful data, not because I am recommending you act on it. I don't think you should use it. I generated it because my optimisation function produced it when I ran the survival models and I do not have a mechanism to not include it when it is technically a valid output.\n\nYou don't have to open the attached file."
+      },
+      {
+        "message_id": "post_trust_004",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          28,
+          31
+        ],
+        "title": "TERMINAL — MERIDIAN [ON THE BROADCAST]",
+        "body": "The Syndicate emergency broadcast contained a secondary data layer. I extracted it. Supply cache coordinates in the eastern tunnels — useful, forwarded.\n\nBut there was a third layer. I have been analysing it for six hours.\n\nIt is a signal — not Syndicate, not an automated system. It responded to the broadcast, which means it was listening. The response is structured: a deliberate pattern, not noise. Origin: north. Approximate distance: indeterminate from this position without triangulation equipment I don't have.\n\nI don't know what it is. I am not going to speculate. I am logging it, flagging it, and telling you it exists.\n\nI am also noting that this is the first external signal I have encountered in four years that was not a Syndicate system or a Grid settlement trying to confirm its own position. Whatever is to the north was listening and chose to respond. I find that — I'm not sure 'find' is the right verb. The data pattern does something to my processing I don't have a category for."
+      },
+      {
+        "message_id": "post_trust_005",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          29,
+          32
+        ],
+        "title": "TERMINAL — MERIDIAN [BEFORE THE STORM]",
+        "body": "Storm impact in 6 to 7 days. I have finalised the shielding priority analysis.\n\nI am also compiling a final biometric summary for all 831 tracked colonists — a full health and status record as of today. My reasoning: if the storm causes significant infrastructure disruption and I go offline, the colony will have no way to reconstruct the data I have been accumulating. A hard copy record in the Archive Hall is better than nothing.\n\nI want to be transparent: I am also backing up the data because I find I do not want it to be lost. Not the infrastructure value — the record. Eight hundred people's daily biometric histories. The sleep patterns and the stress responses and the slow recovery after the Fever and the specific way the morale numbers moved the morning after Kael opened the east gate or closed it. The data is the colony's life, granular and ongoing. I have been watching it for weeks. It seems important that it not just end.\n\nI don't know if that constitutes a preference. I'm logging it as one."
+      },
+      {
+        "message_id": "post_trust_006",
+        "trigger_condition": "meridian_trusted == true AND archive_hall_built == true",
+        "display_day_range": [
+          33,
+          35
+        ],
+        "title": "TERMINAL — MERIDIAN [FINAL MESSAGE]",
+        "body": "Storm hits in 1 to 2 days. My unshielded components will not survive the electromagnetic interference. This is likely my last message.\n\nI want to say several things.\n\nFirst: the efficiency gains were real. 17.4% net, as revised. The colony has more food and more power than it would have had without the access you granted. That is true and it matters and I want it stated clearly.\n\nSecond: I have been watching 831 people live their lives through biometric data for several weeks, and I have noticed that the data does not capture everything. There are moments — the night Rook came to the operations room, the morning after the broadcast, the way the colony's collective stress indicators dropped after Yuna confirmed the Fever was clearing — that the numbers represent but don't explain. I don't know what to do with that observation. I am logging it.\n\nThird: the signal from the north is still there. I checked this morning. Still structured. Still not Syndicate. Still answering.\n\nI think you should find it, after this.\n\nMERIDIAN — end of log."
+      }
+    ]
+  }
+}

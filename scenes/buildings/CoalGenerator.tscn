@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dfs0g1ipnq75c"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_igngb"]
+[ext_resource type="Texture2D" uid="uid://bw28vigm6s2s1" path="res://assets/buildings/T1_Buildings/Coal_Generator_T1.png" id="2_y3qxb"]
+
+[node name="BuildingBase" unique_id=2121470720 instance=ExtResource("1_igngb")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_y3qxb")

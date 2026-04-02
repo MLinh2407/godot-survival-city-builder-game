@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://becv6gbklxpt5"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_yfftp"]
+[ext_resource type="Texture2D" uid="uid://dygq5dwwvc4gm" path="res://assets/buildings/T1_Buildings/Hydroponic_Bay_T1.png" id="2_cvarq"]
+
+[node name="BuildingBase" unique_id=2121470720 instance=ExtResource("1_yfftp")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_cvarq")
