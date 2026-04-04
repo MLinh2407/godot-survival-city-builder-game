@@ -17,6 +17,11 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 func set_game_speed(speed: GameSpeed) -> void:
+	if current_speed != speed:
+		if speed == GameSpeed.PAUSED:
+			AudioManager.play_ui_sfx("pause")
+		elif current_speed == GameSpeed.PAUSED:
+			AudioManager.play_ui_sfx("unpause")
 	current_speed = speed
 
 func get_current_day_length() -> float:
