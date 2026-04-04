@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://dwigg7nrf6ckh"]
+[gd_scene format=3 uid="uid://dwigg7nrf6ckh"]
 
 [ext_resource type="Script" path="res://scenes/main/Main.gd" id="1_main_script"]
+[ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
@@ -51,6 +52,7 @@ text = "Pause"
 [node name="Button1x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654329]
 layout_mode = 2
 text = "1x"
+script = ExtResource("2_nha0i")
 
 [node name="Button2x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654330]
 layout_mode = 2
