@@ -136,6 +136,11 @@ texture = ExtResource("5_floor_tile")
 [node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
 visible = false
 
+[node name="HoverCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=1537611551]
+visible = false
+modulate = Color(1, 0.84313726, 0, 0.5019608)
+texture = ExtResource("5_floor_tile")
+
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true
 

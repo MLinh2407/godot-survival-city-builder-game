@@ -4,6 +4,8 @@
 class_name BuildingData
 extends Resource
 
+signal staffing_changed(current: int, capacity: int)
+
 # Building type enum (10 building types)
 enum BuildingType {
     COAL_GENERATOR,
