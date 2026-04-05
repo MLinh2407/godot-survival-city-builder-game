@@ -1,130 +1,182 @@
 extends Node
+class_name PopulationManager
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SIGNALS
 # ══════════════════════════════════════════════════════════════════════════════
+signal population_changed
+signal outbreak_started(sick_count: int)
+signal outbreak_ended()
 signal character_died(char_name: String)
 signal colonist_died(count: int, cause: String)
 signal worker_deserted(count: int)
 signal population_zero() # Triggers Game Over
 
-# ══════════════════════════════════════════════════════════════════════════════
-# STATE TRACKING
-# ══════════════════════════════════════════════════════════════════════════════
 var consecutive_days_starving: int = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN TICK (Called by DayNightCycle.gd when a new day starts)
 # ══════════════════════════════════════════════════════════════════════════════
 func process_daily_population_tick(new_day: int) -> void:
-	print("PopulationManager: Processing daily tick for Day ", new_day)
-	
-	_process_disease_tick()
-	_process_starvation_tick()
-	_process_desertion_tick()
-	_process_character_deaths(new_day)
-	
-	_sync_game_manager_state()
+    print("\n--- PopulationManager: Processing Day ", new_day, " ---")
+    
+    var pop_data = GameManager.population_state
+    
+    _process_disease_tick(pop_data)
+    _process_starvation_tick(pop_data)
+    _process_desertion_tick(pop_data)
+    _process_character_deaths(new_day, pop_data)
+    
+    _recalculate_workers(pop_data)
+    population_changed.emit()
+    
+    print("END OF DAY | Pop: ", pop_data.total_population, " | Workers: ", pop_data.available_workers, " | Sick: ", pop_data.sick_count)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 1. THE DISEASE TICK
+# 1. THE DISEASE TICK & TRIGGER
 # ══════════════════════════════════════════════════════════════════════════════
-func _process_disease_tick() -> void:
-	if GameManager.sick_count <= 0:
-		return # Nobody is sick, skip logic
-		
-	# TODO: Hook this up to BuildingSystem later to check real staffing
-	var is_med_clinic_staffed: bool = false 
-	
-	if is_med_clinic_staffed:
-		# Cure patients
-		var cured: int = min(GameConstants.DISEASE_TREATMENT_RATE, GameManager.sick_count)
-		GameManager.sick_count -= cured
-		GameManager.available_workers += cured # Cured people go back to work
-		print("PopulationManager: Med Clinic cured ", cured, " colonists.")
-	else:
-		# People die from lack of treatment
-		var rng = RandomNumberGenerator.new()
-		var deaths: int = rng.randi_range(GameConstants.DISEASE_DEATH_RATE_MIN, GameConstants.DISEASE_DEATH_RATE_MAX)
-		
-		# Don't kill more people than are actually sick
-		deaths = min(deaths, GameManager.sick_count)
-		
-		GameManager.sick_count -= deaths
-		_remove_colonists(deaths, "disease")
+func trigger_outbreak() -> void:
+    var pop_data = GameManager.population_state
+    if pop_data.sick_count > 0:
+        return # Already in an outbreak
+        
+    var new_sick: int = randi_range(GameConstants.DISEASE_SICK_MIN, GameConstants.DISEASE_SICK_MAX)
+    
+    # Apply T2 Water Recycler resistance (30% reduction) if active
+    if pop_data.disease_resistance_active:
+        new_sick = int(float(new_sick) * GameConstants.DISEASE_RESISTANCE_MULTIPLIER)
+        
+    var actual_sick: int = mini(new_sick, pop_data.available_workers)
+    pop_data.available_workers -= actual_sick
+    pop_data.sick_count += actual_sick
+    pop_data.outbreak_active = true
+    
+    # Sync primitive var for BuildingSystem
+    GameManager.available_workers = pop_data.available_workers
+    GameManager.sick_count = pop_data.sick_count
+    
+    outbreak_started.emit(actual_sick)
+    print("🚨 OUTBREAK STARTED: ", actual_sick, " workers fell ill.")
+
+func _process_disease_tick(pop_data: PopulationStateData) -> void:
+    if pop_data.sick_count <= 0:
+        pop_data.outbreak_active = false
+        return 
+        
+    # TODO: Hook this up to BuildingSystem later to check real staffing
+    var is_med_clinic_staffed: bool = randf() > 0.5 
+    
+    if is_med_clinic_staffed:
+        var cured: int = mini(GameConstants.DISEASE_TREATMENT_RATE, pop_data.sick_count)
+        pop_data.sick_count -= cured
+        print("🏥 TREATMENT: Med Clinic cured ", cured, " colonists.")
+    else:
+        var deaths: int = randi_range(GameConstants.DISEASE_DEATH_RATE_MIN, GameConstants.DISEASE_DEATH_RATE_MAX)
+        deaths = mini(deaths, pop_data.sick_count)
+        
+        pop_data.sick_count -= deaths
+        _remove_colonists(pop_data, deaths, "Disease")
+        
+    if pop_data.sick_count <= 0:
+        pop_data.sick_count = 0
+        pop_data.outbreak_active = false
+        outbreak_ended.emit()
+        print("✅ OUTBREAK RESOLVED.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. THE STARVATION TICK
 # ══════════════════════════════════════════════════════════════════════════════
-func _process_starvation_tick() -> void:
-	# Assuming ResourceData has a "current_value" property you will add later
-	# TODO: Ensure GameManager.resource_food is initialized properly with a current_value
-	var current_food: float = 0.0 # Placeholder: Replace with GameManager.resource_food.current_value
-	
-	if current_food <= 0.0:
-		consecutive_days_starving += 1
-	else:
-		consecutive_days_starving = 0 # Reset if they have food
-		
-	if consecutive_days_starving >= GameConstants.FOOD_STARVATION_DELAY:
-		var rng = RandomNumberGenerator.new()
-		var deaths: int = rng.randi_range(GameConstants.STARVATION_DEATHS_MIN, GameConstants.STARVATION_DEATHS_MAX)
-		_remove_colonists(deaths, "starvation")
+func _process_starvation_tick(pop_data: PopulationStateData) -> void:
+    var current_food: float = GameManager.resource_food.current_value
+    
+    if current_food <= 0.0:
+        consecutive_days_starving += 1
+    else:
+        consecutive_days_starving = 0 
+        
+    if consecutive_days_starving >= GameConstants.FOOD_STARVATION_DELAY:
+        var deaths: int = randi_range(GameConstants.STARVATION_DEATHS_MIN, GameConstants.STARVATION_DEATHS_MAX)
+        _remove_colonists(pop_data, deaths, "Starvation")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. THE DESERTION TICK
 # ══════════════════════════════════════════════════════════════════════════════
-func _process_desertion_tick() -> void:
-	var current_morale: float = 50.0 # Placeholder: Replace with GameManager.resource_morale.current_value
-	
-	if current_morale < GameConstants.MORALE_DESERTION_THRESHOLD:
-		var rng = RandomNumberGenerator.new()
-		var deserters: int = rng.randi_range(GameConstants.MORALE_DESERTION_WORKERS_MIN, GameConstants.MORALE_DESERTION_WORKERS_MAX)
-		
-		# Deserters just leave the worker pool and colony, they don't count as "deaths"
-		GameManager.available_workers = max(0, GameManager.available_workers - deserters)
-		GameManager.current_population = max(0, GameManager.current_population - deserters)
-		
-		worker_deserted.emit(deserters)
-		print("PopulationManager: ", deserters, " workers deserted due to low morale.")
+func _process_desertion_tick(pop_data: PopulationStateData) -> void:
+    var current_morale: float = GameManager.resource_morale.current_value
+    
+    if current_morale < GameConstants.MORALE_DESERTION_THRESHOLD:
+        var deserters: int = randi_range(GameConstants.MORALE_DESERTION_WORKERS_MIN, GameConstants.MORALE_DESERTION_WORKERS_MAX)
+        deserters = mini(deserters, pop_data.available_workers)
+        
+        if deserters > 0:
+            pop_data.available_workers = maxi(0, pop_data.available_workers - deserters)
+            pop_data.total_population = maxi(0, pop_data.total_population - deserters)
+            worker_deserted.emit(deserters)
+            print("🏃 DESERTION: ", deserters, " workers deserted due to low morale.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 4. NARRATIVE CHECKS (Named Characters)
 # ══════════════════════════════════════════════════════════════════════════════
-func _process_character_deaths(day: int) -> void:
-	# YUNA'S DEATH CHECK
-	if day == GameConstants.YUNA_DEATH_DAY and GameManager.yuna_alive:
-		if GameManager.current_population < GameConstants.YUNA_DEATH_POPULATION_THRESHOLD:
-			GameManager.yuna_alive = false
-			GameManager.colonist_yuna.is_alive = false
-			character_died.emit("Yuna")
-			
-	# VASQUEZ'S DEATH CHECK
-	if day == GameConstants.VASQUEZ_DEATH_DAY and GameManager.vasquez_alive:
-		var survival_rate = float(GameManager.current_population) / float(GameConstants.STARTING_POPULATION)
-		if survival_rate < GameConstants.VASQUEZ_DEATH_SURVIVAL_THRESHOLD:
-			GameManager.vasquez_alive = false
-			GameManager.colonist_vasquez.is_alive = false
-			character_died.emit("Vasquez")
+func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
+    if day == GameConstants.YUNA_DEATH_DAY and GameManager.colonist_yuna.is_alive:
+        if pop_data.total_population < GameConstants.YUNA_DEATH_POPULATION_THRESHOLD:
+            GameManager.colonist_yuna.is_alive = false
+            GameManager.yuna_alive = false 
+            character_died.emit("Yuna")
+            
+    if day == GameConstants.VASQUEZ_DEATH_DAY and GameManager.colonist_vasquez.is_alive:
+        var survival_rate = float(pop_data.total_population) / float(GameConstants.STARTING_POPULATION)
+        if survival_rate < GameConstants.VASQUEZ_DEATH_SURVIVAL_THRESHOLD:
+            GameManager.colonist_vasquez.is_alive = false
+            GameManager.vasquez_alive = false
+            character_died.emit("Vasquez")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════════════════
-func _remove_colonists(amount: int, cause: String) -> void:
-	if amount <= 0: return
-	
-	# Clamp logic to ensure we never go into negative numbers
-	GameManager.current_population = max(0, GameManager.current_population - amount)
-	GameManager.available_workers = max(0, GameManager.available_workers - amount)
-	
-	colonist_died.emit(amount, cause)
-	print("PopulationManager: ", amount, " colonists died from ", cause)
-	
-	if GameManager.current_population == 0:
-		population_zero.emit()
+func _remove_colonists(pop_data: PopulationStateData, amount: int, cause: String) -> void:
+    if amount <= 0: return
+    
+    pop_data.total_population = maxi(0, pop_data.total_population - amount)
+    
+    # Also deduct from workers (assuming a mix of people die)
+    var worker_deaths = mini(amount, pop_data.available_workers)
+    pop_data.available_workers = maxi(0, pop_data.available_workers - worker_deaths)
+    
+    colonist_died.emit(amount, cause)
+    print("💀 DEATH: ", amount, " colonists died from ", cause)
+    
+    if pop_data.total_population == 0:
+        population_zero.emit()
 
-# Keeps the data class in GameManager synced with the primitive variables
-func _sync_game_manager_state() -> void:
-	GameManager.population_state.total_population = GameManager.current_population
-	GameManager.population_state.available_workers = GameManager.available_workers
-	GameManager.population_state.sick_count = GameManager.sick_count
+func _recalculate_workers(pop_data: PopulationStateData) -> void:
+    var healthy_pop = pop_data.total_population - pop_data.sick_count
+    var absolute_max = mini(healthy_pop, GameConstants.MAX_WORKERS_LATE_GAME)
+    
+    pop_data.available_workers = mini(pop_data.available_workers, absolute_max)
+    
+    # Sync primitive vars back to GameManager
+    GameManager.current_population = pop_data.total_population
+    GameManager.available_workers = pop_data.available_workers
+    GameManager.sick_count = pop_data.sick_count
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DEBUG / TESTING ONLY 
+# ══════════════════════════════════════════════════════════════════════════════
+func _input(event: InputEvent) -> void:
+    if event is InputEventKey and event.pressed:
+        if event.keycode == KEY_P:
+            print("\n--- DEBUG: FORCING NEXT DAY ---")
+            GameManager.current_day += 1
+            process_daily_population_tick(GameManager.current_day)
+        
+        if event.keycode == KEY_O:
+            trigger_outbreak()
+            
+        if event.keycode == KEY_F:
+            GameManager.resource_food.current_value = 0.0
+            print("TEST: Food artificially set to 0.0")
+            
+        if event.keycode == KEY_M:
+            GameManager.resource_morale.current_value = 5.0
+            print("TEST: Morale artificially set to 5.0")
