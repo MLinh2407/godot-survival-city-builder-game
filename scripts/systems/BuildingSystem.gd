@@ -11,6 +11,8 @@ var current_selected_grid_pos: Vector2i = Vector2i(-1, -1)
 
 @export var grid_manager: Node2D 
 
+var floating_text_scene = preload("res://scenes/UI/FloatingText.tscn")
+
 func _ready() -> void:
     if grid_manager:
         grid_manager.building_placed.connect(_on_building_placed)
@@ -105,6 +107,7 @@ func assign_worker() -> void:
         return
         
     b_data.workers_assigned                        += 1
+    spawn_floating_text(current_selected_grid_pos, "+1 Worker", Color.GREEN)
     GameManager.available_workers                  -= 1
     GameManager.population_state.available_workers -= 1
     
@@ -125,6 +128,7 @@ func remove_worker() -> void:
         return
         
     b_data.workers_assigned                        -= 1
+    spawn_floating_text(current_selected_grid_pos, "-1 Worker", Color.RED)
     GameManager.available_workers                  += 1
     GameManager.population_state.available_workers += 1
     
@@ -173,6 +177,18 @@ func get_all_outputs() -> Array[Dictionary]:
         output["grid_pos"] = grid_pos 
         results.append(output)
     return results
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VISUAL EFFECTS (FCT)
+# ══════════════════════════════════════════════════════════════════════════════
+func spawn_floating_text(grid_pos: Vector2i, text: String, color: Color) -> void:
+    if floating_text_scene == null or grid_manager == null: return
+    
+    var fct = floating_text_scene.instantiate()
+    
+    grid_manager.add_child(fct)
+    fct.position = grid_manager.base_grid.map_to_local(grid_pos)
+    fct.setup(text, color)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

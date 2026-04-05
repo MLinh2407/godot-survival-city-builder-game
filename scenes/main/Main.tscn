@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://dfs0g1ipnq75c" path="res://scenes/buildings/CoalGenerator.tscn" id="2_dc040"]
 [ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
+[ext_resource type="PackedScene" uid="uid://cjbokmfqvdqfy" path="res://scenes/UI/BuildingInspector.tscn" id="3_ostsq"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
@@ -98,6 +99,13 @@ offset_bottom = 140.0
 theme_override_font_sizes/font_size = 24
 text = "Morale: 100"
 
+[node name="BuildingInspector" parent="UILayer/HUD" unique_id=1507644054 node_paths=PackedStringArray("building_system") instance=ExtResource("3_ostsq")]
+offset_left = 39.0
+offset_top = 575.0
+offset_right = 42.0
+offset_bottom = 660.0
+building_system = NodePath("../../../BuildingSystem")
+
 [node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
 
 [node name="Journal" type="Node" parent="UILayer" unique_id=915716484]
@@ -128,10 +136,6 @@ building_scenes = {
 
 [node name="BaseGrid" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=2142693261]
 tile_set = SubResource("TileSet_dc040")
-
-[node name="PlacementCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=765783876]
-z_index = 1
-texture = ExtResource("5_floor_tile")
 
 [node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
 visible = false
