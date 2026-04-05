@@ -1,18 +1,26 @@
 [gd_scene format=3 uid="uid://dwigg7nrf6ckh"]
 
-[ext_resource type="Script" path="res://scenes/main/Main.gd" id="1_main_script"]
-[ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
-[ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
+[ext_resource type="Script" uid="uid://upu576bjkb0f" path="res://scenes/main/Main.gd" id="1_main_script"]
+[ext_resource type="Script" uid="uid://dc3hf5c0bot5l" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
 [ext_resource type="PackedScene" uid="uid://dfs0g1ipnq75c" path="res://scenes/buildings/CoalGenerator.tscn" id="2_dc040"]
-[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
+[ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
+[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ko0rf"]
+texture = ExtResource("5_floor_tile")
+texture_region_size = Vector2i(64, 64)
+0:0/0 = 0
+
 [sub_resource type="TileSet" id="TileSet_dc040"]
+tile_shape = 1
+tile_size = Vector2i(64, 64)
+sources/0 = SubResource("TileSetAtlasSource_ko0rf")
 
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
@@ -98,10 +106,11 @@ text = "Morale: 100"
 layer = 5
 
 [node name="ColorRect" type="ColorRect" parent="ColorGrade" unique_id=972504048]
+visible = false
 material = SubResource("CanvasItemMaterial_vyk5b")
 offset_right = 1920.0
 offset_bottom = 1080.0
-color = Color(0.039215688, 0.09411765, 0.15686275, 1)
+color = Color(0.03876, 0.09320182, 0.15594886, 1)
 
 [node name="GameWorld" type="Node2D" parent="." unique_id=1890764090]
 
@@ -131,6 +140,7 @@ visible = false
 y_sort_enabled = true
 
 [node name="Camera2D" type="Camera2D" parent="GameWorld" unique_id=1586411989]
+zoom = Vector2(2, 2)
 
 [node name="Events" type="Node" parent="." unique_id=1501814951]
 
