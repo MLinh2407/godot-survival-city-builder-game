@@ -11,6 +11,7 @@ var occupied_cells: Dictionary = {}
 
 @onready var base_grid: TileMapLayer = $BaseGrid
 @onready var cursor: Sprite2D = $PlacementCursor
+@onready var ghost_sprite: Sprite2D = $GhostSprite
 
 # NEW: The container where building scenes will be spawned (must have Y-sort enabled)
 @export var building_container: Node2D 
@@ -31,11 +32,26 @@ func enter_build_mode(b_type: String) -> void:
         current_build_scene = building_scenes[b_type]
         cursor.visible = true
 
+        # Temporarily instantiate the scene to steal its visual data
+        var temp_building = current_build_scene.instantiate()
+        
+        var b_sprite = temp_building.get_node_or_null("Sprite2D")
+        if b_sprite:
+            ghost_sprite.texture = b_sprite.texture
+            ghost_sprite.offset = b_sprite.offset
+            ghost_sprite.visible = true
+            
+        # Delete the temporary building from memory instantly
+        temp_building.queue_free()
+
 func exit_build_mode() -> void:
     current_build_type = ""
     current_build_scene = null
     cursor.visible = false
     cursor.modulate = Color.WHITE
+
+    ghost_sprite.visible = false
+    ghost_sprite.texture = null
 
 func _process(_delta: float) -> void:
     # Only run placement logic if we are actively holding a building
@@ -44,12 +60,18 @@ func _process(_delta: float) -> void:
     var local_mouse = get_local_mouse_position()
     var map_pos = base_grid.local_to_map(local_mouse)
     cursor.position = base_grid.map_to_local(map_pos)
+
+    ghost_sprite.position = cursor.position
     
     # Valid/Invalid zone highlight (green/red)
     if is_valid_placement(map_pos):
-        cursor.modulate = Color(0.2, 3.0, 0.2, 0.5) 
+        var valid_color = Color(0.2, 3.0, 0.2, 0.5) 
+        cursor.modulate = valid_color
+        ghost_sprite.modulate = valid_color
     else:
-        cursor.modulate = Color(3.0, 0.2, 0.2, 0.5) 
+        var invalid_color = Color(3.0, 0.2, 0.2, 0.5) 
+        cursor.modulate = invalid_color
+        ghost_sprite.modulate = invalid_color 
 
 func is_valid_placement(cell: Vector2i) -> bool:
     if cell.x < GRID_BOUNDS_MIN.x or cell.x > GRID_BOUNDS_MAX.x or cell.y < GRID_BOUNDS_MIN.y or cell.y > GRID_BOUNDS_MAX.y:

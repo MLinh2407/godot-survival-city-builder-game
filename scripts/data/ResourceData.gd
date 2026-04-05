@@ -10,6 +10,8 @@ extends Resource
 # Current State
 @export var current_value: float = 0.0
 @export var max_value: float = 100.0    # Morale cap is 100. Power/Food scale with buildings.
+@export var warning_threshold: float = 0.0  
+@export var critical_threshold: float = 0.0 
 
 # Daily flow
 @export var production_rate: float = 0.0       # Total produced per game day

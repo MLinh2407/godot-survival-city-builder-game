@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
+[ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
@@ -123,9 +124,16 @@ tile_set = SubResource("TileSet_dc040")
 z_index = 1
 texture = ExtResource("5_floor_tile")
 
+[node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
+visible = false
+
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true
 
 [node name="Camera2D" type="Camera2D" parent="GameWorld" unique_id=1586411989]
 
 [node name="Events" type="Node" parent="." unique_id=1501814951]
+
+[node name="BuildingSystem" type="Node" parent="." unique_id=749927356 node_paths=PackedStringArray("grid_manager")]
+script = ExtResource("6_1rhdn")
+grid_manager = NodePath("../GameWorld/GridSystem")
