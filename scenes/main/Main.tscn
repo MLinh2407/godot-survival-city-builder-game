@@ -1,31 +1,102 @@
 [gd_scene format=3 uid="uid://dwigg7nrf6ckh"]
 
-[ext_resource type="Script" uid="uid://bfsqex2vcqi51" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
+[ext_resource type="Script" uid="uid://upu576bjkb0f" path="res://scenes/main/Main.gd" id="1_main_script"]
+[ext_resource type="Script" uid="uid://dc3hf5c0bot5l" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
 [ext_resource type="PackedScene" uid="uid://dfs0g1ipnq75c" path="res://scenes/buildings/CoalGenerator.tscn" id="2_dc040"]
-[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="2_nha0i"]
+[ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
+[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_q24mn"]
-texture = ExtResource("2_nha0i")
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ko0rf"]
+texture = ExtResource("5_floor_tile")
 texture_region_size = Vector2i(64, 64)
 0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_dc040"]
 tile_shape = 1
 tile_size = Vector2i(64, 64)
-sources/3 = SubResource("TileSetAtlasSource_q24mn")
+sources/0 = SubResource("TileSetAtlasSource_ko0rf")
 
 [node name="Main" type="Node" unique_id=1028254611]
+script = ExtResource("1_main_script")
 
 [node name="UILayer" type="CanvasLayer" parent="." unique_id=921052177]
 layer = 10
 
 [node name="HUD" type="Node" parent="UILayer" unique_id=1486657303]
+
+[node name="DayLabel" type="Label" parent="UILayer/HUD" unique_id=987654321]
+offset_left = 40.0
+offset_top = 30.0
+offset_right = 140.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 32
+text = "Day 1"
+
+[node name="TimeLabel" type="Label" parent="UILayer/HUD" unique_id=987654322]
+offset_left = 40.0
+offset_top = 70.0
+offset_right = 140.0
+offset_bottom = 100.0
+theme_override_font_sizes/font_size = 24
+text = "24:00"
+
+[node name="SpeedLabel" type="Label" parent="UILayer/HUD" unique_id=987654327]
+offset_left = 40.0
+offset_top = 110.0
+offset_right = 160.0
+offset_bottom = 140.0
+theme_override_font_sizes/font_size = 24
+text = "Speed: 1x"
+
+[node name="SpeedControls" type="HBoxContainer" parent="UILayer/HUD" unique_id=987654328]
+offset_left = 40.0
+offset_top = 150.0
+offset_right = 160.0
+offset_bottom = 190.0
+theme_override_constants/separation = 10
+
+[node name="ButtonPause" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654331]
+layout_mode = 2
+text = "Pause"
+
+[node name="Button1x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654329]
+layout_mode = 2
+text = "1x"
+script = ExtResource("2_nha0i")
+
+[node name="Button2x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654330]
+layout_mode = 2
+text = "2x"
+
+[node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
+offset_left = 1100.0
+offset_top = 30.0
+offset_right = 1240.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 24
+text = "Power: 50"
+
+[node name="FoodLabel" type="Label" parent="UILayer/HUD" unique_id=987654324]
+offset_left = 1100.0
+offset_top = 70.0
+offset_right = 1240.0
+offset_bottom = 100.0
+theme_override_font_sizes/font_size = 24
+text = "Food: 100"
+
+[node name="MoraleLabel" type="Label" parent="UILayer/HUD" unique_id=987654325]
+offset_left = 1100.0
+offset_top = 110.0
+offset_right = 1240.0
+offset_bottom = 140.0
+theme_override_font_sizes/font_size = 24
+text = "Morale: 100"
 
 [node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
 
@@ -35,10 +106,11 @@ layer = 10
 layer = 5
 
 [node name="ColorRect" type="ColorRect" parent="ColorGrade" unique_id=972504048]
+visible = false
 material = SubResource("CanvasItemMaterial_vyk5b")
 offset_right = 1920.0
 offset_bottom = 1080.0
-color = Color(0.74509805, 0.7372549, 0.79607844, 1)
+color = Color(0.03876, 0.09320182, 0.15594886, 1)
 
 [node name="GameWorld" type="Node2D" parent="." unique_id=1890764090]
 
@@ -59,7 +131,7 @@ tile_set = SubResource("TileSet_dc040")
 
 [node name="PlacementCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=765783876]
 z_index = 1
-texture = ExtResource("2_nha0i")
+texture = ExtResource("5_floor_tile")
 
 [node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
 visible = false
