@@ -23,6 +23,15 @@ var vasquez_alive: bool = true
 var meridian_alive: bool = true
 
 # ══════════════════════════════════════════════════════════════════════════════
+# NARRATIVE STATE FLAGS (set by CrisisEventSystem as story events resolve)
+# ══════════════════════════════════════════════════════════════════════════════
+
+var med_clinic_built: bool = false           # Set TRUE by BuildingSystem on placement
+var rook_militia_stopped: bool = false       # Set TRUE by CrisisEventSystem Day 24 Option B
+var rook_reconciliation_taken: bool = false  # Set TRUE by CrisisEventSystem reconciliation dialogue
+var vasquez_trade_accepted: bool = false     # Set TRUE by CrisisEventSystem on Day 11 Option A
+
+# ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
 # ══════════════════════════════════════════════════════════════════════════════
 
