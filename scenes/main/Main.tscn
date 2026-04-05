@@ -2,14 +2,16 @@
 
 [ext_resource type="Script" path="res://scenes/main/Main.gd" id="1_main_script"]
 [ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
-[ext_resource type="Script" uid="uid://bfsqex2vcqi51" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
+[ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="1_u1xfj"]
 [ext_resource type="PackedScene" uid="uid://dfs0g1ipnq75c" path="res://scenes/buildings/CoalGenerator.tscn" id="2_dc040"]
-[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="2_nha0i"]
+[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
+
+[sub_resource type="TileSet" id="TileSet_dc040"]
 
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
@@ -119,7 +121,7 @@ tile_set = SubResource("TileSet_dc040")
 
 [node name="PlacementCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=765783876]
 z_index = 1
-texture = ExtResource("2_nha0i")
+texture = ExtResource("5_floor_tile")
 
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true
