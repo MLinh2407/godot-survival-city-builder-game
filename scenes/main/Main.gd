@@ -7,6 +7,7 @@ extends Node
 @onready var btn_pause: Button = $UILayer/HUD/SpeedControls/ButtonPause
 @onready var btn_1x: Button = $UILayer/HUD/SpeedControls/Button1x
 @onready var btn_2x: Button = $UILayer/HUD/SpeedControls/Button2x
+@onready var btn_settings: Button = $UILayer/HUD/SpeedControls/ButtonSettings
 
 @onready var power_label: Label = $UILayer/HUD/PowerLabel
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
@@ -16,8 +17,13 @@ var was_power_critical: bool = false
 var was_food_critical: bool = false
 var was_morale_critical: bool = false
 
+var settings_ui: CanvasLayer
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
+	add_child(settings_ui)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -30,6 +36,7 @@ func _ready() -> void:
 	if btn_pause: btn_pause.pressed.connect(toggle_pause)
 	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
 	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
+	if btn_settings: btn_settings.pressed.connect(_on_button_settings_pressed)
 	
 	set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
 	
@@ -62,6 +69,10 @@ func _on_button_1x_pressed() -> void:
 
 func _on_button_2x_pressed() -> void:
 	set_speed(TimeManager.GameSpeed.FAST, "Speed: 2x")
+
+func _on_button_settings_pressed() -> void:
+	if settings_ui and settings_ui.has_method("toggle_menu"):
+		settings_ui.toggle_menu()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:

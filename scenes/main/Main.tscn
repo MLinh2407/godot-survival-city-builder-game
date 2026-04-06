@@ -74,6 +74,11 @@ script = ExtResource("2_nha0i")
 layout_mode = 2
 text = "2x"
 
+[node name="ButtonSettings" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654332]
+layout_mode = 2
+text = "Settings"
+script = ExtResource("2_nha0i")
+
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 1100.0
 offset_top = 30.0
