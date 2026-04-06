@@ -128,6 +128,12 @@ func _input(event: InputEvent) -> void:
         if event.keycode == KEY_1 and keys.size() > 0: enter_build_mode(keys[0])
         if event.keycode == KEY_2 and keys.size() > 1: enter_build_mode(keys[1])
         if event.keycode == KEY_3 and keys.size() > 2: enter_build_mode(keys[2])
+        if event.keycode == KEY_4 and keys.size() > 3: enter_build_mode(keys[3])
+        if event.keycode == KEY_5 and keys.size() > 4: enter_build_mode(keys[4])
+        if event.keycode == KEY_6 and keys.size() > 5: enter_build_mode(keys[5])
+        if event.keycode == KEY_7 and keys.size() > 6: enter_build_mode(keys[6])
+        if event.keycode == KEY_8 and keys.size() > 7: enter_build_mode(keys[7])
+        if event.keycode == KEY_9 and keys.size() > 8: enter_build_mode(keys[8])
 
 func place_building(map_pos: Vector2i) -> void:
     var new_building = current_build_scene.instantiate()

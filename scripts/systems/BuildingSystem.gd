@@ -66,6 +66,61 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
             new_data.worker_capacity        = GameConstants.SHELTER_BLOCK_SLOTS
             new_data.base_morale_bonus      = GameConstants.SHELTER_MORALE_AT_CAPACITY_T1
             new_data.power_draw             = GameConstants.SHELTER_POWER_DRAW
+        "geothermal":
+            new_data.building_type         = BuildingData.BuildingType.GEOTHERMAL_TAP
+            new_data.building_name         = "Geothermal Tap"
+            new_data.category              = BuildingData.BuildingCategory.POWER
+            new_data.worker_capacity       = GameConstants.GEOTHERMAL_WORKER_SLOTS  # 0
+            new_data.base_production_power = GameConstants.GEOTHERMAL_POWER_T1
+            new_data.power_draw            = 0.0
+
+        "relay":
+            new_data.building_type   = BuildingData.BuildingType.RELAY_HUB
+            new_data.building_name   = "Relay Hub"
+            new_data.category        = BuildingData.BuildingCategory.POWER
+            new_data.worker_capacity = GameConstants.RELAY_HUB_SLOTS
+            new_data.power_draw      = GameConstants.RELAY_HUB_POWER_DRAW
+
+        "ration":
+            new_data.building_type   = BuildingData.BuildingType.RATION_STORE
+            new_data.building_name   = "Ration Store"
+            new_data.category        = BuildingData.BuildingCategory.SURVIVAL
+            new_data.worker_capacity = GameConstants.RATION_STORE_SLOTS  # 0
+            new_data.power_draw      = GameConstants.RATION_STORE_POWER_DRAW
+
+        "water":
+            new_data.building_type   = BuildingData.BuildingType.WATER_RECYCLER
+            new_data.building_name   = "Water Recycler"
+            new_data.category        = BuildingData.BuildingCategory.SURVIVAL
+            new_data.worker_capacity = GameConstants.WATER_RECYCLER_SLOTS
+            new_data.power_draw      = GameConstants.WATER_RECYCLER_POWER_DRAW
+
+        "med":
+            new_data.building_type     = BuildingData.BuildingType.MED_CLINIC
+            new_data.building_name     = "Med Clinic"
+            new_data.category          = BuildingData.BuildingCategory.SURVIVAL
+            new_data.worker_capacity   = GameConstants.MED_CLINIC_SLOTS
+            new_data.power_draw        = GameConstants.MED_CLINIC_POWER_DRAW
+            new_data.base_morale_bonus = GameConstants.MED_CLINIC_MORALE_PASSIVE
+            GameManager.med_clinic_built = true  # Narrative flag — Yuna death check needs this
+
+        "archive":
+            new_data.building_type         = BuildingData.BuildingType.ARCHIVE_HALL
+            new_data.building_name         = "Archive Hall"
+            new_data.category              = BuildingData.BuildingCategory.SOCIAL
+            new_data.is_unique             = true
+            new_data.worker_capacity       = GameConstants.ARCHIVE_HALL_SLOTS
+            new_data.power_draw            = GameConstants.ARCHIVE_HALL_POWER_DRAW
+            new_data.base_passive_morale   = GameConstants.ARCHIVE_HALL_MORALE_PASSIVE
+
+        "memorial":
+            new_data.building_type         = BuildingData.BuildingType.MEMORIAL_WALL
+            new_data.building_name         = "Memorial Wall"
+            new_data.category              = BuildingData.BuildingCategory.SOCIAL
+            new_data.is_unique             = true
+            new_data.worker_capacity       = 0
+            new_data.power_draw            = 0.0
+            new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
             
     active_buildings[grid_pos] = new_data
     print("BuildingSystem: Registered [%s] at %s | Slots: %d | Base power: %.1f | Base food: %.1f" \

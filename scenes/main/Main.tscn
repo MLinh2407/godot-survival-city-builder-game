@@ -9,6 +9,12 @@
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
+[ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
+[ext_resource type="PackedScene" uid="uid://dkhketv733v7" path="res://scenes/buildings/RationStore.tscn" id="9_u8lgh"]
+[ext_resource type="PackedScene" uid="uid://bqbl06b8lenji" path="res://scenes/buildings/WaterRecycler.tscn" id="10_hjnkw"]
+[ext_resource type="PackedScene" uid="uid://clui1cyr5pahv" path="res://scenes/buildings/MedClinic.tscn" id="11_rikml"]
+[ext_resource type="PackedScene" uid="uid://60mva0p0dle5" path="res://scenes/buildings/ArchiveHall.tscn" id="12_vc03v"]
+[ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
@@ -129,9 +135,15 @@ y_sort_enabled = true
 script = ExtResource("1_u1xfj")
 building_container = NodePath("../BuildingContainer")
 building_scenes = {
+"archive": ExtResource("12_vc03v"),
 "coal": ExtResource("2_dc040"),
+"geothermal": ExtResource("8_tck0d"),
 "hydro": ExtResource("3_1rhdn"),
-"shelter": ExtResource("4_sjxhf")
+"med": ExtResource("11_rikml"),
+"memorial": ExtResource("13_grv7h"),
+"ration": ExtResource("9_u8lgh"),
+"shelter": ExtResource("4_sjxhf"),
+"water": ExtResource("10_hjnkw")
 }
 
 [node name="BaseGrid" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=2142693261]
