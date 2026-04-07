@@ -8,6 +8,143 @@
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
+[ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
+[ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
+[ext_resource type="Texture2D" uid="uid://btdxucbr8e6mv" path="res://assets/ui/hud/icons/helmet_white.png" id="9_helmet_icon"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
+bg_color = Color(0.02, 0.05, 0.09, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.9, 1, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_speed_card"]
+bg_color = Color(0.02, 0.05, 0.09, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.9, 1, 0.65)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_card"]
+bg_color = Color(0.02, 0.05, 0.09, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.19, 0.88, 1, 0.8)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_track_border"]
+bg_color = Color(0.02, 0.07, 0.12, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.9, 1, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
+bg_color = Color(0.05, 0.11, 0.18, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.85, 1, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+bg_color = Color(0.02, 0.35, 0.45, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 1, 1, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.08, 0.2, 0.31, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.94, 1, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_resource_bg"]
+bg_color = Color(0.101961, 0.129412, 0.176471, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.88, 1, 0.45)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_power_fill"]
+bg_color = Color(1, 0.745098, 0.239216, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.9, 0.45, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_food_fill"]
+bg_color = Color(0.47058824, 0.9490196, 0.36862746, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 1, 1, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_morale_fill"]
+bg_color = Color(0.627451, 0.439216, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.8, 0.67, 1, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
@@ -30,73 +167,373 @@ layer = 10
 
 [node name="HUD" type="Node" parent="UILayer" unique_id=1486657303]
 
+[node name="TopStripPanel" type="Panel" parent="UILayer/HUD" unique_id=838469378]
+z_index = -2
+offset_left = 525.0
+offset_top = 9.0
+offset_right = 1273.0
+offset_bottom = 91.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_top_strip")
+
+[node name="TopStripGlow" type="ColorRect" parent="UILayer/HUD" unique_id=1407187627]
+z_index = -1
+offset_left = 533.0
+offset_top = 17.0
+offset_right = 1270.0
+offset_bottom = 18.0
+color = Color(0.23, 0.93, 1, 0.45)
+
+[node name="TopControlPanel" type="Panel" parent="UILayer/HUD" unique_id=359872569]
+z_index = -2
+offset_left = 6.0
+offset_top = 5.0
+offset_right = 152.0
+offset_bottom = 110.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_speed_card")
+
+[node name="TopControlGlow" type="ColorRect" parent="UILayer/HUD" unique_id=445391579]
+z_index = -1
+offset_left = 11.0
+offset_top = 13.0
+offset_right = 147.0
+offset_bottom = 14.0
+color = Color(0.23, 0.93, 1, 0.35)
+
+[node name="ResourceDividerA" type="ColorRect" parent="UILayer/HUD" unique_id=430141260]
+z_index = -1
+offset_left = 739.0
+offset_top = 21.0
+offset_right = 740.0
+offset_bottom = 88.0
+color = Color(0.13, 0.78, 0.95, 0.32)
+
+[node name="ResourceDividerB" type="ColorRect" parent="UILayer/HUD" unique_id=1962284232]
+z_index = -1
+offset_left = 949.0
+offset_top = 22.0
+offset_right = 950.0
+offset_bottom = 87.0
+color = Color(0.13, 0.78, 0.95, 0.32)
+
+[node name="ResourceDividerC" type="ColorRect" parent="UILayer/HUD" unique_id=1997633371]
+z_index = -1
+offset_left = 1159.0
+offset_top = 22.0
+offset_right = 1160.0
+offset_bottom = 88.0
+color = Color(0.13, 0.78, 0.95, 0.32)
+
+[node name="TopSweepLine" type="ColorRect" parent="UILayer/HUD" unique_id=1620239451]
+z_index = -1
+offset_left = 781.0
+offset_top = 15.0
+offset_right = 841.0
+offset_bottom = 17.0
+color = Color(0.38, 0.96, 1, 0.36)
+
+[node name="HopeOrderCard" type="Panel" parent="UILayer/HUD" unique_id=1013787587]
+z_index = -2
+offset_left = 390.0
+offset_top = 680.0
+offset_right = 875.0
+offset_bottom = 718.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_slider_card")
+
+[node name="HopeOrderGlow" type="ColorRect" parent="UILayer/HUD" unique_id=990122205]
+visible = false
+z_index = -1
+offset_left = 396.0
+offset_top = 674.0
+offset_right = 869.0
+offset_bottom = 676.0
+color = Color(0.86, 0.52, 1, 0.55)
+
+[node name="HopeOrderTrackBorder" type="Panel" parent="UILayer/HUD" unique_id=529598306]
+z_index = -1
+offset_left = 438.0
+offset_top = 692.0
+offset_right = 824.0
+offset_bottom = 706.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_slider_track_border")
+
+[node name="HopeOrderTrackFill" type="ColorRect" parent="UILayer/HUD" unique_id=2039724866]
+z_index = -1
+offset_left = 440.0
+offset_top = 694.0
+offset_right = 631.0
+offset_bottom = 704.0
+color = Color(0.62, 1, 0.78, 0.95)
+
+[node name="PowerMarker" type="ColorRect" parent="UILayer/HUD" unique_id=19524641]
+offset_left = 539.0
+offset_top = 28.0
+offset_right = 545.0
+offset_bottom = 36.0
+color = Color(1, 0.74509805, 0.23921569, 1)
+
+[node name="FoodMarker" type="ColorRect" parent="UILayer/HUD" unique_id=41334031]
+offset_left = 749.0
+offset_top = 28.0
+offset_right = 755.0
+offset_bottom = 36.0
+color = Color(0.47, 0.95, 0.37, 1)
+
+[node name="MoraleMarker" type="ColorRect" parent="UILayer/HUD" unique_id=737502317]
+offset_left = 959.0
+offset_top = 28.0
+offset_right = 965.0
+offset_bottom = 36.0
+color = Color(0.74, 0.46, 1, 1)
+
+[node name="MaterialsMarker" type="ColorRect" parent="UILayer/HUD" unique_id=518484896]
+visible = false
+offset_left = 658.0
+offset_top = 29.0
+offset_right = 664.0
+offset_bottom = 37.0
+color = Color(0.99, 0.75, 0.29, 1)
+
+[node name="MaterialsIcon" type="TextureRect" parent="UILayer/HUD" unique_id=1109217882]
+offset_left = 1166.0
+offset_top = 26.0
+offset_right = 1180.0
+offset_bottom = 40.0
+texture = ExtResource("7_tool_icon")
+expand_mode = 1
+
+[node name="PopulationMarker" type="ColorRect" parent="UILayer/HUD" unique_id=585936651]
+visible = false
+offset_left = 658.0
+offset_top = 50.0
+offset_right = 664.0
+offset_bottom = 58.0
+color = Color(0.84, 0.9, 0.96, 1)
+
+[node name="PopulationIcon" type="TextureRect" parent="UILayer/HUD" unique_id=175063680]
+offset_left = 1165.0
+offset_top = 46.0
+offset_right = 1180.0
+offset_bottom = 61.0
+texture = ExtResource("8_user_icon")
+expand_mode = 1
+
+[node name="WorkersMarker" type="ColorRect" parent="UILayer/HUD" unique_id=345544322]
+visible = false
+offset_left = 658.0
+offset_top = 71.0
+offset_right = 664.0
+offset_bottom = 79.0
+color = Color(0.53, 0.91, 1, 0.95)
+
+[node name="WorkersIcon" type="TextureRect" parent="UILayer/HUD" unique_id=616157761]
+offset_left = 1166.0
+offset_top = 67.0
+offset_right = 1180.0
+offset_bottom = 81.0
+texture = ExtResource("9_helmet_icon")
+expand_mode = 1
+
 [node name="DayLabel" type="Label" parent="UILayer/HUD" unique_id=987654321]
-offset_left = 40.0
-offset_top = 30.0
-offset_right = 140.0
-offset_bottom = 60.0
-theme_override_font_sizes/font_size = 32
+offset_left = 17.0
+offset_top = 12.0
+offset_right = 197.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(0.45, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 20
 text = "Day 1"
 
 [node name="TimeLabel" type="Label" parent="UILayer/HUD" unique_id=987654322]
-offset_left = 40.0
-offset_top = 70.0
-offset_right = 140.0
-offset_bottom = 100.0
-theme_override_font_sizes/font_size = 24
+offset_left = 16.0
+offset_top = 37.0
+offset_right = 196.0
+offset_bottom = 59.0
+theme_override_colors/font_color = Color(0.45, 0.94, 1, 0.95)
+theme_override_font_sizes/font_size = 15
 text = "24:00"
 
 [node name="SpeedLabel" type="Label" parent="UILayer/HUD" unique_id=987654327]
-offset_left = 40.0
-offset_top = 110.0
-offset_right = 160.0
-offset_bottom = 140.0
-theme_override_font_sizes/font_size = 24
+offset_left = 17.0
+offset_top = 57.0
+offset_right = 197.0
+offset_bottom = 77.0
+theme_override_colors/font_color = Color(0.35, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 14
 text = "Speed: 1x"
 
 [node name="SpeedControls" type="HBoxContainer" parent="UILayer/HUD" unique_id=987654328]
-offset_left = 40.0
-offset_top = 150.0
-offset_right = 160.0
-offset_bottom = 190.0
+offset_left = 16.0
+offset_top = 79.0
+offset_right = 125.0
+offset_bottom = 104.0
 theme_override_constants/separation = 10
 
 [node name="ButtonPause" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654331]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "Pause"
 
 [node name="Button1x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654329]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "1x"
 script = ExtResource("2_nha0i")
 
 [node name="Button2x" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654330]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "2x"
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
-offset_left = 1100.0
-offset_top = 30.0
-offset_right = 1240.0
-offset_bottom = 60.0
-theme_override_font_sizes/font_size = 24
+offset_left = 549.0
+offset_top = 23.0
+offset_right = 719.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(1, 0.74509805, 0.23921569, 1)
+theme_override_font_sizes/font_size = 14
 text = "Power: 50"
 
+[node name="PowerBar" type="ProgressBar" parent="UILayer/HUD" unique_id=1131762930]
+offset_left = 549.0
+offset_top = 45.0
+offset_right = 719.0
+offset_bottom = 61.0
+theme_override_styles/background = SubResource("StyleBoxFlat_resource_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_power_fill")
+value = 50.0
+show_percentage = false
+
 [node name="FoodLabel" type="Label" parent="UILayer/HUD" unique_id=987654324]
-offset_left = 1100.0
-offset_top = 70.0
-offset_right = 1240.0
-offset_bottom = 100.0
-theme_override_font_sizes/font_size = 24
+offset_left = 759.0
+offset_top = 23.0
+offset_right = 929.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(0.47, 0.95, 0.37, 1)
+theme_override_font_sizes/font_size = 14
 text = "Food: 100"
 
+[node name="FoodBar" type="ProgressBar" parent="UILayer/HUD" unique_id=1684609662]
+offset_left = 759.0
+offset_top = 45.0
+offset_right = 929.0
+offset_bottom = 61.0
+theme_override_styles/background = SubResource("StyleBoxFlat_resource_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_food_fill")
+value = 100.0
+show_percentage = false
+
 [node name="MoraleLabel" type="Label" parent="UILayer/HUD" unique_id=987654325]
-offset_left = 1100.0
-offset_top = 110.0
-offset_right = 1240.0
-offset_bottom = 140.0
-theme_override_font_sizes/font_size = 24
+offset_left = 969.0
+offset_top = 23.0
+offset_right = 1139.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(0.74, 0.46, 1, 1)
+theme_override_font_sizes/font_size = 14
 text = "Morale: 100"
+
+[node name="MoraleBar" type="ProgressBar" parent="UILayer/HUD" unique_id=1852013332]
+offset_left = 969.0
+offset_top = 45.0
+offset_right = 1139.0
+offset_bottom = 61.0
+theme_override_styles/background = SubResource("StyleBoxFlat_resource_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_morale_fill")
+value = 100.0
+show_percentage = false
+
+[node name="PopulationLabel" type="Label" parent="UILayer/HUD" unique_id=1843654512]
+offset_left = 1185.0
+offset_top = 44.0
+offset_right = 1211.0
+offset_bottom = 64.0
+theme_override_colors/font_color = Color(0.88, 0.9, 0.94, 1)
+theme_override_font_sizes/font_size = 14
+text = "847"
+
+[node name="WorkersLabel" type="Label" parent="UILayer/HUD" unique_id=515740172]
+offset_left = 1186.0
+offset_top = 65.0
+offset_right = 1202.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0.53, 0.91, 1, 0.95)
+theme_override_font_sizes/font_size = 14
+text = "68"
+
+[node name="MaterialsLabel" type="Label" parent="UILayer/HUD" unique_id=1892653027]
+offset_left = 1186.0
+offset_top = 23.0
+offset_right = 1199.0
+offset_bottom = 43.0
+theme_override_colors/font_color = Color(0.99, 0.75, 0.29, 0.95)
+theme_override_font_sizes/font_size = 14
+text = "0"
+
+[node name="PowerRateLabel" type="Label" parent="UILayer/HUD" unique_id=230070748]
+offset_left = 549.0
+offset_top = 65.0
+offset_right = 719.0
+offset_bottom = 83.0
+theme_override_colors/font_color = Color(0.87, 0.9, 0.95, 0.85)
+theme_override_font_sizes/font_size = 12
+text = "+0/day"
+horizontal_alignment = 1
+
+[node name="FoodRateLabel" type="Label" parent="UILayer/HUD" unique_id=1131409629]
+offset_left = 759.0
+offset_top = 65.0
+offset_right = 929.0
+offset_bottom = 83.0
+theme_override_colors/font_color = Color(0.87, 0.9, 0.95, 0.85)
+theme_override_font_sizes/font_size = 12
+text = "+0/day"
+horizontal_alignment = 1
+
+[node name="MoraleRateLabel" type="Label" parent="UILayer/HUD" unique_id=1294304182]
+offset_left = 969.0
+offset_top = 65.0
+offset_right = 1139.0
+offset_bottom = 83.0
+theme_override_colors/font_color = Color(0.87, 0.9, 0.95, 0.85)
+theme_override_font_sizes/font_size = 12
+text = "-0/day"
+horizontal_alignment = 1
+
+[node name="HopeOrderSlider" type="HSlider" parent="UILayer/HUD" unique_id=1609126748]
+visible = false
+modulate = Color(0.9, 0.55, 1, 1)
+offset_left = 441.0
+offset_top = 772.0
+offset_right = 823.0
+offset_bottom = 788.0
+value = 50.0
+editable = false
+
+[node name="HopeLabel" type="Label" parent="UILayer/HUD" unique_id=321508382]
+offset_left = 404.0
+offset_top = 689.0
+offset_right = 442.0
+offset_bottom = 713.0
+theme_override_colors/font_color = Color(0.47, 0.96, 0.62, 1)
+theme_override_font_sizes/font_size = 12
+text = "Hope"
+
+[node name="OrderLabel" type="Label" parent="UILayer/HUD" unique_id=429990104]
+offset_left = 824.0
+offset_top = 689.0
+offset_right = 862.0
+offset_bottom = 713.0
+theme_override_colors/font_color = Color(0.82, 0.62, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "Order"
+horizontal_alignment = 2
 
 [node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
 
