@@ -27,9 +27,11 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 
 var med_clinic_built: bool = false           # Set TRUE by BuildingSystem on placement
-var rook_militia_stopped: bool = false       # Set TRUE by CrisisEventSystem Day 24 Option B
 var rook_reconciliation_taken: bool = false  # Set TRUE by CrisisEventSystem reconciliation dialogue
 var vasquez_trade_accepted: bool = false     # Set TRUE by CrisisEventSystem on Day 11 Option A
+var meridian_trusted: bool = false           # Set TRUE by CrisisEventSystem Day 21 Option A
+var rook_militia_sanctioned: bool = false    # Set TRUE by CrisisEventSystem Day 24 Option A
+var rook_militia_stopped: bool = false       # Set TRUE by CrisisEventSystem Day 24 Option B
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES

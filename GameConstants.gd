@@ -33,15 +33,16 @@ const CRITICAL_THRESHOLD: float        = 0.10   # 10% → red HUD, critical SFX
 # ══════════════════════════════════════════════════════════════════════════════
 
 const STARTING_FOOD: float             = 25000.0 
-const BASE_FOOD_RATE: float            = 8.0    # Hydroponic Bay T1 at full staff/day
-const UPGRADED_FOOD_RATE: float        = 14.0   # Hydroponic Bay T2 at full staff/day
-const FOOD_STARVATION_DELAY: int       = 2      # consecutive days at Food=0 before deaths
+const BASE_FOOD_RATE: float            = 8.0    	# Hydroponic Bay T1 at full staff/day
+const UPGRADED_FOOD_RATE: float        = 14.0   	# Hydroponic Bay T2 at full staff/day
+const FOOD_STARVATION_DELAY: int       = 2      	# consecutive days at Food=0 before deaths
 const STARVATION_DEATHS_MIN: int       = 1
 const STARVATION_DEATHS_MAX: int       = 3
 
-const RATION_STORE_BUFFER_T1: int      = 50     # days of emergency reserve at T1
-const RATION_STORE_BUFFER_T2: int      = 100    # days of emergency reserve at T2
-const RATION_AUTO_THRESHOLD: float     = 0.20   # T2 auto-rationing kicks in at 20% reserve
+const RATION_STORE_BUFFER_T1: int      = 50    	 	# days of emergency reserve at T1
+const RATION_STORE_BUFFER_T2: int      = 100   	 	# days of emergency reserve at T2
+const RATION_AUTO_THRESHOLD: float     = 0.20   	# T2 auto-rationing kicks in at 20% reserve
+const FOOD_CONSUMPTION_PER_COLONIST: float  = 1.0   # each colonist eats 1 unit/day
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -92,6 +93,7 @@ const MORALE_EFFICIENCY_THRESHOLD: float        = 30.0   # Morale below this →
 const MORALE_EFFICIENCY_MULTIPLIER: float       = 0.80   # all building output × 0.80
 
 const DISEASE_MORALE_DRAIN: float               = 2.0    # Morale lost per day during outbreak
+const MORALE_BASE_DECAY_PER_DAY: float      	= 2.0    # passive despair living underground
 
 
 # ══════════════════════════════════════════════════════════════════════════════
