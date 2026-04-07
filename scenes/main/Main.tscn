@@ -11,6 +11,9 @@
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
 [ext_resource type="Texture2D" uid="uid://btdxucbr8e6mv" path="res://assets/ui/hud/icons/helmet_white.png" id="9_helmet_icon"]
+[ext_resource type="Texture2D" uid="uid://3a8oy4vmjy8o" path="res://assets/ui/hud/icons/hide_ui.png" id="10_hide_ui_icon"]
+[ext_resource type="Texture2D" uid="uid://b6glapr4i075r" path="res://assets/ui/hud/icons/show_ui.png" id="11_show_ui_icon"]
+[ext_resource type="Script" uid="uid://ch6q214f564fo" path="res://scripts/ui/TopStripToggle.gd" id="12_toggle_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -171,15 +174,15 @@ layer = 10
 z_index = -2
 offset_left = 525.0
 offset_top = 9.0
-offset_right = 1273.0
+offset_right = 1235.0
 offset_bottom = 91.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_top_strip")
 
 [node name="TopStripGlow" type="ColorRect" parent="UILayer/HUD" unique_id=1407187627]
 z_index = -1
-offset_left = 533.0
+offset_left = 527.0
 offset_top = 17.0
-offset_right = 1270.0
+offset_right = 1232.0
 offset_bottom = 18.0
 color = Color(0.23, 0.93, 1, 0.45)
 
@@ -285,14 +288,6 @@ offset_right = 965.0
 offset_bottom = 36.0
 color = Color(0.74, 0.46, 1, 1)
 
-[node name="MaterialsMarker" type="ColorRect" parent="UILayer/HUD" unique_id=518484896]
-visible = false
-offset_left = 658.0
-offset_top = 29.0
-offset_right = 664.0
-offset_bottom = 37.0
-color = Color(0.99, 0.75, 0.29, 1)
-
 [node name="MaterialsIcon" type="TextureRect" parent="UILayer/HUD" unique_id=1109217882]
 offset_left = 1166.0
 offset_top = 26.0
@@ -301,14 +296,6 @@ offset_bottom = 40.0
 texture = ExtResource("7_tool_icon")
 expand_mode = 1
 
-[node name="PopulationMarker" type="ColorRect" parent="UILayer/HUD" unique_id=585936651]
-visible = false
-offset_left = 658.0
-offset_top = 50.0
-offset_right = 664.0
-offset_bottom = 58.0
-color = Color(0.84, 0.9, 0.96, 1)
-
 [node name="PopulationIcon" type="TextureRect" parent="UILayer/HUD" unique_id=175063680]
 offset_left = 1165.0
 offset_top = 46.0
@@ -316,14 +303,6 @@ offset_right = 1180.0
 offset_bottom = 61.0
 texture = ExtResource("8_user_icon")
 expand_mode = 1
-
-[node name="WorkersMarker" type="ColorRect" parent="UILayer/HUD" unique_id=345544322]
-visible = false
-offset_left = 658.0
-offset_top = 71.0
-offset_right = 664.0
-offset_bottom = 79.0
-color = Color(0.53, 0.91, 1, 0.95)
 
 [node name="WorkersIcon" type="TextureRect" parent="UILayer/HUD" unique_id=616157761]
 offset_left = 1166.0
@@ -475,6 +454,34 @@ offset_bottom = 43.0
 theme_override_colors/font_color = Color(0.99, 0.75, 0.29, 0.95)
 theme_override_font_sizes/font_size = 14
 text = "0"
+
+[node name="ResourcePanelToggle" type="Node" parent="UILayer/HUD" unique_id=1234567890]
+script = ExtResource("12_toggle_script")
+
+[node name="HideUIButton" type="Button" parent="UILayer/HUD/ResourcePanelToggle" unique_id=1000000001]
+offset_left = 1243.0
+offset_top = 9.0
+offset_right = 1273.0
+offset_bottom = 39.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+icon = ExtResource("10_hide_ui_icon")
+expand_icon = true
+script = ExtResource("2_nha0i")
+
+[node name="ShowUIButton" type="Button" parent="UILayer/HUD/ResourcePanelToggle" unique_id=1000000002]
+offset_left = 1243.0
+offset_top = 9.0
+offset_right = 1273.0
+offset_bottom = 39.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+icon = ExtResource("11_show_ui_icon")
+icon_alignment = 1
+expand_icon = true
+script = ExtResource("2_nha0i")
 
 [node name="PowerRateLabel" type="Label" parent="UILayer/HUD" unique_id=230070748]
 offset_left = 549.0
