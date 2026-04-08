@@ -1,5 +1,7 @@
 extends Node
 
+signal hope_order_changed(new_value: float)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -11,7 +13,16 @@ var current_day: int = 1
 var materials: int = GameConstants.STARTING_MATERIALS
 
 # Float 0-100. Starts at 50 (Neutral)
-var hope_order_slider: float = 50.0 
+var _hope_order_slider: float = 50.0
+var hope_order_slider: float:
+	get:
+		return _hope_order_slider
+	set(value):
+		var next_value = clampf(value, 0.0, 100.0)
+		if is_equal_approx(next_value, _hope_order_slider):
+			return
+		_hope_order_slider = next_value
+		hope_order_changed.emit(_hope_order_slider)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CHARACTER ALIVE FLAGS (All true on Day 1)
@@ -26,10 +37,10 @@ var meridian_alive: bool = true
 # NARRATIVE STATE FLAGS (set by CrisisEventSystem as story events resolve)
 # ══════════════════════════════════════════════════════════════════════════════
 
-var med_clinic_built: bool = false           # Set TRUE by BuildingSystem on placement
-var rook_militia_stopped: bool = false       # Set TRUE by CrisisEventSystem Day 24 Option B
-var rook_reconciliation_taken: bool = false  # Set TRUE by CrisisEventSystem reconciliation dialogue
-var vasquez_trade_accepted: bool = false     # Set TRUE by CrisisEventSystem on Day 11 Option A
+var med_clinic_built: bool = false # Set TRUE by BuildingSystem on placement
+var rook_militia_stopped: bool = false # Set TRUE by CrisisEventSystem Day 24 Option B
+var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
+var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -56,7 +67,7 @@ func _initialize_data_classes() -> void:
 	population_state.total_population = current_population
 	population_state.available_workers = available_workers
 	population_state.sick_count = sick_count
-	population_state.max_workers = GameConstants.MAX_WORKERS_LATE_GAME 
+	population_state.max_workers = GameConstants.MAX_WORKERS_LATE_GAME
 
 	# 2. Initialize Resource Data Instances
 	resource_power = ResourceData.new()
@@ -76,14 +87,14 @@ func _initialize_data_classes() -> void:
 
 	resource_materials = ResourceData.new()
 	resource_materials.res_name = "Materials"
-	resource_materials.warning_threshold = 0.0 
+	resource_materials.warning_threshold = 0.0
 	resource_materials.critical_threshold = 0.0
 
 	# 3. Initialize Colonist Data Instances (with roles added back in)
 	colonist_kael = ColonistData.new()
 	colonist_kael.character_name = "Kael"
 	colonist_kael.role = "Director"
-	colonist_kael.is_alive = true 
+	colonist_kael.is_alive = true
 
 	colonist_yuna = ColonistData.new()
 	colonist_yuna.character_name = "Yuna"
@@ -104,3 +115,6 @@ func _initialize_data_classes() -> void:
 	colonist_meridian.character_name = "MERIDIAN"
 	colonist_meridian.role = "Fragmented AI"
 	colonist_meridian.is_alive = meridian_alive
+
+func apply_hope_order_delta(delta: float) -> void:
+	hope_order_slider = hope_order_slider + delta

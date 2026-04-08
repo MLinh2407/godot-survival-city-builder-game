@@ -28,11 +28,13 @@ extends Node
 @onready var top_strip_panel: Panel = $UILayer/HUD/TopStripPanel
 @onready var top_strip_glow: ColorRect = $UILayer/HUD/TopStripGlow
 @onready var top_sweep_line: ColorRect = $UILayer/HUD/TopSweepLine
+@onready var dialogue_engine = $Events/DialogueEngine
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
 var was_morale_critical: bool = false
 var hud_fx_t: float = 0.0
+var _last_hope_order_value: float = -1.0
 const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 
@@ -43,6 +45,7 @@ func _ready() -> void:
 	TimeManager.time_changed.connect(_on_time_changed)
 	ResourceManager.resources_changed.connect(_on_resources_changed)
 	PopulationManager.population_changed.connect(_on_population_changed)
+	GameManager.hope_order_changed.connect(_on_hope_order_changed)
 	
 	if day_label:
 		day_label.text = "DAY " + str(TimeManager.current_day)
@@ -59,6 +62,10 @@ func _ready() -> void:
 	if power_label and food_label and morale_label:
 		_on_resources_changed(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 	_on_population_changed()
+	_on_hope_order_changed(GameManager.hope_order_slider)
+
+	if dialogue_engine:
+		dialogue_engine.call_deferred("show_event", "cold_night")
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
@@ -68,6 +75,10 @@ func _on_population_changed() -> void:
 		workers_label.text = str(p.available_workers)
 
 func _process(delta: float) -> void:
+	_sync_hope_order_visuals()
+	if get_tree() and get_tree().paused:
+		return
+
 	hud_fx_t += delta
 
 	if top_strip_glow:
@@ -253,11 +264,34 @@ func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
 
 	_update_rates()
 
+func _on_hope_order_changed(new_value: float) -> void:
+	_last_hope_order_value = new_value
+	if hope_slider:
+		hope_slider.value = new_value
+		_update_hope_order_visuals()
+
+func _sync_hope_order_visuals() -> void:
+	var current_value: float = GameManager.hope_order_slider
+	if is_equal_approx(current_value, _last_hope_order_value):
+		return
+	_last_hope_order_value = current_value
+	_update_hope_order_visuals()
+
 func _update_hope_order_visuals() -> void:
 	if not hope_slider:
 		return
 
-	var t: float = clampf(hope_slider.value / 100.0, 0.0, 1.0)
+	var slider_value: float = clampf(GameManager.hope_order_slider, 0.0, 100.0)
+	hope_slider.value = slider_value
+	var hope_upper: float = GameConstants.SLIDER_HOPE_UPPER
+	var order_lower: float = GameConstants.SLIDER_ORDER_LOWER
+	var t: float = 0.0
+	if slider_value <= hope_upper:
+		t = 0.0
+	elif slider_value >= order_lower:
+		t = 1.0
+	else:
+		t = (slider_value - hope_upper) / maxf(order_lower - hope_upper, 1.0)
 	var slider_color: Color = HOPE_COLOR.lerp(ORDER_COLOR, t)
 	hope_slider.modulate = slider_color
 

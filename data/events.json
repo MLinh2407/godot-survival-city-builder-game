@@ -6,7 +6,7 @@
       "event_id": "cold_night",
       "trigger_day": 3,
       "trigger_condition": "always",
-      "setup_text": "A heating relay in the eastern tunnel failed overnight. The temperature in Sector C has dropped below survival threshold. A child was found unresponsive at 0400. The repair crew is standing by — but pulling them from the Hydroponic Bay means food production drops for two days. You have until the next morning cycle to decide.",
+      "setup_text": "A heating relay in the eastern tunnel failed overnight. The temperature in Sector C has dropped below survival threshold. A child was found unresponsive at 04:00. The repair crew is standing by but pulling them from the Hydroponic Bay means food production drops for two days. You have to decide what to do now!",
       "choices": [
         {
           "id": "option_a",
@@ -22,7 +22,7 @@
             },
             {
               "type": "narrative",
-              "journal_entry": "Heating restored by 0530. The child is alive. Her name is Lira. I don't know whose she is yet. The food reserves are lower than I'd like but the repair crew didn't sleep and neither did I and everyone in Sector C is still here.",
+              "journal_entry": "Heating restored by 05:30. The child is alive. Her name is Lira. I don't know whose she is yet. The food reserves are lower than I'd like but the repair crew didn't sleep and neither did I and everyone in Sector C is still here.",
               "hope_order_delta": -8
             }
           ]

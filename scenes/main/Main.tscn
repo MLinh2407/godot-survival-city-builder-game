@@ -14,6 +14,7 @@
 [ext_resource type="Texture2D" uid="uid://3a8oy4vmjy8o" path="res://assets/ui/hud/icons/hide_ui.png" id="10_hide_ui_icon"]
 [ext_resource type="Texture2D" uid="uid://b6glapr4i075r" path="res://assets/ui/hud/icons/show_ui.png" id="11_show_ui_icon"]
 [ext_resource type="Script" uid="uid://ch6q214f564fo" path="res://scripts/ui/TopStripToggle.gd" id="12_toggle_script"]
+[ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -148,6 +149,20 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dialogue_card"]
+bg_color = Color(0.02, 0.05, 0.09, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.9, 1, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
@@ -542,7 +557,50 @@ theme_override_font_sizes/font_size = 12
 text = "Order"
 horizontal_alignment = 2
 
-[node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
+[node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
+z_index = 5
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DialogueBackdrop" type="ColorRect" parent="UILayer/DialogueBox" unique_id=1664927002]
+z_index = -1
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.02, 0.05, 0.08, 0.72)
+
+[node name="DialogueCard" type="Panel" parent="UILayer/DialogueBox" unique_id=1276341806]
+layout_mode = 0
+offset_left = 208.0
+offset_top = 164.0
+offset_right = 1068.0
+offset_bottom = 584.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_card")
+
+[node name="DialogueText" type="Label" parent="UILayer/DialogueBox" unique_id=938481883]
+layout_mode = 0
+offset_left = 255.0
+offset_top = 194.0
+offset_right = 1045.0
+offset_bottom = 374.0
+theme_override_colors/font_color = Color(0.88, 0.95, 1, 0.98)
+theme_override_font_sizes/font_size = 18
+text = "Dialogue setup text"
+autowrap_mode = 3
+
+[node name="DialogueChoices" type="VBoxContainer" parent="UILayer/DialogueBox" unique_id=1312486037]
+layout_mode = 0
+offset_left = 243.0
+offset_top = 394.0
+offset_right = 1033.0
+offset_bottom = 554.0
+theme_override_constants/separation = 12
 
 [node name="Journal" type="Node" parent="UILayer" unique_id=915716484]
 
@@ -587,6 +645,9 @@ y_sort_enabled = true
 zoom = Vector2(2, 2)
 
 [node name="Events" type="Node" parent="." unique_id=1501814951]
+
+[node name="DialogueEngine" type="Node" parent="Events" unique_id=1601134898]
+script = ExtResource("13_dialogue_engine")
 
 [node name="BuildingSystem" type="Node" parent="." unique_id=749927356 node_paths=PackedStringArray("grid_manager")]
 script = ExtResource("6_1rhdn")
