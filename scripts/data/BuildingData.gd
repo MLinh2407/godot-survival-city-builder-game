@@ -47,9 +47,14 @@ enum BuildingCategory {
 # Output scales proportionally with staffing
 var staffing_ratio: float:
     get:
-        if worker_capacity == 0:
-            return 1.0   # Passive buildings always run at full
-        return float(workers_assigned) / float(worker_capacity)
+        var ratio: float = 1.0
+        if worker_capacity > 0:
+            ratio = float(workers_assigned) / float(worker_capacity)
+            
+        if ResourceManager.morale < GameConstants.MORALE_EFFICIENCY_THRESHOLD:
+            ratio *= GameConstants.MORALE_EFFICIENCY_MULTIPLIER
+            
+        return ratio
 
 # --- Upgrade state ---
 @export var is_upgraded: bool = false

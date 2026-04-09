@@ -2,6 +2,7 @@ extends Node
 
 signal resources_changed(power: float, food: float, morale: float, materials: int)
 signal threshold_warning(resource: String, is_critical: bool)
+signal power_out
 
 # --- Capacities and Totals ---
 var power_capacity: float = 0.0
@@ -29,6 +30,8 @@ func _ready() -> void:
 
 func calculate_power() -> void:
 	net_power = power_capacity - power_draw
+	if net_power <= 0.0:
+		power_out.emit()
 	resources_changed.emit(net_power, food, morale, materials)
 
 func add_materials(amount: int) -> void:

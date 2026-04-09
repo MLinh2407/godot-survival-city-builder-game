@@ -9,6 +9,7 @@ signal outbreak_ended()
 signal character_died(char_name: String)
 signal colonist_died(count: int, cause: String)
 signal worker_deserted(count: int)
+signal starvation_deaths(count: int)
 signal population_zero() # Triggers Game Over
 
 var consecutive_days_starving: int = 0
@@ -116,6 +117,7 @@ func _process_starvation_tick(pop_data: PopulationStateData) -> void:
 	if consecutive_days_starving >= GameConstants.FOOD_STARVATION_DELAY:
 		var deaths: int = randi_range(GameConstants.STARVATION_DEATHS_MIN, GameConstants.STARVATION_DEATHS_MAX)
 		_remove_colonists(pop_data, deaths, "Starvation")
+		starvation_deaths.emit(deaths)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. THE DESERTION TICK
