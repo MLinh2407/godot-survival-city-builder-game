@@ -558,6 +558,7 @@ text = "Order"
 horizontal_alignment = 2
 
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
+visible = false
 z_index = 5
 layout_mode = 3
 anchors_preset = 15
