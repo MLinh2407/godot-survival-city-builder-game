@@ -31,6 +31,7 @@ var materials: int  = GameConstants.STARTING_MATERIALS
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	GameManager.slider_changed.connect(_on_slider_changed)
 	await get_tree().process_frame
 	if TimeManager != null:
 		TimeManager.day_changed.connect(_on_day_changed)
@@ -261,3 +262,13 @@ func consume_materials(amount: int) -> bool:
 		resources_changed.emit(net_power, food, morale, materials)
 		return true
 	return false
+
+
+func _on_slider_changed(_new_value: float) -> void:
+	if building_system == null:
+		return
+	_recalculate_power()
+	_process_food_tick()
+	_process_morale_tick()
+	_sync_to_game_manager()
+	resources_changed.emit(net_power, food, morale, materials)

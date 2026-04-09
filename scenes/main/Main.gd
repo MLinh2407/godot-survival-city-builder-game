@@ -71,6 +71,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			set_speed(TimeManager.GameSpeed.NORMAL, "Speed: 1x")
 		elif event.keycode == KEY_2:
 			set_speed(TimeManager.GameSpeed.FAST, "Speed: 2x")
+		elif event.keycode == KEY_LEFT:
+			GameManager.shift_slider(-10.0)   # Toward Hope
+		elif event.keycode == KEY_RIGHT:
+			GameManager.shift_slider(10.0)    # Toward Order
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
@@ -80,7 +84,7 @@ func _on_time_changed(time_string: String) -> void:
 	if time_label:
 		time_label.text = time_string
 
-func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
+func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 	if power_label:
 		power_label.text = "Power: " + str(p)
 		

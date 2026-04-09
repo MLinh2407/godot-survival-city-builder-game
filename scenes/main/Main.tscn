@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://cjbokmfqvdqfy" path="res://scenes/UI/BuildingInspector.tscn" id="3_ostsq"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
+[ext_resource type="Script" uid="uid://c6fvdhof7t2yk" path="res://scripts/ui/UI_HopeOrderSlider.gd" id="4_u8lgh"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
@@ -111,6 +112,31 @@ offset_top = 575.0
 offset_right = 42.0
 offset_bottom = 660.0
 building_system = NodePath("../../../BuildingSystem")
+
+[node name="AlignmentContainer" type="HBoxContainer" parent="UILayer/HUD" unique_id=984122503]
+custom_minimum_size = Vector2(300, 24)
+offset_left = 730.0
+offset_top = 41.0
+offset_right = 1030.0
+offset_bottom = 81.0
+
+[node name="HopeLabel" type="Label" parent="UILayer/HUD/AlignmentContainer" unique_id=1929594991]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0.9607843, 1, 1)
+text = "Hope"
+
+[node name="AlignmentGauge" type="ProgressBar" parent="UILayer/HUD/AlignmentContainer" unique_id=1727292169]
+custom_minimum_size = Vector2(200, 16)
+layout_mode = 2
+size_flags_horizontal = 3
+value = 50.0
+show_percentage = false
+script = ExtResource("4_u8lgh")
+
+[node name="OrderLabel" type="Label" parent="UILayer/HUD/AlignmentContainer" unique_id=193625436]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.58431375, 0, 1)
+text = "Order"
 
 [node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
 
