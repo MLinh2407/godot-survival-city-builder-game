@@ -283,17 +283,32 @@ func _update_hope_order_visuals() -> void:
 
 	var slider_value: float = clampf(GameManager.hope_order_slider, 0.0, 100.0)
 	hope_slider.value = slider_value
+
 	var hope_upper: float = GameConstants.SLIDER_HOPE_UPPER
 	var order_lower: float = GameConstants.SLIDER_ORDER_LOWER
-	var t: float = 0.0
+
+	# Color interpolation parameter (for choosing Hope / Order / Neutral)
+	var t_color: float
 	if slider_value <= hope_upper:
-		t = 0.0
+		t_color = 0.0
 	elif slider_value >= order_lower:
-		t = 1.0
+		t_color = 1.0
 	else:
-		t = (slider_value - hope_upper) / maxf(order_lower - hope_upper, 1.0)
-	var slider_color: Color = HOPE_COLOR.lerp(ORDER_COLOR, t)
+		t_color = (slider_value - hope_upper) / maxf(order_lower - hope_upper, 1.0)
+
+	# Color choice: neutral in middle band, otherwise explicit Hope/Order
+	var NEUTRAL_COLOR: Color = Color(0.85, 0.85, 0.85, 1.0)
+	var slider_color: Color
+	if slider_value > hope_upper and slider_value < order_lower:
+		slider_color = NEUTRAL_COLOR
+	elif t_color <= 0.0:
+		slider_color = HOPE_COLOR
+	else:
+		slider_color = ORDER_COLOR
 	hope_slider.modulate = slider_color
+
+	# Fill position uses full 0..100 proportion so 1 unit = 1% of track width
+	var t_fill: float = slider_value / 100.0
 
 	if hope_track_border and hope_track_fill:
 		var inset: float = 2.0
@@ -302,7 +317,7 @@ func _update_hope_order_visuals() -> void:
 		var inner_top: float = hope_track_border.offset_top + inset
 		var inner_bottom: float = hope_track_border.offset_bottom - inset
 		var inner_width: float = maxf(inner_right - inner_left, 1.0)
-		var fill_right: float = inner_left + inner_width * t
+		var fill_right: float = inner_left + inner_width * t_fill
 
 		hope_track_fill.offset_left = inner_left
 		hope_track_fill.offset_top = inner_top
