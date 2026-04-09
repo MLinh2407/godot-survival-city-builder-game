@@ -103,6 +103,14 @@ offset_bottom = 140.0
 theme_override_font_sizes/font_size = 24
 text = "Morale: 100"
 
+[node name="DiseaseLabel" type="Label" parent="UILayer/HUD"]
+offset_left = 1100.0
+offset_top = 150.0
+offset_right = 1240.0
+offset_bottom = 180.0
+theme_override_font_sizes/font_size = 24
+text = "Sick: 0"
+
 [node name="DialogueBox" type="Node" parent="UILayer" unique_id=1285129592]
 
 [node name="Journal" type="Node" parent="UILayer" unique_id=915716484]

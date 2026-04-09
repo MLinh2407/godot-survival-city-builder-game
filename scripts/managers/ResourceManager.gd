@@ -59,6 +59,12 @@ func _on_day_changed(new_day: int) -> void:
 	else:
 		days_starving = 0
 		
+	# Disease Morale Drain
+	if GameManager.population_state and GameManager.population_state.outbreak_active:
+		morale -= GameConstants.DISEASE_MORALE_DRAIN
+		morale = max(0.0, morale)
+		print("--- OUTBREAK: Morale drained by ", GameConstants.DISEASE_MORALE_DRAIN)
+		
 	_check_thresholds()
 	
 	print("--- Day ", new_day, " ---")

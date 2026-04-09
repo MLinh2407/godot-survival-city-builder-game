@@ -123,3 +123,26 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
                 sprite.texture = T1_SPRITES[b_data.building_type]
     
     print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+func get_workers_for_building_type(type: BuildingData.BuildingType) -> int:
+    var total: int = 0
+    for pos in active_buildings:
+        if active_buildings[pos].building_type == type:
+            total += active_buildings[pos].workers_assigned
+    return total
+
+func has_building(type: BuildingData.BuildingType) -> bool:
+    for pos in active_buildings:
+        if active_buildings[pos].building_type == type:
+            return true
+    return false
+
+func is_building_upgraded(type: BuildingData.BuildingType) -> bool:
+    for pos in active_buildings:
+        if active_buildings[pos].building_type == type and active_buildings[pos].is_upgraded:
+            return true
+    return false
