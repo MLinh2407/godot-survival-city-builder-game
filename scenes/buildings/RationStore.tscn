@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dkhketv733v7"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_4yngq"]
+[ext_resource type="Texture2D" uid="uid://dkghcnrv00nq5" path="res://assets/buildings/T1_Buildings/Ration_Store_T1.png" id="2_wfe50"]
+
+[node name="RationStore" unique_id=2121470720 instance=ExtResource("1_4yngq")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_wfe50")

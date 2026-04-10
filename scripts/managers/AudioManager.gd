@@ -61,6 +61,8 @@ func play_ui_sfx(type: String) -> void:
 			ui_sfx_player.stream = sfx_pause
 		"unpause":
 			ui_sfx_player.stream = sfx_unpause
+		"slider_move":
+			ui_sfx_player.stream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
 		_:
 			return
 			

@@ -5,16 +5,23 @@
 [ext_resource type="PackedScene" uid="uid://dfs0g1ipnq75c" path="res://scenes/buildings/CoalGenerator.tscn" id="2_dc040"]
 [ext_resource type="Script" uid="uid://ck8dk35m1e26f" path="res://scripts/ui/UI_Button.gd" id="2_nha0i"]
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
+[ext_resource type="PackedScene" uid="uid://cjbokmfqvdqfy" path="res://scenes/UI/BuildingInspector.tscn" id="3_ostsq"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
+[ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
 [ext_resource type="Texture2D" uid="uid://btdxucbr8e6mv" path="res://assets/ui/hud/icons/helmet_white.png" id="9_helmet_icon"]
+[ext_resource type="PackedScene" uid="uid://dkhketv733v7" path="res://scenes/buildings/RationStore.tscn" id="9_u8lgh"]
 [ext_resource type="Texture2D" uid="uid://3a8oy4vmjy8o" path="res://assets/ui/hud/icons/hide_ui.png" id="10_hide_ui_icon"]
+[ext_resource type="PackedScene" uid="uid://bqbl06b8lenji" path="res://scenes/buildings/WaterRecycler.tscn" id="10_hjnkw"]
+[ext_resource type="PackedScene" uid="uid://clui1cyr5pahv" path="res://scenes/buildings/MedClinic.tscn" id="11_rikml"]
 [ext_resource type="Texture2D" uid="uid://b6glapr4i075r" path="res://assets/ui/hud/icons/show_ui.png" id="11_show_ui_icon"]
 [ext_resource type="Script" uid="uid://ch6q214f564fo" path="res://scripts/ui/TopStripToggle.gd" id="12_toggle_script"]
+[ext_resource type="PackedScene" uid="uid://60mva0p0dle5" path="res://scenes/buildings/ArchiveHall.tscn" id="12_vc03v"]
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
+[ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -557,6 +564,11 @@ theme_override_font_sizes/font_size = 12
 text = "Order"
 horizontal_alignment = 2
 
+[node name="BuildingInspector" parent="UILayer/HUD" unique_id=1507644054 node_paths=PackedStringArray("building_system") instance=ExtResource("3_ostsq")]
+offset_top = 635.0
+offset_bottom = 720.0
+building_system = NodePath("../../../BuildingSystem")
+
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
 visible = false
 z_index = 5
@@ -624,20 +636,27 @@ y_sort_enabled = true
 script = ExtResource("1_u1xfj")
 building_container = NodePath("../BuildingContainer")
 building_scenes = {
+"archive": ExtResource("12_vc03v"),
 "coal": ExtResource("2_dc040"),
+"geothermal": ExtResource("8_tck0d"),
 "hydro": ExtResource("3_1rhdn"),
-"shelter": ExtResource("4_sjxhf")
+"med": ExtResource("11_rikml"),
+"memorial": ExtResource("13_grv7h"),
+"ration": ExtResource("9_u8lgh"),
+"shelter": ExtResource("4_sjxhf"),
+"water": ExtResource("10_hjnkw")
 }
 
 [node name="BaseGrid" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=2142693261]
 tile_set = SubResource("TileSet_dc040")
 
-[node name="PlacementCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=765783876]
-z_index = 1
-texture = ExtResource("5_floor_tile")
-
 [node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
 visible = false
+
+[node name="HoverCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=1537611551]
+visible = false
+modulate = Color(1, 0.84313726, 0, 0.5019608)
+texture = ExtResource("5_floor_tile")
 
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true

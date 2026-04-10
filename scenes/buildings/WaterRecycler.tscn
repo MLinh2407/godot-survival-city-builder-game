@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://bqbl06b8lenji"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_oh8gf"]
+[ext_resource type="Texture2D" uid="uid://bc7m1it84u3m3" path="res://assets/buildings/T1_Buildings/Water_Recycler_T1.png" id="2_h04k7"]
+
+[node name="WaterRecycler" unique_id=2121470720 instance=ExtResource("1_oh8gf")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_h04k7")

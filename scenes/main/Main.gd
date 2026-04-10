@@ -175,7 +175,7 @@ func _on_time_changed(time_string: String) -> void:
 	if time_label:
 		time_label.text = "| " + time_string
 
-func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
+func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 	if power_label:
 		var power_i: int = int(round(p))
 		var power_cap_i: int = maxi(int(round(ResourceManager.power_capacity)), 0)
@@ -256,7 +256,7 @@ func _on_resources_changed(p: float, f: float, m: float, mat: int) -> void:
 			was_morale_critical = false
 
 	if materials_label:
-		materials_label.text = str(mat)
+		materials_label.text = str(_mat)
 
 	if hope_slider:
 		hope_slider.value = GameManager.hope_order_slider
@@ -269,6 +269,7 @@ func _on_hope_order_changed(new_value: float) -> void:
 	if hope_slider:
 		hope_slider.value = new_value
 		_update_hope_order_visuals()
+		AudioManager.play_ui_sfx("slider_move")
 
 func _sync_hope_order_visuals() -> void:
 	var current_value: float = GameManager.hope_order_slider

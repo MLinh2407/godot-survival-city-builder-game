@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://clui1cyr5pahv"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_y8dpv"]
+[ext_resource type="Texture2D" uid="uid://ba4xo0a1vx7be" path="res://assets/buildings/T1_Buildings/Med_Clinic_T1.png" id="2_g31jg"]
+
+[node name="MedClinic" unique_id=2121470720 instance=ExtResource("1_y8dpv")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_g31jg")
