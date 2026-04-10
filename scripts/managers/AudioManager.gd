@@ -7,6 +7,8 @@ var music_player_a: AudioStreamPlayer
 var music_player_b: AudioStreamPlayer
 var is_playing_a: bool = true
 
+var ui_sfx_player_slider: AudioStreamPlayer
+
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
@@ -16,6 +18,7 @@ var sfx_hover: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_ho
 var sfx_click: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
 var sfx_pause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
 var sfx_unpause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
+var sfx_slider_move: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Keep playing when paused
@@ -34,6 +37,10 @@ func _ready() -> void:
 	ui_sfx_player = AudioStreamPlayer.new()
 	ui_sfx_player.bus = "SFX"
 	add_child(ui_sfx_player)
+
+	ui_sfx_player_slider = AudioStreamPlayer.new()
+	ui_sfx_player_slider.bus = "SFX"
+	add_child(ui_sfx_player_slider)
 	
 	# Music Players
 	music_player_a = AudioStreamPlayer.new()
@@ -55,17 +62,22 @@ func play_ui_sfx(type: String) -> void:
 	match type:
 		"hover":
 			ui_sfx_player.stream = sfx_hover
+			ui_sfx_player.play()
 		"click":
 			ui_sfx_player.stream = sfx_click
+			ui_sfx_player.play()
 		"pause":
 			ui_sfx_player.stream = sfx_pause
+			ui_sfx_player.play()
 		"unpause":
 			ui_sfx_player.stream = sfx_unpause
+			ui_sfx_player.play()
+		"slider_move":
+			ui_sfx_player_slider.stream = sfx_slider_move
+			ui_sfx_player_slider.play()
 		_:
 			return
 			
-	if ui_sfx_player.stream:
-		ui_sfx_player.play()
 
 func play_music(stream: AudioStream) -> void:
 	if is_playing_a:

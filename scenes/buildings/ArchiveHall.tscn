@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://60mva0p0dle5"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_2fra0"]
+[ext_resource type="Texture2D" uid="uid://cb6tn06rr0c30" path="res://assets/buildings/T1_Buildings/Archive_Hall_T1.png" id="2_78g31"]
+
+[node name="ArchiveHall" unique_id=2121470720 instance=ExtResource("1_2fra0")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_78g31")

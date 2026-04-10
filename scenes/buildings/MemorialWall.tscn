@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://cwpk5oxtqdiej"]
+
+[ext_resource type="PackedScene" uid="uid://cpk3w4dhromgg" path="res://scenes/buildings/BuildingBase.tscn" id="1_2g1n3"]
+[ext_resource type="Texture2D" uid="uid://hupc824a4jw6" path="res://assets/buildings/T1_Buildings/Memorial_Wall.png" id="2_p638g"]
+
+[node name="MemorialWall" unique_id=2121470720 instance=ExtResource("1_2g1n3")]
+
+[node name="Sprite2D" parent="." index="0" unique_id=1951350025]
+texture = ExtResource("2_p638g")

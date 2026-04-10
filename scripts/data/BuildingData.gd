@@ -4,6 +4,8 @@
 class_name BuildingData
 extends Resource
 
+signal staffing_changed(current: int, capacity: int)
+
 # Building type enum (10 building types)
 enum BuildingType {
     COAL_GENERATOR,
@@ -64,3 +66,15 @@ var staffing_ratio: float:
 @export var base_production_power: float = 0.0   
 @export var base_production_food: float = 0.0    
 @export var base_morale_bonus: float = 0.0      
+
+# --- Consecutive unstaffed days ---
+# Used by BuildingSystem to trigger:
+#   - Building damage (any building at 0 workers for BUILDING_DAMAGE_DAYS consecutive days)
+#   - Disease outbreak (Water Recycler at 0 workers for DISEASE_WATER_DELAY consecutive days)
+@export var days_unstaffed: int = 0
+
+# base_passive_morale:
+#   Applied REGARDLESS of staffing — just from the building existing and being powered.
+#   Use for Archive Hall (+8/day while built) and Memorial Wall (+3/day permanently).
+#   ResourceManager reads this separately from base_morale_bonus.
+@export var base_passive_morale: float = 0.0
