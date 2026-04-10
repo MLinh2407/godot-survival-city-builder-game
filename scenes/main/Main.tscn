@@ -393,6 +393,11 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "2x"
 
+[node name="ButtonSettings" type="Button" parent="UILayer/HUD/SpeedControls" unique_id=987654332]
+layout_mode = 2
+text = "Settings"
+script = ExtResource("2_nha0i")
+
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 549.0
 offset_top = 23.0
@@ -569,6 +574,14 @@ offset_top = 635.0
 offset_bottom = 720.0
 building_system = NodePath("../../../BuildingSystem")
 
+[node name="DiseaseLabel" type="Label" parent="UILayer/HUD" unique_id=1406897139]
+offset_left = 1100.0
+offset_top = 150.0
+offset_right = 1240.0
+offset_bottom = 180.0
+theme_override_font_sizes/font_size = 24
+text = "Sick: 0"
+
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
 visible = false
 z_index = 5
@@ -634,7 +647,6 @@ color = Color(0.03876, 0.09320182, 0.15594886, 1)
 [node name="GridSystem" type="Node2D" parent="GameWorld" unique_id=1599751758 node_paths=PackedStringArray("building_container")]
 y_sort_enabled = true
 script = ExtResource("1_u1xfj")
-building_container = NodePath("../BuildingContainer")
 building_scenes = {
 "archive": ExtResource("12_vc03v"),
 "coal": ExtResource("2_dc040"),
@@ -646,6 +658,7 @@ building_scenes = {
 "shelter": ExtResource("4_sjxhf"),
 "water": ExtResource("10_hjnkw")
 }
+building_container = NodePath("../BuildingContainer")
 
 [node name="BaseGrid" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=2142693261]
 tile_set = SubResource("TileSet_dc040")

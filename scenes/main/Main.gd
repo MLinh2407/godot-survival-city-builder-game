@@ -7,6 +7,7 @@ extends Node
 @onready var btn_pause: Button = $UILayer/HUD/SpeedControls/ButtonPause
 @onready var btn_1x: Button = $UILayer/HUD/SpeedControls/Button1x
 @onready var btn_2x: Button = $UILayer/HUD/SpeedControls/Button2x
+@onready var btn_settings: Button = $UILayer/HUD/SpeedControls/ButtonSettings
 
 @onready var power_label: Label = $UILayer/HUD/PowerLabel
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
@@ -29,6 +30,7 @@ extends Node
 @onready var top_strip_glow: ColorRect = $UILayer/HUD/TopStripGlow
 @onready var top_sweep_line: ColorRect = $UILayer/HUD/TopSweepLine
 @onready var dialogue_engine = $Events/DialogueEngine
+@onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
@@ -38,8 +40,13 @@ var _last_hope_order_value: float = -1.0
 const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 
+var settings_ui: CanvasLayer
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
+	add_child(settings_ui)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -55,6 +62,7 @@ func _ready() -> void:
 	if btn_pause: btn_pause.pressed.connect(toggle_pause)
 	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
 	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
+	if btn_settings: btn_settings.pressed.connect(_on_button_settings_pressed)
 	
 	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 	
@@ -78,6 +86,13 @@ func _on_population_changed() -> void:
 		pop_label.text = str(p.total_population)
 	if workers_label and p:
 		workers_label.text = str(p.available_workers)
+	if disease_label and p:
+		var sick = p.sick_count
+		disease_label.text = "Sick: " + str(sick)
+		if sick > 0:
+			disease_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+		else:
+			disease_label.remove_theme_color_override("font_color")
 
 func _process(delta: float) -> void:
 	_sync_hope_order_visuals()
@@ -162,6 +177,10 @@ func _on_button_1x_pressed() -> void:
 
 func _on_button_2x_pressed() -> void:
 	set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
+
+func _on_button_settings_pressed() -> void:
+	if settings_ui and settings_ui.has_method("toggle_menu"):
+		settings_ui.toggle_menu()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:

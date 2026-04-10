@@ -9,9 +9,11 @@ signal outbreak_ended()
 signal character_died(char_name: String)
 signal colonist_died(count: int, cause: String)
 signal worker_deserted(count: int)
+signal starvation_deaths(count: int)
 signal population_zero() # Triggers Game Over
 
 var consecutive_days_starving: int = 0
+var consecutive_days_water_unstaffed: int = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INITIALISATION
@@ -42,6 +44,26 @@ func process_daily_population_tick(new_day: int) -> void:
 	
 	var pop_data = GameManager.population_state
 	
+	# Scripted Day 16 Event
+	if new_day == 16 and not pop_data.outbreak_active:
+		trigger_outbreak()
+		
+	# Water Recycler auto-outbreak
+	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if building_sys:
+		if building_sys.has_building(BuildingData.BuildingType.WATER_RECYCLER):
+			if building_sys.get_workers_for_building_type(BuildingData.BuildingType.WATER_RECYCLER) == 0:
+				consecutive_days_water_unstaffed += 1
+			else:
+				consecutive_days_water_unstaffed = 0
+		else:
+			consecutive_days_water_unstaffed += 1
+	else:
+		consecutive_days_water_unstaffed += 1
+		
+	if consecutive_days_water_unstaffed >= GameConstants.DISEASE_WATER_DELAY and not pop_data.outbreak_active:
+		trigger_outbreak()
+	
 	_process_disease_tick(pop_data)
 	_process_starvation_tick(pop_data)
 	_process_desertion_tick(pop_data)
@@ -63,6 +85,12 @@ func trigger_outbreak() -> void:
 	var new_sick: int = randi_range(GameConstants.DISEASE_SICK_MIN, GameConstants.DISEASE_SICK_MAX)
 	
 	# Apply T2 Water Recycler resistance (30% reduction) if active
+	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if building_sys and building_sys.is_building_upgraded(BuildingData.BuildingType.WATER_RECYCLER):
+		pop_data.disease_resistance_active = true
+	else:
+		pop_data.disease_resistance_active = false
+		
 	if pop_data.disease_resistance_active:
 		new_sick = int(float(new_sick) * GameConstants.DISEASE_RESISTANCE_MULTIPLIER)
 		
@@ -85,11 +113,15 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		pop_data.outbreak_active = false
 		return 
 		
-	# Real check: ask BuildingSystem for actual Med Clinic staffing ratio
-	var med_ratio: float = 0.0
+	var is_med_clinic_staffed: bool = false
 	if building_system != null:
-		med_ratio = building_system.get_med_clinic_staffing_ratio()
-	var is_med_clinic_staffed: bool = med_ratio >= 0.5   # At least half-staffed counts
+		if building_system.has_method("get_med_clinic_staffing_ratio"):
+			var med_ratio: float = building_system.get_med_clinic_staffing_ratio()
+			is_med_clinic_staffed = med_ratio >= 0.5
+		else:
+			var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+			if building_sys and building_sys.get_workers_for_building_type(BuildingData.BuildingType.MED_CLINIC) > 0:
+				is_med_clinic_staffed = true
 	
 	if is_med_clinic_staffed:
 		var cured: int = mini(GameConstants.DISEASE_TREATMENT_RATE, pop_data.sick_count)
@@ -129,6 +161,7 @@ func _process_starvation_tick(pop_data: PopulationStateData) -> void:
 	if consecutive_days_starving >= GameConstants.FOOD_STARVATION_DELAY:
 		var deaths: int = randi_range(GameConstants.STARVATION_DEATHS_MIN, GameConstants.STARVATION_DEATHS_MAX)
 		_remove_colonists(pop_data, deaths, "Starvation")
+		starvation_deaths.emit(deaths)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. THE DESERTION TICK
@@ -210,20 +243,20 @@ func _recalculate_workers(pop_data: PopulationStateData) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY 
 # ══════════════════════════════════════════════════════════════════════════════
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_P:
-			print("\n--- DEBUG: FORCING NEXT DAY ---")
-			GameManager.current_day += 1
-			process_daily_population_tick(GameManager.current_day)
+#func _input(event: InputEvent) -> void:
+#	if event is InputEventKey and event.pressed:
+#		if event.keycode == KEY_P:
+#			print("\n--- DEBUG: FORCING NEXT DAY ---")
+#			GameManager.current_day += 1
+#			process_daily_population_tick(GameManager.current_day)
 		
-		if event.keycode == KEY_O:
-			trigger_outbreak()
+#		if event.keycode == KEY_O:
+#			trigger_outbreak()
 			
-		if event.keycode == KEY_F:
-			GameManager.resource_food.current_value = 0.0
-			print("TEST: Food artificially set to 0.0")
+#		if event.keycode == KEY_F:
+#			GameManager.resource_food.current_value = 0.0
+#			print("TEST: Food artificially set to 0.0")
 			
-		if event.keycode == KEY_M:
-			GameManager.resource_morale.current_value = 5.0
-			print("TEST: Morale artificially set to 5.0")
+#		if event.keycode == KEY_M:
+#			GameManager.resource_morale.current_value = 5.0
+#			print("TEST: Morale artificially set to 5.0")

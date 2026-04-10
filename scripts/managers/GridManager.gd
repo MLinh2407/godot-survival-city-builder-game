@@ -153,3 +153,23 @@ func remove_building(map_pos: Vector2i) -> void:
     building.queue_free()
     occupied_cells.erase(map_pos)
     building_removed.emit(map_pos)
+    print("GridManager: Removed at ", map_pos)
+
+func clear_grid() -> void:
+    var keys = occupied_cells.keys()
+    for pos in keys:
+        remove_building(pos)
+
+func spawn_building_from_save(b_type: String, map_pos: Vector2i) -> void:
+    if not building_scenes.has(b_type):
+        push_error("GridManager: Cannot spawn unknown building type ", b_type)
+        return
+        
+    var saved_build_scene = building_scenes[b_type]
+    var new_building = saved_build_scene.instantiate()
+    
+    building_container.add_child(new_building)
+    new_building.position = base_grid.map_to_local(map_pos)
+    occupied_cells[map_pos] = new_building
+    building_placed.emit(b_type, map_pos)
+    print("GridManager: Spawning from save ", b_type, " at ", map_pos)
