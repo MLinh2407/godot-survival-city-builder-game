@@ -66,6 +66,11 @@ func _ready() -> void:
 
 	if dialogue_engine:
 		dialogue_engine.call_deferred("show_event", "cold_night")
+	
+	if has_node("BuildingSystem"):
+		var bs = $BuildingSystem
+		if not bs.workers_changed.is_connected(_on_population_changed):
+			bs.workers_changed.connect(_on_population_changed)
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
