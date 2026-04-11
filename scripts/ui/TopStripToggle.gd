@@ -45,18 +45,34 @@ const ANIMATION_DURATION = 0.15
 func _ready() -> void:
 	# Collect all panel elements for animation
 	panel_elements = [
-		top_strip_panel, top_strip_glow, top_sweep_line,
-		power_marker, food_marker, morale_marker,
-		power_label, power_bar, power_rate_label,
-		food_label, food_bar, food_rate_label,
-		morale_label, morale_bar, morale_rate_label,
-		materials_icon, materials_label,
-		population_icon, population_label,
-		workers_icon, workers_label,
-		resource_divider_a, resource_divider_b, resource_divider_c, 
-		sick_icon, disease_label
+		top_strip_panel,
+		top_strip_glow,
+		top_sweep_line,
+		power_marker,
+		food_marker,
+		morale_marker,
+		power_label,
+		power_bar,
+		power_rate_label,
+		food_label,
+		food_bar,
+		food_rate_label,
+		morale_label,
+		morale_bar,
+		morale_rate_label,
+		materials_icon,
+		materials_label,
+		population_icon,
+		population_label,
+		workers_icon,
+		workers_label,
+		resource_divider_a,
+		resource_divider_b,
+		resource_divider_c,
+		sick_icon,
+		disease_label,
 	]
-	
+
 	hide_button.pressed.connect(_on_hide_ui_pressed)
 	show_button.pressed.connect(_on_show_ui_pressed)
 	show_button.visible = false
@@ -121,16 +137,16 @@ func _animate_hide_resources_panel() -> void:
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_IN)
-	
+
 	# Set pivot to right side for left-to-right collapse effect
 	for element in panel_elements:
 		element.pivot_offset = Vector2(element.size.x, element.size.y / 2)
-	
+
 	# Scale down and fade out all panel elements simultaneously
 	for element in panel_elements:
 		tween.tween_property(element, "scale", Vector2(0.8, 0.8), ANIMATION_DURATION)
 		tween.tween_property(element, "modulate:a", 0.0, ANIMATION_DURATION)
-	
+
 	# Hide after animation completes
 	await tween.finished
 	_hide_resources_panel()
@@ -143,12 +159,12 @@ func _animate_show_resources_panel() -> void:
 		element.modulate.a = 0.0
 		# Set pivot to left side for right-to-left expand effect
 		element.pivot_offset = Vector2(0, element.size.y / 2)
-	
+
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_OUT)
-	
+
 	# Scale up and fade in all panel elements simultaneously
 	for element in panel_elements:
 		tween.tween_property(element, "scale", Vector2(1.0, 1.0), ANIMATION_DURATION)
@@ -220,18 +236,15 @@ func _on_icon_mouse_entered(text: String, icon: Control) -> void:
 		call_deferred("_position_tooltip_at_mouse")
 	icon.scale = Vector2(1.08, 1.08)
 
-
 func _on_icon_mouse_exited(icon: Control) -> void:
 	if tooltip_panel:
 		tooltip_panel.visible = false
 	icon.scale = Vector2(1, 1)
 	last_hover_icon = null
 
-
 func _process(_delta: float) -> void:
 	if tooltip_panel and tooltip_panel.visible:
 		_position_tooltip_at_mouse()
-
 
 func _position_tooltip_at_mouse() -> void:
 	if not tooltip_panel:

@@ -156,8 +156,19 @@ func _set_card_visible(is_visible: bool) -> void:
 	if _dialogue_root:
 		_dialogue_root.visible = is_visible
 		_dialogue_root.process_mode = Node.PROCESS_MODE_ALWAYS
+		if is_visible:
+			_dialogue_root.mouse_filter = Control.MOUSE_FILTER_STOP
+			var _p = _dialogue_root.get_parent()
+			if _p:
+				_p.move_child(_dialogue_root, max(0, _p.get_child_count() - 1))
+		else:
+			_dialogue_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _backdrop:
 		_backdrop.visible = is_visible
+		if is_visible:
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+		else:
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _card_panel:
 		_card_panel.visible = is_visible
 	if _text_label:
