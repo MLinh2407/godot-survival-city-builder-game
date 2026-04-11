@@ -7,7 +7,7 @@ extends Node
 @onready var btn_pause: Button = $UILayer/HUD/SpeedControls/ButtonPause
 @onready var btn_1x: Button = $UILayer/HUD/SpeedControls/Button1x
 @onready var btn_2x: Button = $UILayer/HUD/SpeedControls/Button2x
-@onready var btn_settings: Button = $UILayer/HUD/SpeedControls/ButtonSettings
+@onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
 
 @onready var power_label: Label = $UILayer/HUD/PowerLabel
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
@@ -88,7 +88,7 @@ func _on_population_changed() -> void:
 		workers_label.text = str(p.available_workers)
 	if disease_label and p:
 		var sick = p.sick_count
-		disease_label.text = "Sick: " + str(sick)
+		disease_label.text = str(sick)
 		if sick > 0:
 			disease_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
 		else:

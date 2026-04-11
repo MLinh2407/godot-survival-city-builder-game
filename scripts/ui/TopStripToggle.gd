@@ -27,6 +27,8 @@ extends Node
 @onready var resource_divider_a = $"../ResourceDividerA"
 @onready var resource_divider_b = $"../ResourceDividerB"
 @onready var resource_divider_c = $"../ResourceDividerC"
+@onready var sick_icon = $"../SickIcon"
+@onready var disease_label = $"../DiseaseLabel"
 
 var is_panel_visible = true
 var panel_elements: Array
@@ -44,7 +46,8 @@ func _ready() -> void:
 		materials_icon, materials_label,
 		population_icon, population_label,
 		workers_icon, workers_label,
-		resource_divider_a, resource_divider_b, resource_divider_c
+		resource_divider_a, resource_divider_b, resource_divider_c, 
+		sick_icon, disease_label
 	]
 	
 	hide_button.pressed.connect(_on_hide_ui_pressed)
@@ -126,6 +129,8 @@ func _hide_resources_panel() -> void:
 	resource_divider_a.visible = false
 	resource_divider_b.visible = false
 	resource_divider_c.visible = false
+	sick_icon = false
+	disease_label = false
 
 func _show_resources_panel() -> void:
 	top_strip_panel.visible = true
@@ -152,3 +157,5 @@ func _show_resources_panel() -> void:
 	resource_divider_a.visible = true
 	resource_divider_b.visible = true
 	resource_divider_c.visible = true
+	sick_icon = true
+	disease_label = true
