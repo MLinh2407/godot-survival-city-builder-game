@@ -316,5 +316,7 @@ func load_game(filepath: String) -> void:
 				
 				if b_data.is_damaged:
 					building_sys.set_building_damaged(pos, true)
+				# Refresh visuals after load
+				building_sys.update_building_visual(pos)
 	
 	print("Game loaded successfully from: ", filepath)

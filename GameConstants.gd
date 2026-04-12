@@ -170,7 +170,7 @@ const MEMORIAL_WALL_SLOTS: int                  = 0    # permanent passive
 # MATERIALS
 # ══════════════════════════════════════════════════════════════════════════════
 
-const STARTING_MATERIALS: int                   = 0   
+const STARTING_MATERIALS: int                   = 80
 const MATERIALS_PASSIVE_MIN: int                = 1
 const MATERIALS_PASSIVE_MAX: int                = 2
 const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia sanctioned Day 24

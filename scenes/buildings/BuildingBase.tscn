@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://cpk3w4dhromgg"]
 
-[node name="BuildingBase" type="Node2D" unique_id=2121470720]
+[ext_resource type="Script" path="res://scripts/buildings/BuildingBase.gd" id="1"]
+
+[node name="BuildingBase" type="Node2D" unique_id=2121470720 script=ExtResource("1")]
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1951350025]

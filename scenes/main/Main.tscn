@@ -581,8 +581,10 @@ text = "Order"
 horizontal_alignment = 2
 
 [node name="BuildingInspector" parent="UILayer/HUD" unique_id=1507644054 node_paths=PackedStringArray("building_system") instance=ExtResource("3_ostsq")]
-offset_top = 635.0
-offset_bottom = 720.0
+offset_left = 9.0
+offset_top = 551.0
+offset_right = 152.0
+offset_bottom = 726.0
 building_system = NodePath("../../../BuildingSystem")
 
 [node name="DiseaseLabel" type="Label" parent="UILayer/HUD" unique_id=1406897139]

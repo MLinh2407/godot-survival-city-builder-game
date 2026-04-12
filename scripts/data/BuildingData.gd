@@ -77,6 +77,7 @@ var staffing_ratio: float:
 #   - Building damage (any building at 0 workers for BUILDING_DAMAGE_DAYS consecutive days)
 #   - Disease outbreak (Water Recycler at 0 workers for DISEASE_WATER_DELAY consecutive days)
 @export var days_unstaffed: int = 0
+@export var days_unstaffed_for_disease: int = 0
 
 # base_passive_morale:
 #   Applied REGARDLESS of staffing — just from the building existing and being powered.

@@ -104,7 +104,6 @@ func _process(delta: float) -> void:
 	if top_strip_glow:
 		var glow_alpha: float = 0.28 + 0.32 * (0.5 + 0.5 * sin(hud_fx_t * 2.8))
 		top_strip_glow.color = Color(0.42, 0.98, 1.0, glow_alpha)
-
 	if top_sweep_line:
 		var beam_width: float = 72.0
 		var left_margin: float = 8.0
