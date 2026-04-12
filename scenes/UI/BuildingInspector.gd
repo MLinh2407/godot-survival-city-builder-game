@@ -13,7 +13,8 @@ extends PanelContainer
 
 # We track the currently selected building so we can disconnect signals when we click away
 var current_building: BuildingData = null
-var last_selected_grid_pos: Vector2i = Vector2i(-1, -1)
+var last_selected_grid_pos: Vector2i = Vector2i.ZERO
+var has_last_selected_grid_pos: bool = false
 
 func _ready() -> void:
 	# Hide the panel by default
@@ -77,6 +78,7 @@ func _on_building_selected(b_data: BuildingData) -> void:
 
 	if current_building != null:
 		last_selected_grid_pos = current_building.grid_position
+		has_last_selected_grid_pos = true
 	
 	# 2. If we clicked the dirt (deselected), hide the UI
 	if current_building == null:
@@ -169,11 +171,11 @@ func _on_repair_pressed() -> void:
 	if (target_building == null or gm == null) and gm != null:
 		# Fallback: use the BuildingSystem's current selected grid pos to find the building
 		var sel_pos: Vector2i = gm.current_selected_grid_pos
-		if sel_pos != Vector2i(-1, -1) and gm.active_buildings.has(sel_pos):
+		if gm.has_selected_building and gm.active_buildings.has(sel_pos):
 			target_building = gm.active_buildings[sel_pos]
 			print("BuildingInspector: Fallback found building at", sel_pos, "->", target_building)
 
-	if target_building == null and gm != null and last_selected_grid_pos != Vector2i(-1, -1):
+	if target_building == null and gm != null and has_last_selected_grid_pos:
 		# Use the last selected pos if current selection cleared due to input ordering
 		if gm.active_buildings.has(last_selected_grid_pos):
 			target_building = gm.active_buildings[last_selected_grid_pos]
@@ -256,10 +258,10 @@ func _on_upgrade_pressed() -> void:
 	var gm = building_system
 	if (target_building == null or gm == null) and gm != null:
 		var sel_pos: Vector2i = gm.current_selected_grid_pos
-		if sel_pos != Vector2i(-1, -1) and gm.active_buildings.has(sel_pos):
+		if gm.has_selected_building and gm.active_buildings.has(sel_pos):
 			target_building = gm.active_buildings[sel_pos]
 
-	if target_building == null and gm != null and last_selected_grid_pos != Vector2i(-1, -1):
+	if target_building == null and gm != null and has_last_selected_grid_pos:
 		if gm.active_buildings.has(last_selected_grid_pos):
 			target_building = gm.active_buildings[last_selected_grid_pos]
 

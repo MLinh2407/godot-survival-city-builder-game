@@ -4,6 +4,7 @@ class_name BuildingBase
 @export var repair_cost: int = GameConstants.REPAIR_COST_BASE
 
 var grid_pos: Vector2i = Vector2i.ZERO
+var has_grid_pos: bool = false
 var tier1_tex: Texture2D = null
 var tier2_tex: Texture2D = null
 var damaged_tex: Texture2D = null
@@ -12,6 +13,7 @@ var damaged_tex: Texture2D = null
 
 func set_grid_pos(p: Vector2i) -> void:
     grid_pos = p
+    has_grid_pos = true
 
 func set_textures(t1: Texture2D, t2: Texture2D, damaged: Texture2D) -> void:
     # Store references; fall back to existing sprite texture for tier1
@@ -48,8 +50,8 @@ func repair() -> bool:
     if not ResourceManager or not ResourceManager.building_system:
         print("BuildingBase: Missing ResourceManager or BuildingSystem; cannot repair")
         return false
-    if grid_pos == Vector2i.ZERO or not ResourceManager.building_system.active_buildings.has(grid_pos):
-        print("BuildingBase: Invalid grid_pos", grid_pos, "— cannot repair")
+    if not has_grid_pos or not ResourceManager.building_system.active_buildings.has(grid_pos):
+        print("BuildingBase: Invalid grid_pos", grid_pos, "- cannot repair")
         return false
     var b_data = ResourceManager.building_system.active_buildings[grid_pos]
     if not b_data.is_damaged:
@@ -65,9 +67,9 @@ func repair() -> bool:
     print("BuildingBase: Materials after spending", ResourceManager.materials)
     # Audio handled by UI caller to provide immediate feedback
     # Inform BuildingSystem to mark repaired and refresh visuals
-    if ResourceManager and ResourceManager.building_system and grid_pos != Vector2i.ZERO:
+    if ResourceManager and ResourceManager.building_system and has_grid_pos:
         print("BuildingBase: Notifying BuildingSystem to clear damaged at", grid_pos)
         ResourceManager.building_system.set_building_damaged(grid_pos, false)
     else:
-        print("BuildingBase: Cannot notify BuildingSystem - missing ResourceManager or building_system or grid_pos=ZERO")
+        print("BuildingBase: Cannot notify BuildingSystem - missing ResourceManager or building_system or invalid grid_pos")
     return true

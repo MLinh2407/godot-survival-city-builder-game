@@ -8,7 +8,8 @@ signal building_state_changed(grid_pos: Vector2i)
 # signal building_damaged
 
 var active_buildings: Dictionary = {}
-var current_selected_grid_pos: Vector2i = Vector2i(-1, -1) 
+var current_selected_grid_pos: Vector2i = Vector2i.ZERO
+var has_selected_building: bool = false
 
 const T1_SPRITES = {
 	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T1_Buildings/Coal_Generator_T1.png"),
@@ -156,7 +157,7 @@ func _on_day_changed(_day: int) -> void:
 func _on_building_selected(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
-		
+	has_selected_building = true
 	current_selected_grid_pos = grid_pos
 	var b: BuildingData = active_buildings[grid_pos]
 	building_selected_data.emit(b)
@@ -165,7 +166,8 @@ func _on_building_selected(grid_pos: Vector2i) -> void:
 		% [b.building_name, b.workers_assigned, b.worker_capacity, int(b.staffing_ratio * 100)])
 
 func _on_building_deselected() -> void:
-	current_selected_grid_pos = Vector2i(-1, -1)
+	has_selected_building = false
+	current_selected_grid_pos = Vector2i.ZERO
 	building_selected_data.emit(null) # Tells the UI to hide itself
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -307,6 +309,8 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 # WORKER ASSIGNMENT
 # ══════════════════════════════════════════════════════════════════════════════
 func assign_worker() -> void:
+	if not has_selected_building:
+		return
 	if not active_buildings.has(current_selected_grid_pos):
 		return
 		
@@ -333,6 +337,8 @@ func assign_worker() -> void:
 
 # Called by UI +/- buttons to remove a worker
 func remove_worker(grid_pos: Vector2i) -> void:
+	if not has_selected_building:
+		return
 	if not active_buildings.has(grid_pos): return
 	var b_data = active_buildings[grid_pos]
 	

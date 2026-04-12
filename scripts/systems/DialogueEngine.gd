@@ -175,3 +175,12 @@ func _set_card_visible(is_visible: bool) -> void:
 		_text_label.visible = is_visible
 	if _choices_box:
 		_choices_box.visible = is_visible
+	# When visible, ensure the card grabs focus so keyboard and input target the card
+	if is_visible:
+		if _card_panel:
+			_card_panel.grab_focus()
+			# Prefer focusing the first choice button
+			if _choices_box and _choices_box.get_child_count() > 0:
+				var first_btn = _choices_box.get_child(0)
+				if first_btn and first_btn.has_method("grab_focus"):
+					first_btn.grab_focus()
