@@ -379,6 +379,21 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	# Centralized visual refresh handles tinting
 	update_building_visual(grid_pos)
 
+	# After repair, reset unstaffed counters so the building
+	# doesn't enter the damage path on the next day tick
+	if not is_damaged:
+		b_data.days_unstaffed = 0
+		b_data.days_unstaffed_for_disease = 0
+		print("BuildingSystem: Cleared damage at", grid_pos, "— reset days_unstaffed counters")
+
+		# Recalculate power so `is_powered` flags reflect restored output
+		if ResourceManager:
+			if ResourceManager.has_method("_recalculate_power"):
+				ResourceManager._recalculate_power()
+			elif ResourceManager.has_method("calculate_power"):
+				ResourceManager.calculate_power()
+			ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
+
 	# Notify listeners that this building's visual state changed
 	emit_signal("building_state_changed", grid_pos)
 
