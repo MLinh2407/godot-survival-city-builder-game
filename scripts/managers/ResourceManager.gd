@@ -2,6 +2,7 @@ extends Node
 
 signal resources_changed(power: float, food: float, morale: float, materials: int)
 signal threshold_warning(resource: String, is_critical: bool)
+signal power_out
 
 # ══════════════════════════════════════════════════════════════════════════════
 # REFERENCES
@@ -24,6 +25,7 @@ var max_food: float = GameConstants.STARTING_FOOD   # Increases when Ration Stor
 var morale: float   = GameConstants.STARTING_MORALE
 
 var materials: int  = GameConstants.STARTING_MATERIALS
+var days_starving: int = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INIT
@@ -65,6 +67,21 @@ func _on_day_changed(new_day: int) -> void:
 	if GameManager.rook_militia_sanctioned:
 		materials += GameConstants.MATERIALS_ROOK_MILITIA_BONUS
 	GameManager.materials = materials
+
+	# Track Starvation
+	if food <= 0.0:
+		days_starving += 1
+		if days_starving >= GameConstants.FOOD_STARVATION_DELAY:
+			# Externally tracked starvation deaths logic can connect to day_changed
+			pass
+	else:
+		days_starving = 0
+
+	# Immediate disease morale drain (extra, separate from _process_morale_tick)
+	if GameManager.population_state and GameManager.population_state.outbreak_active:
+		morale -= GameConstants.DISEASE_MORALE_DRAIN
+		morale = max(0.0, morale)
+		print("--- OUTBREAK: Morale drained by ", GameConstants.DISEASE_MORALE_DRAIN)
 
 	_sync_to_game_manager()
 	_check_thresholds()
@@ -248,6 +265,8 @@ func add_food(amount: float) -> void:
 
 func add_morale(amount: float) -> void:
 	morale = clampf(morale + amount, 0.0, 100.0)
+	if net_power <= 0.0:
+		power_out.emit()
 	resources_changed.emit(net_power, food, morale, materials)
 
 func add_materials(amount: int) -> void:
@@ -262,7 +281,6 @@ func consume_materials(amount: int) -> bool:
 		resources_changed.emit(net_power, food, morale, materials)
 		return true
 	return false
-
 
 func _on_slider_changed(_new_value: float) -> void:
 	if building_system == null:

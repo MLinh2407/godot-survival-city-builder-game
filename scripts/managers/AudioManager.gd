@@ -19,6 +19,28 @@ var sfx_click: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_cl
 var sfx_pause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
 var sfx_unpause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
 var sfx_slider_move: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
+var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
+var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
+
+func play_build_sfx(type: String) -> void:
+	match type:
+		"repair", "upgrade", "place":
+			# Use the place sound for instantaneous feedback on click
+			if ui_sfx_player and sfx_build_place:
+				ui_sfx_player.stream = sfx_build_place
+				ui_sfx_player.play()
+				# Stop after 4 seconds to limit playback
+				var t = get_tree().create_timer(2.5)
+				t.timeout.connect(Callable(ui_sfx_player, "stop"))
+		"finish":
+			# reserved for finish / completion sound
+			if ui_sfx_player and sfx_build_repair:
+				ui_sfx_player.stream = sfx_build_repair
+				ui_sfx_player.play()
+				var t2 = get_tree().create_timer(2.5)
+				t2.timeout.connect(Callable(ui_sfx_player, "stop"))
+		_:
+			return
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Keep playing when paused

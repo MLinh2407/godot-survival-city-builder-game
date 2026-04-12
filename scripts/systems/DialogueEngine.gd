@@ -156,11 +156,31 @@ func _set_card_visible(is_visible: bool) -> void:
 	if _dialogue_root:
 		_dialogue_root.visible = is_visible
 		_dialogue_root.process_mode = Node.PROCESS_MODE_ALWAYS
+		if is_visible:
+			_dialogue_root.mouse_filter = Control.MOUSE_FILTER_STOP
+			var _p = _dialogue_root.get_parent()
+			if _p:
+				_p.move_child(_dialogue_root, max(0, _p.get_child_count() - 1))
+		else:
+			_dialogue_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _backdrop:
 		_backdrop.visible = is_visible
+		if is_visible:
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+		else:
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _card_panel:
 		_card_panel.visible = is_visible
 	if _text_label:
 		_text_label.visible = is_visible
 	if _choices_box:
 		_choices_box.visible = is_visible
+	# When visible, ensure the card grabs focus so keyboard and input target the card
+	if is_visible:
+		if _card_panel:
+			_card_panel.grab_focus()
+			# Prefer focusing the first choice button
+			if _choices_box and _choices_box.get_child_count() > 0:
+				var first_btn = _choices_box.get_child(0)
+				if first_btn and first_btn.has_method("grab_focus"):
+					first_btn.grab_focus()

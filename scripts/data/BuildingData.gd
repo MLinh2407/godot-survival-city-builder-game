@@ -49,9 +49,14 @@ enum BuildingCategory {
 # Output scales proportionally with staffing
 var staffing_ratio: float:
     get:
-        if worker_capacity == 0:
-            return 1.0   # Passive buildings always run at full
-        return float(workers_assigned) / float(worker_capacity)
+        var ratio: float = 1.0
+        if worker_capacity > 0:
+            ratio = float(workers_assigned) / float(worker_capacity)
+            
+        if ResourceManager.morale < GameConstants.MORALE_EFFICIENCY_THRESHOLD:
+            ratio *= GameConstants.MORALE_EFFICIENCY_MULTIPLIER
+            
+        return ratio
 
 # --- Upgrade state ---
 @export var is_upgraded: bool = false
@@ -72,6 +77,7 @@ var staffing_ratio: float:
 #   - Building damage (any building at 0 workers for BUILDING_DAMAGE_DAYS consecutive days)
 #   - Disease outbreak (Water Recycler at 0 workers for DISEASE_WATER_DELAY consecutive days)
 @export var days_unstaffed: int = 0
+@export var days_unstaffed_for_disease: int = 0
 
 # base_passive_morale:
 #   Applied REGARDLESS of staffing — just from the building existing and being powered.

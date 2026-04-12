@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
+[ext_resource type="Texture2D" uid="uid://blrgj6k5l8oud" path="res://assets/ui/hud/icons/settings_button.png" id="6_roob6"]
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
 [ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
@@ -16,6 +17,7 @@
 [ext_resource type="PackedScene" uid="uid://dkhketv733v7" path="res://scenes/buildings/RationStore.tscn" id="9_u8lgh"]
 [ext_resource type="Texture2D" uid="uid://3a8oy4vmjy8o" path="res://assets/ui/hud/icons/hide_ui.png" id="10_hide_ui_icon"]
 [ext_resource type="PackedScene" uid="uid://bqbl06b8lenji" path="res://scenes/buildings/WaterRecycler.tscn" id="10_hjnkw"]
+[ext_resource type="Texture2D" uid="uid://d1ksloq81owmi" path="res://assets/ui/hud/icons/sick.png" id="11_enl7a"]
 [ext_resource type="PackedScene" uid="uid://clui1cyr5pahv" path="res://scenes/buildings/MedClinic.tscn" id="11_rikml"]
 [ext_resource type="Texture2D" uid="uid://b6glapr4i075r" path="res://assets/ui/hud/icons/show_ui.png" id="11_show_ui_icon"]
 [ext_resource type="Script" uid="uid://ch6q214f564fo" path="res://scripts/ui/TopStripToggle.gd" id="12_toggle_script"]
@@ -197,7 +199,7 @@ z_index = -2
 offset_left = 525.0
 offset_top = 9.0
 offset_right = 1235.0
-offset_bottom = 91.0
+offset_bottom = 106.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_top_strip")
 
 [node name="TopStripGlow" type="ColorRect" parent="UILayer/HUD" unique_id=1407187627]
@@ -229,7 +231,7 @@ z_index = -1
 offset_left = 739.0
 offset_top = 21.0
 offset_right = 740.0
-offset_bottom = 88.0
+offset_bottom = 101.0
 color = Color(0.13, 0.78, 0.95, 0.32)
 
 [node name="ResourceDividerB" type="ColorRect" parent="UILayer/HUD" unique_id=1962284232]
@@ -237,7 +239,7 @@ z_index = -1
 offset_left = 949.0
 offset_top = 22.0
 offset_right = 950.0
-offset_bottom = 87.0
+offset_bottom = 102.0
 color = Color(0.13, 0.78, 0.95, 0.32)
 
 [node name="ResourceDividerC" type="ColorRect" parent="UILayer/HUD" unique_id=1997633371]
@@ -245,7 +247,7 @@ z_index = -1
 offset_left = 1159.0
 offset_top = 22.0
 offset_right = 1160.0
-offset_bottom = 88.0
+offset_bottom = 102.0
 color = Color(0.13, 0.78, 0.95, 0.32)
 
 [node name="TopSweepLine" type="ColorRect" parent="UILayer/HUD" unique_id=1620239451]
@@ -312,25 +314,25 @@ color = Color(0.74, 0.46, 1, 1)
 
 [node name="MaterialsIcon" type="TextureRect" parent="UILayer/HUD" unique_id=1109217882]
 offset_left = 1166.0
-offset_top = 26.0
-offset_right = 1180.0
-offset_bottom = 40.0
+offset_top = 84.0
+offset_right = 1181.0
+offset_bottom = 99.0
 texture = ExtResource("7_tool_icon")
 expand_mode = 1
 
 [node name="PopulationIcon" type="TextureRect" parent="UILayer/HUD" unique_id=175063680]
 offset_left = 1165.0
-offset_top = 46.0
+offset_top = 22.0
 offset_right = 1180.0
-offset_bottom = 61.0
+offset_bottom = 37.0
 texture = ExtResource("8_user_icon")
 expand_mode = 1
 
 [node name="WorkersIcon" type="TextureRect" parent="UILayer/HUD" unique_id=616157761]
 offset_left = 1166.0
-offset_top = 67.0
-offset_right = 1180.0
-offset_bottom = 81.0
+offset_top = 43.0
+offset_right = 1181.0
+offset_bottom = 58.0
 texture = ExtResource("9_helmet_icon")
 expand_mode = 1
 
@@ -350,7 +352,7 @@ offset_right = 196.0
 offset_bottom = 59.0
 theme_override_colors/font_color = Color(0.45, 0.94, 1, 0.95)
 theme_override_font_sizes/font_size = 15
-text = "24:00"
+text = "00:00"
 
 [node name="SpeedLabel" type="Label" parent="UILayer/HUD" unique_id=987654327]
 offset_left = 17.0
@@ -392,6 +394,20 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "2x"
+
+[node name="ButtonSettings" type="Button" parent="UILayer/HUD" unique_id=987654332]
+offset_left = 1243.0
+offset_top = 50.0
+offset_right = 1273.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+icon = ExtResource("6_roob6")
+icon_alignment = 1
+expand_icon = true
+script = ExtResource("2_nha0i")
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 549.0
@@ -452,29 +468,29 @@ show_percentage = false
 
 [node name="PopulationLabel" type="Label" parent="UILayer/HUD" unique_id=1843654512]
 offset_left = 1185.0
-offset_top = 44.0
-offset_right = 1211.0
-offset_bottom = 64.0
+offset_top = 19.0
+offset_right = 1228.0
+offset_bottom = 41.0
 theme_override_colors/font_color = Color(0.88, 0.9, 0.94, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 15
 text = "847"
 
 [node name="WorkersLabel" type="Label" parent="UILayer/HUD" unique_id=515740172]
 offset_left = 1186.0
-offset_top = 65.0
-offset_right = 1202.0
-offset_bottom = 85.0
+offset_top = 40.0
+offset_right = 1223.0
+offset_bottom = 62.0
 theme_override_colors/font_color = Color(0.53, 0.91, 1, 0.95)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 15
 text = "68"
 
 [node name="MaterialsLabel" type="Label" parent="UILayer/HUD" unique_id=1892653027]
 offset_left = 1186.0
-offset_top = 23.0
-offset_right = 1199.0
-offset_bottom = 43.0
+offset_top = 81.0
+offset_right = 1225.0
+offset_bottom = 103.0
 theme_override_colors/font_color = Color(0.99, 0.75, 0.29, 0.95)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 15
 text = "0"
 
 [node name="ResourcePanelToggle" type="Node" parent="UILayer/HUD" unique_id=1234567890]
@@ -565,9 +581,27 @@ text = "Order"
 horizontal_alignment = 2
 
 [node name="BuildingInspector" parent="UILayer/HUD" unique_id=1507644054 node_paths=PackedStringArray("building_system") instance=ExtResource("3_ostsq")]
-offset_top = 635.0
-offset_bottom = 720.0
+offset_left = 9.0
+offset_top = 551.0
+offset_right = 152.0
+offset_bottom = 726.0
 building_system = NodePath("../../../BuildingSystem")
+
+[node name="DiseaseLabel" type="Label" parent="UILayer/HUD" unique_id=1406897139]
+offset_left = 1186.0
+offset_top = 60.0
+offset_right = 1239.0
+offset_bottom = 82.0
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="SickIcon" type="TextureRect" parent="UILayer/HUD" unique_id=1838582658]
+offset_left = 1166.0
+offset_top = 63.0
+offset_right = 1181.0
+offset_bottom = 78.0
+texture = ExtResource("11_enl7a")
+expand_mode = 1
 
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
 visible = false

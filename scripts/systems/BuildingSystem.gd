@@ -3,12 +3,49 @@ class_name BuildingSystem
 
 signal workers_changed
 signal building_selected_data(b_data: BuildingData) 
+signal building_state_changed(grid_pos: Vector2i)
 # signal building_upgraded
 # signal building_damaged
 
 var active_buildings: Dictionary = {}
-var current_selected_grid_pos: Vector2i = Vector2i(-1, -1) 
+var current_selected_grid_pos: Vector2i = Vector2i.ZERO
+var has_selected_building: bool = false
 
+const T1_SPRITES = {
+	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T1_Buildings/Coal_Generator_T1.png"),
+	BuildingData.BuildingType.HYDROPONIC_BAY: preload("res://assets/buildings/T1_Buildings/Hydroponic_Bay_T1.png"),
+	BuildingData.BuildingType.SHELTER_BLOCK: preload("res://assets/buildings/T1_Buildings/Shelter_Block_T1.png"),
+	BuildingData.BuildingType.GEOTHERMAL_TAP: preload("res://assets/buildings/T1_Buildings/Geothermal_Tap_T1.png"),
+	BuildingData.BuildingType.RATION_STORE: preload("res://assets/buildings/T1_Buildings/Ration_Store_T1.png"),
+	BuildingData.BuildingType.WATER_RECYCLER: preload("res://assets/buildings/T1_Buildings/Water_Recycler_T1.png"),
+	BuildingData.BuildingType.MED_CLINIC: preload("res://assets/buildings/T1_Buildings/Med_Clinic_T1.png"),
+	BuildingData.BuildingType.ARCHIVE_HALL: preload("res://assets/buildings/T1_Buildings/Archive_Hall_T1.png"),
+	BuildingData.BuildingType.MEMORIAL_WALL: preload("res://assets/buildings/T1_Buildings/Memorial_Wall.png")
+}
+
+const DAMAGED_SPRITES = {
+	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/Damaged_Buildings/Coal_Generator_Damaged.png"),
+	BuildingData.BuildingType.HYDROPONIC_BAY: preload("res://assets/buildings/Damaged_Buildings/Hydroponic_Bay_Damaged.png"),
+	BuildingData.BuildingType.SHELTER_BLOCK: preload("res://assets/buildings/Damaged_Buildings/Shelter_Block_Damaged.png"),
+	BuildingData.BuildingType.GEOTHERMAL_TAP: preload("res://assets/buildings/Damaged_Buildings/Geothermal_Tap_Damaged.png"),
+	BuildingData.BuildingType.RATION_STORE: preload("res://assets/buildings/Damaged_Buildings/Ration_Store_Damaged.png"),
+	BuildingData.BuildingType.WATER_RECYCLER: preload("res://assets/buildings/Damaged_Buildings/Water_Recycler_Damaged.png"),
+	BuildingData.BuildingType.MED_CLINIC: preload("res://assets/buildings/Damaged_Buildings/Med_Clinic_Damaged.png"),
+	BuildingData.BuildingType.ARCHIVE_HALL: preload("res://assets/buildings/Damaged_Buildings/Archive_Hall_Damaged.png")
+}
+
+const T2_SPRITES = {
+	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T2_Buildings/Coal_Generator_T2.png"),
+	BuildingData.BuildingType.HYDROPONIC_BAY: preload("res://assets/buildings/T2_Buildings/Hydroponic_Bay_T2.png"),
+	BuildingData.BuildingType.SHELTER_BLOCK: preload("res://assets/buildings/T2_Buildings/Shelter_Block_T2.png"),
+	BuildingData.BuildingType.GEOTHERMAL_TAP: preload("res://assets/buildings/T2_Buildings/Geothermal_Tap_T2.png"),
+	BuildingData.BuildingType.RATION_STORE: preload("res://assets/buildings/T2_Buildings/Ration_Store_T2.png"),
+	BuildingData.BuildingType.WATER_RECYCLER: preload("res://assets/buildings/T2_Buildings/Water_Recycler_T2.png"),
+	BuildingData.BuildingType.MED_CLINIC: preload("res://assets/buildings/T2_Buildings/Med_Clinic_T2.png"),
+	BuildingData.BuildingType.ARCHIVE_HALL: preload("res://assets/buildings/T2_Buildings/Archive_Hall_T2.png")
+}
+
+# We need to listen to the GridManager's signals
 @export var grid_manager: Node2D 
 
 var floating_text_scene = preload("res://scenes/UI/FloatingText.tscn")
@@ -28,6 +65,40 @@ func _ready() -> void:
 	PopulationManager.register_building_system(self)
 	TimeManager.day_changed.connect(_on_day_changed)
 
+	# React to resource changes so power dimming updates instantly
+	if ResourceManager:
+		ResourceManager.resources_changed.connect(Callable(self, "_on_resources_changed"))
+
+	# Ensure visuals are correct for any buildings created during load
+	# Recalculate power and apply states to any placed buildings
+	if ResourceManager:
+		if ResourceManager.has_method("calculate_power"):
+			ResourceManager.calculate_power()
+		else:
+			ResourceManager._recalculate_power()
+
+		if grid_manager:
+			for pos in active_buildings.keys():
+				# If a placed scene node exists, give it its textures and grid pos
+				if grid_manager.occupied_cells.has(pos):
+					var placed_node = grid_manager.occupied_cells[pos]
+					var bdata = active_buildings[pos]
+					if placed_node and placed_node.has_method("set_textures"):
+						var t1 = T1_SPRITES.get(bdata.building_type, null)
+						var t2 = T2_SPRITES.get(bdata.building_type, null)
+						var d = DAMAGED_SPRITES.get(bdata.building_type, null)
+						placed_node.set_textures(t1, t2, d)
+						if placed_node.has_method("set_grid_pos"):
+							placed_node.set_grid_pos(pos)
+						# Set visual state based on data
+						if bdata.is_damaged and placed_node.has_method("set_building_state"):
+							placed_node.set_building_state("damaged")
+						elif bdata.is_upgraded and placed_node.has_method("set_building_state"):
+							placed_node.set_building_state("tier2")
+						elif placed_node.has_method("set_building_state"):
+							placed_node.set_building_state("tier1")
+				# Ensure centralized tint selection is applied
+				update_building_visual(pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DAILY TICK — tracks unstaffed days for damage and Water Recycler disease
@@ -41,21 +112,44 @@ func _on_day_changed(_day: int) -> void:
 		if b.worker_capacity == 0:
 			continue
 
+		# Track unstaffed days
 		if b.workers_assigned == 0:
 			b.days_unstaffed += 1
 
 			# Water Recycler: trigger disease after DISEASE_WATER_DELAY consecutive unstaffed days
 			if b.building_type == BuildingData.BuildingType.WATER_RECYCLER:
-				if b.days_unstaffed >= GameConstants.DISEASE_WATER_DELAY:
+				b.days_unstaffed_for_disease += 1
+				if b.days_unstaffed_for_disease >= GameConstants.DISEASE_WATER_DELAY:
 					PopulationManager.trigger_outbreak()
-					b.days_unstaffed = 0   # Reset so it doesn't fire every day
+					b.days_unstaffed_for_disease = 0   # Reset disease-specific counter so it doesn't fire every day
 
 			# Building damage: any building at 0 workers for BUILDING_DAMAGE_DAYS
 			if b.days_unstaffed >= GameConstants.BUILDING_DAMAGE_DAYS and not b.is_damaged:
-				b.is_damaged = true
+				# Log resource state and building output before applying damage
+				if ResourceManager:
+					print("[DBG] Damage BEFORE at %s | net_power=%.2f power_capacity=%.2f power_draw=%.2f materials=%d food=%.2f morale=%.2f" % [str(grid_pos), ResourceManager.net_power, ResourceManager.power_capacity, ResourceManager.power_draw, ResourceManager.materials, ResourceManager.food, ResourceManager.morale])
+					var before_out = get_effective_output(grid_pos)
+					print("[DBG] Building BEFORE output: %s" % [str(before_out)])
+
+				# Apply damage
+				set_building_damaged(grid_pos, true)
 				print("BuildingSystem: [%s] has become damaged from neglect." % b.building_name)
+
+				# Recalculate resources so post-damage values are accurate for logs
+				if ResourceManager:
+					if ResourceManager.has_method("_recalculate_power"):
+						ResourceManager._recalculate_power()
+					elif ResourceManager.has_method("calculate_power"):
+						ResourceManager.calculate_power()
+					# Emit a resources update to keep HUD in sync
+					ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
+					print("[DBG] Damage AFTER at %s | net_power=%.2f power_capacity=%.2f power_draw=%.2f materials=%d food=%.2f morale=%.2f" % [str(grid_pos), ResourceManager.net_power, ResourceManager.power_capacity, ResourceManager.power_draw, ResourceManager.materials, ResourceManager.food, ResourceManager.morale])
+					var after_out = get_effective_output(grid_pos)
+					print("[DBG] Building AFTER output: %s" % [str(after_out)])
 		else:
-			b.days_unstaffed = 0   # Reset counter when staffed
+			# Reset counters when staffed
+			b.days_unstaffed = 0
+			b.days_unstaffed_for_disease = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SELECTION
@@ -63,7 +157,7 @@ func _on_day_changed(_day: int) -> void:
 func _on_building_selected(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
-		
+	has_selected_building = true
 	current_selected_grid_pos = grid_pos
 	var b: BuildingData = active_buildings[grid_pos]
 	building_selected_data.emit(b)
@@ -72,7 +166,8 @@ func _on_building_selected(grid_pos: Vector2i) -> void:
 		% [b.building_name, b.workers_assigned, b.worker_capacity, int(b.staffing_ratio * 100)])
 
 func _on_building_deselected() -> void:
-	current_selected_grid_pos = Vector2i(-1, -1)
+	has_selected_building = false
+	current_selected_grid_pos = Vector2i.ZERO
 	building_selected_data.emit(null) # Tells the UI to hide itself
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -158,8 +253,39 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
 			
 	active_buildings[grid_pos] = new_data
+	# Connect staffing_changed for this instance so visuals update on worker assignment
+	new_data.staffing_changed.connect(Callable(self, "_on_staffing_changed").bind(grid_pos))
 	print("BuildingSystem: Registered [%s] at %s | Slots: %d | Base power: %.1f | Base food: %.1f" \
 		% [new_data.building_name, grid_pos, new_data.worker_capacity, new_data.base_production_power, new_data.base_production_food])
+
+	# Ensure visuals are correct on placement
+	update_building_visual(grid_pos)
+
+	# Recalculate power so `is_powered` flags are up-to-date and visuals reflect power state
+	if ResourceManager:
+		if ResourceManager.has_method("_recalculate_power"):
+			# Use internal recalculation function if available to avoid extra emits
+			ResourceManager._recalculate_power()
+		else:
+			if ResourceManager.has_method("calculate_power"):
+				ResourceManager.calculate_power()
+
+	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
+		var placed_node = grid_manager.occupied_cells[grid_pos]
+		if placed_node and placed_node.has_method("set_textures"):
+			var t1 = T1_SPRITES.get(new_data.building_type, null)
+			var t2 = T2_SPRITES.get(new_data.building_type, null)
+			var d = DAMAGED_SPRITES.get(new_data.building_type, null)
+			placed_node.set_textures(t1, t2, d)
+			if placed_node.has_method("set_grid_pos"):
+				placed_node.set_grid_pos(grid_pos)
+			# Set initial visual state based on data
+			if new_data.is_damaged and placed_node.has_method("set_building_state"):
+				placed_node.set_building_state("damaged")
+			elif new_data.is_upgraded and placed_node.has_method("set_building_state"):
+				placed_node.set_building_state("tier2")
+			elif placed_node.has_method("set_building_state"):
+				placed_node.set_building_state("tier1")
 
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
@@ -183,6 +309,8 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 # WORKER ASSIGNMENT
 # ══════════════════════════════════════════════════════════════════════════════
 func assign_worker() -> void:
+	if not has_selected_building:
+		return
 	if not active_buildings.has(current_selected_grid_pos):
 		return
 		
@@ -207,18 +335,19 @@ func assign_worker() -> void:
 	print("BuildingSystem: Assigned worker to [%s] | %d/%d | Output: %d%% | Pool left: %d" \
 		% [b_data.building_name, b_data.workers_assigned, b_data.worker_capacity, int(b_data.staffing_ratio * 100), GameManager.available_workers])
 
-func remove_worker() -> void:
-	if not active_buildings.has(current_selected_grid_pos):
+# Called by UI +/- buttons to remove a worker
+func remove_worker(grid_pos: Vector2i) -> void:
+	if not has_selected_building:
 		return
-		
-	var b_data: BuildingData = active_buildings[current_selected_grid_pos]
+	if not active_buildings.has(grid_pos): return
+	var b_data = active_buildings[grid_pos]
 	
 	if b_data.workers_assigned <= 0:
 		print("BuildingSystem: [%s] has no workers to remove." % b_data.building_name)
 		return
-		
+	
 	b_data.workers_assigned                        -= 1
-	spawn_floating_text(current_selected_grid_pos, "-1 Worker", Color.RED)
+	spawn_floating_text(grid_pos, "-1 Worker", Color.RED)
 	GameManager.available_workers                  += 1
 	GameManager.population_state.available_workers += 1
 	
@@ -228,6 +357,47 @@ func remove_worker() -> void:
 	print("BuildingSystem: Removed worker from [%s] | %d/%d | Output: %d%% | Pool left: %d" \
 		% [b_data.building_name, b_data.workers_assigned, b_data.worker_capacity, int(b_data.staffing_ratio * 100), GameManager.available_workers])
 
+# Call this to change the damaged state of a building and swap its sprite
+func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
+	if not active_buildings.has(grid_pos): return
+	var b_data = active_buildings[grid_pos]
+	b_data.is_damaged = is_damaged
+	# Inform scene instance to update its visual
+	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
+		var node = grid_manager.occupied_cells[grid_pos]
+		if node and node.has_method("set_building_state"):
+			if is_damaged:
+				node.set_building_state("damaged")
+			else:
+				# restore to upgraded state if applicable
+				var b = active_buildings[grid_pos]
+				if b.is_upgraded:
+					node.set_building_state("tier2")
+				else:
+					node.set_building_state("tier1")
+
+	# Centralized visual refresh handles tinting
+	update_building_visual(grid_pos)
+
+	# After repair, reset unstaffed counters so the building
+	# doesn't enter the damage path on the next day tick
+	if not is_damaged:
+		b_data.days_unstaffed = 0
+		b_data.days_unstaffed_for_disease = 0
+		print("BuildingSystem: Cleared damage at", grid_pos, "— reset days_unstaffed counters")
+
+		# Recalculate power so `is_powered` flags reflect restored output
+		if ResourceManager:
+			if ResourceManager.has_method("_recalculate_power"):
+				ResourceManager._recalculate_power()
+			elif ResourceManager.has_method("calculate_power"):
+				ResourceManager.calculate_power()
+			ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
+
+	# Notify listeners that this building's visual state changed
+	emit_signal("building_state_changed", grid_pos)
+
+	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
 # ══════════════════════════════════════════════════════════════════════════════
 # OUTPUT QUERY 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -269,6 +439,57 @@ func get_all_outputs() -> Array[Dictionary]:
 	return results
 
 # ══════════════════════════════════════════════════════════════════════════════
+# VISUAL UPDATE: centralised sprite selection and tinting
+func update_building_visual(grid_pos: Vector2i) -> void:
+	if not active_buildings.has(grid_pos): return
+	var b = active_buildings[grid_pos]
+	if not grid_manager: return
+	if not grid_manager.occupied_cells.has(grid_pos): return
+
+	var node = grid_manager.occupied_cells[grid_pos]
+	var sprite: Sprite2D = node.get_node_or_null("Sprite2D")
+	if not sprite:
+		return
+
+	# Texture selection
+	var chosen_texture: Texture2D = null
+	if b.is_damaged and DAMAGED_SPRITES.has(b.building_type):
+		chosen_texture = DAMAGED_SPRITES[b.building_type]
+	elif b.is_upgraded and T2_SPRITES.has(b.building_type):
+		chosen_texture = T2_SPRITES[b.building_type]
+	elif T1_SPRITES.has(b.building_type):
+		chosen_texture = T1_SPRITES[b.building_type]
+	if chosen_texture != null:
+		sprite.texture = chosen_texture
+
+	# Power-based dimming
+	var unpowered_color: Color = Color(0.45, 0.45, 0.45, 1.0)
+	var normal_color: Color = Color(1, 1, 1, 1)
+	var power_ok: bool = b.is_powered or b.base_production_power > 0.0
+	var power_color: Color = normal_color if power_ok else unpowered_color
+
+	# Staffing tint: subtle boost when well-staffed
+	var s := clampf(b.staffing_ratio, 0.0, 1.0)
+	var staff_color: Color = Color(1.0 - 0.08 * (1.0 - s), 1.0 - 0.05 * (1.0 - s), 1.0, 1.0)
+
+	# Final modulate mixes power and staff influence
+	var t := s * 0.5
+	sprite.modulate = Color(
+		power_color.r + (staff_color.r - power_color.r) * t,
+		power_color.g + (staff_color.g - power_color.g) * t,
+		power_color.b + (staff_color.b - power_color.b) * t,
+		power_color.a + (staff_color.a - power_color.a) * t
+	)
+
+func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
+	# Refresh visuals for all buildings
+	for pos in active_buildings.keys():
+		update_building_visual(pos)
+
+func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
+	update_building_visual(grid_pos)
+
+# ══════════════════════════════════════════════════════════════════════════════
 # QUERY HELPERS — called by ResourceManager and PopulationManager
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -289,6 +510,25 @@ func get_med_clinic_staffing_ratio() -> float:
 			if b.is_powered and b.worker_capacity > 0:
 				return b.staffing_ratio
 	return 0.0
+
+func get_workers_for_building_type(type: BuildingData.BuildingType) -> int:
+	var total: int = 0
+	for pos in active_buildings:
+		if active_buildings[pos].building_type == type:
+			total += active_buildings[pos].workers_assigned
+	return total
+
+func has_building(type: BuildingData.BuildingType) -> bool:
+	for pos in active_buildings:
+		if active_buildings[pos].building_type == type:
+			return true
+	return false
+
+func is_building_upgraded(type: BuildingData.BuildingType) -> bool:
+	for pos in active_buildings:
+		if active_buildings[pos].building_type == type and active_buildings[pos].is_upgraded:
+			return true
+	return false
 
 # Returns true if at least one Water Recycler has workers assigned and is powered
 func is_water_recycler_staffed() -> bool:
@@ -321,4 +561,4 @@ func _input(event: InputEvent) -> void:
 	if event.keycode == KEY_EQUAL:   # '+' key
 		assign_worker()
 	if event.keycode == KEY_MINUS:   # '-' key
-		remove_worker()
+		remove_worker(current_selected_grid_pos)
