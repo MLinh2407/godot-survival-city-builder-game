@@ -134,6 +134,11 @@ func _on_day_changed(_day: int) -> void:
 				# Apply damage
 				set_building_damaged(grid_pos, true)
 				print("BuildingSystem: [%s] has become damaged from neglect." % b.building_name)
+				JournalManager.add_entry(
+					b.building_name + " has fallen into disrepair. " +
+					"No one has been assigned there in days.",
+					JournalManager.TYPE_DAMAGE
+				)
 
 				# Recalculate resources so post-damage values are accurate for logs
 				if ResourceManager:

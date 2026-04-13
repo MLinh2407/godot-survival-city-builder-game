@@ -136,6 +136,13 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		pop_data.total_population = maxi(0, pop_data.total_population - deaths)
 		colonist_died.emit(deaths, "Disease")
 		print("💀 DEATH: ", deaths, " colonists died from Disease.")
+
+		JournalManager.add_entry(
+			str(deaths) + " colonist" + ("s" if deaths > 1 else "") +
+			" died from disease. The outbreak continues.",
+			JournalManager.TYPE_DEATH_COLONIST
+		)
+		AudioManager.play_event_sfx("death_colonist")
 		
 		# GAME OVER CATCH
 		if pop_data.total_population == 0:
@@ -183,6 +190,14 @@ func _process_desertion_tick(pop_data: PopulationStateData) -> void:
 			worker_deserted.emit(deserters)
 			print("🏃 DESERTION: ", deserters, " workers deserted due to low morale.")
 			
+			JournalManager.add_entry(
+				"People are leaving. " + str(deserters) +
+				" worker" + ("s" if deserters > 1 else "") +
+				" walked out during the night.",
+				JournalManager.TYPE_DESERTION
+			)
+			AudioManager.play_event_sfx("desertion")
+
 			if pop_data.total_population == 0:
 				population_zero.emit()
 
@@ -199,6 +214,10 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 			GameManager.colonist_yuna.is_alive = false
 			GameManager.yuna_alive = false 
 			character_died.emit("Yuna")
+			JournalManager.add_entry(
+				"Yuna Tran is gone. She kept working long after she should have stopped.",
+				JournalManager.TYPE_DEATH_NAMED
+			)
 			
 	# VASQUEZ'S DEATH CHECK
 	if day == GameConstants.VASQUEZ_DEATH_DAY and GameManager.colonist_vasquez.is_alive:
@@ -208,6 +227,11 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 				GameManager.colonist_vasquez.is_alive = false
 				GameManager.vasquez_alive = false
 				character_died.emit("Vasquez")
+				JournalManager.add_entry(
+				"The radio from Grid-9 has gone silent. " +
+				"Vasquez's last transmission was three days ago.",
+				JournalManager.TYPE_DEATH_NAMED
+			)
 			
 	# ROOK'S DEATH CHECK
 	if day == GameConstants.ROOK_RECONCILIATION_DEADLINE and GameManager.colonist_rook.is_alive:
@@ -215,6 +239,10 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 			GameManager.colonist_rook.is_alive = false
 			GameManager.rook_alive = false
 			character_died.emit("Rook")
+			JournalManager.add_entry(
+				"Rook is gone. Something between us closed and I waited too long to address it.",
+				JournalManager.TYPE_DEATH_NAMED
+			)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
@@ -230,6 +258,14 @@ func _remove_colonists(pop_data: PopulationStateData, amount: int, cause: String
 	colonist_died.emit(amount, cause)
 	print("💀 DEATH: ", amount, " colonists died from ", cause)
 	
+	# Journal entry + SFX for every colonist death regardless of cause
+	JournalManager.add_entry(
+		str(amount) + " colonist" + ("s" if amount > 1 else "") +
+		" lost to " + cause.to_lower() + ".",
+		JournalManager.TYPE_DEATH_COLONIST
+	)
+	AudioManager.play_event_sfx("death_colonist")
+
 	if pop_data.total_population == 0:
 		population_zero.emit()
 

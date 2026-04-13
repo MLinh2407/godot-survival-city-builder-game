@@ -213,7 +213,8 @@ func save_game(filename: String) -> void:
 			"materials": mat,
 			"morale": mor
 		},
-		"buildings": serialized_buildings
+		"buildings": serialized_buildings,
+		"journal": JournalManager.get_all_entries()
 	}
 	
 	var file_path = SAVES_DIR + filename
@@ -322,4 +323,12 @@ func load_game(filepath: String) -> void:
 				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
 	
+	# Restore journal entries
+	JournalManager.clear()
+	var journal_data: Array = data.get("journal", [])
+	for entry in journal_data:
+		if typeof(entry) == TYPE_DICTIONARY:
+			JournalManager.entries.append(entry)
+	print("Journal restored: ", JournalManager.entries.size(), " entries.")
+
 	print("Game loaded successfully from: ", filepath)

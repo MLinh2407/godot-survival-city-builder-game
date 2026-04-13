@@ -22,6 +22,9 @@ var sfx_slider_move: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_sli
 var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
 var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
 
+var sfx_death_colonist: AudioStream = null   
+var sfx_desertion: AudioStream = null       
+
 func play_build_sfx(type: String) -> void:
 	match type:
 		"repair", "upgrade", "place":
@@ -76,6 +79,14 @@ func _ready() -> void:
 	# Start Background Track 1
 	play_music(track_1)
 
+	# Event SFX
+	var death_path := "res://assets/audio/sfx/events/sfx_event_death_colonist.mp3"
+	var deser_path := "res://assets/audio/sfx/events/sfx_event_desertion.mp3"
+	if ResourceLoader.exists(death_path):
+		sfx_death_colonist = load(death_path)
+	if ResourceLoader.exists(deser_path):
+		sfx_desertion = load(deser_path)
+
 func play_critical_warning() -> void:
 	if critical_warning_player and critical_warning_player.stream and not critical_warning_player.playing:
 		critical_warning_player.play()
@@ -100,6 +111,18 @@ func play_ui_sfx(type: String) -> void:
 		_:
 			return
 			
+func play_event_sfx(type: String) -> void:
+	match type:
+		"death_colonist":
+			if ui_sfx_player and sfx_death_colonist:
+				ui_sfx_player.stream = sfx_death_colonist
+				ui_sfx_player.play()
+		"desertion":
+			if ui_sfx_player and sfx_desertion:
+				ui_sfx_player.stream = sfx_desertion
+				ui_sfx_player.play()
+		_:
+			return
 
 func play_music(stream: AudioStream) -> void:
 	if is_playing_a:
