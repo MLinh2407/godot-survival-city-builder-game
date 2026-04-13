@@ -37,12 +37,13 @@ var meridian_alive: bool = true
 # NARRATIVE STATE FLAGS (set by CrisisEventSystem as story events resolve)
 # ══════════════════════════════════════════════════════════════════════════════
 
-var med_clinic_built: bool = false # Set TRUE by BuildingSystem on placement
-var rook_militia_stopped: bool = false # Set TRUE by CrisisEventSystem Day 24 Option B
-var rook_militia_sanctioned: bool = false # Set TRUE by CrisisEventSystem Day 24 Option A
+var med_clinic_built: bool = false 			# Set TRUE by BuildingSystem on placement
+var rook_militia_stopped: bool = false 		# Set TRUE by CrisisEventSystem Day 24 Option B
+var rook_militia_sanctioned: bool = false 	# Set TRUE by CrisisEventSystem Day 24 Option A
 var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
-var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
-var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
+var vasquez_trade_accepted: bool = false 	# Set TRUE by CrisisEventSystem on Day 11 Option A
+var meridian_trusted: bool = false 			# Set TRUE by CrisisEventSystem Day 21 Option A
+var med_clinic_upgraded: bool = false  		# Set TRUE by BuildingInspector on T1→T2 upgrade
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -194,7 +195,8 @@ func save_game(filename: String) -> void:
 			"med_clinic_built": med_clinic_built,
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
-			"vasquez_trade_accepted": vasquez_trade_accepted
+			"vasquez_trade_accepted": vasquez_trade_accepted,
+			"med_clinic_upgraded": med_clinic_upgraded,
 		},
 		"time_manager": {
 			"current_day": day,
@@ -255,6 +257,7 @@ func load_game(filepath: String) -> void:
 	vasquez_alive = gm_data.get("vasquez_alive", vasquez_alive)
 	meridian_alive = gm_data.get("meridian_alive", meridian_alive)
 	med_clinic_built = gm_data.get("med_clinic_built", med_clinic_built)
+	med_clinic_upgraded = gm_data.get("med_clinic_upgraded", med_clinic_upgraded)
 	rook_militia_stopped = gm_data.get("rook_militia_stopped", rook_militia_stopped)
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)

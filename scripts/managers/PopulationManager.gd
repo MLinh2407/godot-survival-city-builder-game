@@ -152,12 +152,16 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 func _process_starvation_tick(pop_data: PopulationStateData) -> void:
 	var current_food: float = GameManager.resource_food.current_value
-	
-	if current_food <= 0.0:
+	var buffer: float       = GameManager.resource_food.ration_store_buffer
+
+	# Starvation only counts when BOTH main food and buffer are exhausted
+	var truly_starving: bool = current_food <= 0.0 and buffer <= 0.0
+
+	if truly_starving:
 		consecutive_days_starving += 1
 	else:
-		consecutive_days_starving = 0 
-		
+		consecutive_days_starving = 0
+
 	if consecutive_days_starving >= GameConstants.FOOD_STARVATION_DELAY:
 		var deaths: int = randi_range(GameConstants.STARVATION_DEATHS_MIN, GameConstants.STARVATION_DEATHS_MAX)
 		_remove_colonists(pop_data, deaths, "Starvation")
@@ -189,7 +193,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 	# YUNA'S DEATH CHECK
 	if day == GameConstants.YUNA_DEATH_DAY and GameManager.colonist_yuna.is_alive:
 		var pop_too_low = pop_data.total_population < GameConstants.YUNA_DEATH_POPULATION_THRESHOLD
-		var no_clinic = not GameManager.med_clinic_built
+		var no_clinic = (not GameManager.med_clinic_built) or (not GameManager.med_clinic_upgraded)
 		
 		if pop_too_low and no_clinic:
 			GameManager.colonist_yuna.is_alive = false

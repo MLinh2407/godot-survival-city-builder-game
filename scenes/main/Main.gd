@@ -39,6 +39,7 @@ var hud_fx_t: float = 0.0
 var _last_hope_order_value: float = -1.0
 const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
+var _ration_buffer_bar: ProgressBar = null
 
 var settings_ui: CanvasLayer
 
@@ -79,6 +80,23 @@ func _ready() -> void:
 		var bs = $BuildingSystem
 		if not bs.workers_changed.is_connected(_on_population_changed):
 			bs.workers_changed.connect(_on_population_changed)
+	
+	# Build the Ration Store buffer extension bar programmatically
+	if food_bar:
+		_ration_buffer_bar = ProgressBar.new()
+		_ration_buffer_bar.show_percentage = false
+		_ration_buffer_bar.min_value = 0.0
+		_ration_buffer_bar.max_value = 100.0
+		_ration_buffer_bar.value = 0.0
+		_ration_buffer_bar.custom_minimum_size = Vector2(40, food_bar.size.y if food_bar.size.y > 0 else 12.0)
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.0, 0.35, 0.38, 0.85)
+		_ration_buffer_bar.add_theme_stylebox_override("fill", style)
+		var bg_style = StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.05, 0.05, 0.08, 0.6)
+		_ration_buffer_bar.add_theme_stylebox_override("background", bg_style)
+		food_bar.get_parent().add_child(_ration_buffer_bar)
+		_ration_buffer_bar.visible = false
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
@@ -286,6 +304,29 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 		_update_hope_order_visuals()
 
 	_update_rates()
+
+	# Update Ration Store buffer bar
+	if _ration_buffer_bar:
+		var buf: float     = GameManager.resource_food.ration_store_buffer
+		var buf_max: float = GameManager.resource_food.ration_store_max
+		var bar_visible: bool = buf_max > 0.0
+
+		_ration_buffer_bar.visible = bar_visible
+
+		if bar_visible:
+			_ration_buffer_bar.value = clamp((buf / buf_max) * 100.0, 0.0, 100.0)
+
+			var fb_rect: Rect2 = food_bar.get_rect()
+			_ration_buffer_bar.position = Vector2(
+				food_bar.position.x + fb_rect.size.x + 3,
+				food_bar.position.y
+			)
+			_ration_buffer_bar.custom_minimum_size = Vector2(40, fb_rect.size.y if fb_rect.size.y > 0 else 12.0)
+
+			if GameManager.resource_food.auto_rationing_active:
+				_ration_buffer_bar.modulate = Color(1.0, 0.7, 0.2, 1.0)
+			else:
+				_ration_buffer_bar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 func _on_hope_order_changed(new_value: float) -> void:
 	_last_hope_order_value = new_value

@@ -309,10 +309,13 @@ func _on_upgrade_pressed() -> void:
 			# capacity handled by BuildingSystem getters via is_upgraded flag
 			pass
 		BuildingData.BuildingType.RATION_STORE:
-			# Ration buffer larger when queried elsewhere
-			pass
+			ResourceManager.on_ration_store_built(true)
 		_:
 			pass
+	
+	# Set narrative upgrade flags
+	if target_building.building_type == BuildingData.BuildingType.MED_CLINIC:
+		GameManager.med_clinic_upgraded = true
 
 	# Notify systems and refresh visuals
 	if gm and gm.has_method("update_building_visual"):

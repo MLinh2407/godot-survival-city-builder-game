@@ -177,6 +177,19 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	var new_data: BuildingData = BuildingData.new()
 	new_data.grid_position = grid_pos
 	
+	# Memorial Wall can only be placed after at least one named character has died
+	if b_type == "memorial":
+		var any_dead: bool = (not GameManager.yuna_alive) or \
+							 (not GameManager.rook_alive) or \
+							 (not GameManager.vasquez_alive) or \
+							 (not GameManager.meridian_alive)
+		if not any_dead:
+			# Undo the GridManager placement immediately
+			if grid_manager:
+				grid_manager.remove_building(grid_pos)
+			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
+			return
+	
 	match b_type:
 		"coal":
 			new_data.building_type          = BuildingData.BuildingType.COAL_GENERATOR
@@ -184,18 +197,21 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.worker_capacity        = GameConstants.COAL_GENERATOR_SLOTS
 			new_data.base_production_power  = GameConstants.COAL_POWER_T1
 			new_data.power_draw             = 0.0
+
 		"hydro":
 			new_data.building_type          = BuildingData.BuildingType.HYDROPONIC_BAY
 			new_data.building_name          = "Hydroponic Bay"
 			new_data.worker_capacity        = GameConstants.HYDROPONIC_BAY_SLOTS
 			new_data.base_production_food   = GameConstants.BASE_FOOD_RATE
 			new_data.power_draw             = GameConstants.HYDROPONIC_POWER_DRAW
+
 		"shelter":
 			new_data.building_type          = BuildingData.BuildingType.SHELTER_BLOCK
 			new_data.building_name          = "Shelter Block"
 			new_data.worker_capacity        = GameConstants.SHELTER_BLOCK_SLOTS
 			new_data.base_morale_bonus      = 0.0   # Shelter morale is capacity-dependent, handled in ResourceManager
 			new_data.power_draw             = GameConstants.SHELTER_POWER_DRAW
+			
 		"geothermal":
 			new_data.building_type         = BuildingData.BuildingType.GEOTHERMAL_TAP
 			new_data.building_name         = "Geothermal Tap"
@@ -217,6 +233,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.category        = BuildingData.BuildingCategory.SURVIVAL
 			new_data.worker_capacity = GameConstants.RATION_STORE_SLOTS  # 0
 			new_data.power_draw      = GameConstants.RATION_STORE_POWER_DRAW
+			ResourceManager.on_ration_store_built(false) 
 
 		"water":
 			new_data.building_type   = BuildingData.BuildingType.WATER_RECYCLER
