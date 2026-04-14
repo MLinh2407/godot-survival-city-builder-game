@@ -573,6 +573,56 @@ func spawn_floating_text(grid_pos: Vector2i, text: String, color: Color) -> void
 	fct.position = grid_manager.base_grid.map_to_local(grid_pos)
 	fct.setup(text, color)
 
+func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.BuildingType) -> void:
+	if not grid_manager:
+		return
+
+	# Choose particle colour to match the building's neon palette 
+	var particle_color: Color
+	match building_type:
+		BuildingData.BuildingType.COAL_GENERATOR, \
+		BuildingData.BuildingType.GEOTHERMAL_TAP:
+			particle_color = Color(1.0, 0.58, 0.0, 0.9)   # amber — power buildings
+		BuildingData.BuildingType.ARCHIVE_HALL, \
+		BuildingData.BuildingType.MEMORIAL_WALL:
+			particle_color = Color(0.61, 0.35, 1.0, 0.9)  # purple — social buildings
+		_:
+			particle_color = Color(0.0, 0.96, 1.0, 0.9)   # cyan — default
+
+	# Build the particle material programmatically
+	var material := ParticleProcessMaterial.new()
+	material.direction            = Vector3(0.0, -1.0, 0.0)
+	material.spread               = 50.0
+	material.initial_velocity_min = 35.0
+	material.initial_velocity_max = 75.0
+	material.gravity              = Vector3(0.0, 30.0, 0.0)
+	material.scale_min            = 3.0
+	material.scale_max            = 6.0
+	material.color                = particle_color
+
+	# Build the GPUParticles2D node
+	var particles := GPUParticles2D.new()
+	particles.process_material  = material
+	particles.amount            = 40
+	particles.lifetime          = 1.0
+	particles.one_shot          = true
+	particles.explosiveness     = 0.85   # burst all at once
+	particles.z_index           = 200    # above buildings, below HUD
+
+	# Place it at the building's world position and emit
+	grid_manager.add_child(particles)
+	particles.position = grid_manager.base_grid.map_to_local(grid_pos)
+	particles.emitting = true
+
+	# Auto-cleanup after the full particle duration from GameConstants
+	var cleanup_timer := particles.get_tree().create_timer(
+		GameConstants.BUILDING_UPGRADE_PARTICLE_DURATION + 0.5
+	)
+	cleanup_timer.timeout.connect(particles.queue_free)
+
+	print("BuildingSystem: Upgrade particles spawned at %s | color: %s" \
+		% [str(grid_pos), str(particle_color)])
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready
 # ══════════════════════════════════════════════════════════════════════════════

@@ -286,9 +286,9 @@ func _on_upgrade_pressed() -> void:
 				var b = building_system.active_buildings[pos]
 				print("[DEBUG] Building", b.building_name, "pos", pos, "base_power", b.base_production_power, "is_upgraded", b.is_upgraded, "workers", b.workers_assigned)
 
-	# Play SFX for user feedback
+	# Play upgrade SFX
 	if AudioManager and AudioManager.has_method("play_build_sfx"):
-		AudioManager.play_build_sfx("place")
+		AudioManager.play_build_sfx("upgrade")
 
 	if not ResourceManager.consume_materials(cost):
 		push_warning("Upgrade failed: insufficient materials")
@@ -317,7 +317,13 @@ func _on_upgrade_pressed() -> void:
 	if target_building.building_type == BuildingData.BuildingType.MED_CLINIC:
 		GameManager.med_clinic_upgraded = true
 
-	# Notify systems and refresh visuals
+	# Spawn particles first — visual swap waits for the burst to complete
+	if gm and gm.has_method("spawn_upgrade_particles"):
+		gm.spawn_upgrade_particles(target_building.grid_position, target_building.building_type)
+
+	# Wait for particle duration before swapping the sprite
+	await get_tree().create_timer(GameConstants.BUILDING_UPGRADE_PARTICLE_DURATION).timeout
+
 	if gm and gm.has_method("update_building_visual"):
 		gm.update_building_visual(target_building.grid_position)
 
