@@ -19,8 +19,10 @@ var sfx_click: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_cl
 var sfx_pause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
 var sfx_unpause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
 var sfx_slider_move: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
+var sfx_card_open: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_card_open.wav")
 var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
 var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
+var sfx_journal_close: AudioStream = preload("res://assets/audio/sfx/ui/sfx_journal_close.mp3")
 
 func play_build_sfx(type: String) -> void:
 	match type:
@@ -88,6 +90,14 @@ func play_ui_sfx(type: String) -> void:
 		"click":
 			ui_sfx_player.stream = sfx_click
 			ui_sfx_player.play()
+		"card_open":
+			if sfx_card_open:
+				ui_sfx_player.stream = sfx_card_open
+				ui_sfx_player.play()
+		"journal_close":
+			if sfx_journal_close:
+				ui_sfx_player.stream = sfx_journal_close
+				ui_sfx_player.play()
 		"pause":
 			ui_sfx_player.stream = sfx_pause
 			ui_sfx_player.play()

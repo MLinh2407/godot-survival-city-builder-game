@@ -143,6 +143,8 @@ func open() -> void:
 
 func close() -> void:
 	is_open = false
+	if AudioManager:
+		AudioManager.play_ui_sfx("journal_close")
 	_play_close_animation()
 	journal_closed.emit()
 
@@ -256,6 +258,8 @@ func _flip_to(new_spread: int, forward: bool) -> void:
 	if _is_flipping:
 		return
 	_is_flipping = true
+	if AudioManager:
+		AudioManager.play_ui_sfx("card_open")
 
 	var anim_page: Panel = right_page if forward else left_page
 	var close_time := flip_duration * 0.5

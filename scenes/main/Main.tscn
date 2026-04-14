@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 [ext_resource type="Texture2D" uid="uid://blrgj6k5l8oud" path="res://assets/ui/hud/icons/settings_button.png" id="6_roob6"]
+[ext_resource type="Texture2D" uid="uid://cqsia5kuppua4" path="res://assets/ui/hud/icons/journal_icon.png" id="7_n12rl"]
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
 [ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
@@ -24,7 +25,7 @@
 [ext_resource type="PackedScene" uid="uid://60mva0p0dle5" path="res://scenes/buildings/ArchiveHall.tscn" id="12_vc03v"]
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
-[ext_resource type="PackedScene" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -410,16 +411,17 @@ icon_alignment = 1
 expand_icon = true
 script = ExtResource("2_nha0i")
 
-[node name="ButtonJournal" type="Button" parent="UILayer/HUD"]
-offset_left = 1178.0
-offset_top = 50.0
-offset_right = 1238.0
-offset_bottom = 80.0
+[node name="ButtonJournal" type="Button" parent="UILayer/HUD" unique_id=1904703090]
+offset_left = 1243.0
+offset_top = 89.0
+offset_right = 1273.0
+offset_bottom = 119.0
 theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-text = "Journal"
+icon = ExtResource("7_n12rl")
+expand_icon = true
 script = ExtResource("2_nha0i")
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
@@ -662,7 +664,7 @@ offset_right = 1033.0
 offset_bottom = 554.0
 theme_override_constants/separation = 12
 
-[node name="ColonyJournal" parent="UILayer" instance=ExtResource("14_colony_journal")]
+[node name="ColonyJournal" parent="UILayer" unique_id=1651560904 instance=ExtResource("14_colony_journal")]
 
 [node name="ColorGrade" type="CanvasLayer" parent="." unique_id=807741779]
 layer = 5
