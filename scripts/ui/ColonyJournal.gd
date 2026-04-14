@@ -1,4 +1,4 @@
-extends CanvasLayer
+﻿extends CanvasLayer
 class_name ColonyJournal
 
 const JournalEntryData = preload("res://scripts/data/JournalEntry.gd")
@@ -9,6 +9,9 @@ signal journal_opened
 signal journal_closed
 
 @export var debug_fill: bool = true
+@export_range(0.18, 1.20, 0.01) var flip_duration: float = 0.36
+@export_range(0.00, 0.20, 0.005) var flip_min_width: float = 0.04
+@export_range(1.00, 1.10, 0.005) var flip_settle_scale: float = 1.02
 
 const ENTRIES_PER_PAGE: int = 3
 
@@ -255,9 +258,12 @@ func _flip_to(new_spread: int, forward: bool) -> void:
 	_is_flipping = true
 
 	var anim_page: Panel = right_page if forward else left_page
+	var close_time := flip_duration * 0.5
+	var open_time := flip_duration * 0.35
+	var settle_time := flip_duration * 0.15
 
 	var tween1 := create_tween()
-	tween1.tween_property(anim_page, "scale:x", 0.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween1.tween_property(anim_page, "scale:x", flip_min_width, close_time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
 	await tween1.finished
 
@@ -266,9 +272,11 @@ func _flip_to(new_spread: int, forward: bool) -> void:
 	_update_nav_buttons()
 
 	var tween2 := create_tween()
-	tween2.tween_property(anim_page, "scale:x", 1.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween2.tween_property(anim_page, "scale:x", flip_settle_scale, open_time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween2.tween_property(anim_page, "scale:x", 1.0, settle_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 
 	await tween2.finished
+	anim_page.scale.x = 1.0
 	_is_flipping = false
 
 func _play_open_animation() -> void:
