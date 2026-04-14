@@ -1,0 +1,170 @@
+[gd_scene format=3 uid="uid://1r2i00lg87vu"]
+
+[ext_resource type="Script" uid="uid://d4nw4kgxwahcj" path="res://scripts/ui/ColonyJournal.gd" id="1"]
+[ext_resource type="FontFile" uid="uid://3whwi8tcgn08" path="res://assets/ui/fonts/SpecialElite-Regular.ttf" id="2"]
+[ext_resource type="Texture2D" uid="uid://b2yucdolep4nv" path="res://assets/ui/journal/journal_cover.jpg" id="4"]
+[ext_resource type="Texture2D" uid="uid://7lv0hwqw5d1t" path="res://assets/ui/journal/journal_page.jpg" id="5"]
+[ext_resource type="Texture2D" uid="uid://ba5qo2qi5h6r0" path="res://assets/ui/journal/journal_spine.jpg" id="6"]
+
+[sub_resource type="StyleBoxTexture" id="1"]
+texture = ExtResource("4")
+texture_margin_left = 18.0
+texture_margin_top = 18.0
+texture_margin_right = 18.0
+texture_margin_bottom = 18.0
+
+[sub_resource type="StyleBoxTexture" id="2"]
+texture = ExtResource("5")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+
+[node name="ColonyJournal" type="CanvasLayer" unique_id=403299451]
+layer = 10
+script = ExtResource("1")
+
+[node name="BookRoot" type="Control" parent="." unique_id=1247690041]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -270.0
+offset_right = 400.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BookBackground" type="Panel" parent="BookRoot" unique_id=1319108783]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("1")
+
+[node name="SpineLine" type="TextureRect" parent="BookRoot" unique_id=1428088420]
+layout_mode = 0
+offset_left = 395.0
+offset_top = 1.0
+offset_right = 405.0
+offset_bottom = 539.0
+texture = ExtResource("6")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="LeftPage" type="Panel" parent="BookRoot" unique_id=1393227224]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 36.0
+offset_right = 393.0
+offset_bottom = 506.0
+theme_override_styles/panel = SubResource("2")
+
+[node name="MarginContainer" type="MarginContainer" parent="BookRoot/LeftPage" unique_id=1077099893]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntriesLeft" type="VBoxContainer" parent="BookRoot/LeftPage/MarginContainer" unique_id=1828633526]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PageNumLeft" type="Label" parent="BookRoot/LeftPage" unique_id=52814133]
+layout_mode = 0
+offset_top = 448.0
+offset_right = 383.0
+offset_bottom = 468.0
+theme_override_colors/font_color = Color(0.34902, 0.254902, 0.141176, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+
+[node name="RightPage" type="Panel" parent="BookRoot" unique_id=1305574943]
+layout_mode = 0
+offset_left = 407.0
+offset_top = 36.0
+offset_right = 790.0
+offset_bottom = 506.0
+pivot_offset = Vector2(0, 235)
+theme_override_styles/panel = SubResource("2")
+
+[node name="MarginContainer" type="MarginContainer" parent="BookRoot/RightPage" unique_id=1542869484]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntriesRight" type="VBoxContainer" parent="BookRoot/RightPage/MarginContainer" unique_id=1883301373]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PageNumRight" type="Label" parent="BookRoot/RightPage" unique_id=1351324527]
+layout_mode = 0
+offset_top = 448.0
+offset_right = 383.0
+offset_bottom = 468.0
+theme_override_colors/font_color = Color(0.34902, 0.254902, 0.141176, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="BookRoot" unique_id=1658512588]
+layout_mode = 0
+offset_left = 762.0
+offset_top = 6.0
+offset_right = 790.0
+offset_bottom = 34.0
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+text = "X"
+
+[node name="PrevButton" type="Button" parent="BookRoot" unique_id=1959715162]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 512.0
+offset_right = 70.0
+offset_bottom = 537.0
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+disabled = true
+text = "<"
+
+[node name="NextButton" type="Button" parent="BookRoot" unique_id=1278874066]
+layout_mode = 0
+offset_left = 730.0
+offset_top = 512.0
+offset_right = 790.0
+offset_bottom = 537.0
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+text = ">"
+
+[node name="EmptyLabel" type="Label" parent="BookRoot" unique_id=1034046408]
+layout_mode = 0
+offset_left = 108.0
+offset_top = 65.0
+offset_right = 308.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0.258824, 0.188235, 0.105882, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 13
+text = "No entries yet."
+horizontal_alignment = 1

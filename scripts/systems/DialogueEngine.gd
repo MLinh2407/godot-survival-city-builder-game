@@ -112,6 +112,7 @@ func _create_choice_button(choice_text: String) -> Button:
 func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictionary) -> void:
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
+	_append_journal_entry(choice_data)
 	print("%s/%s" % [event_id, choice_id])
 	_dismiss_card()
 
@@ -123,6 +124,25 @@ func _extract_hope_order_delta(choice_data: Dictionary) -> float:
 		if outcome.has("hope_order_delta") and outcome["hope_order_delta"] != null:
 			return float(outcome["hope_order_delta"])
 	return 0.0
+
+func _extract_journal_entry(choice_data: Dictionary) -> String:
+	var outcomes: Array = choice_data.get("outcomes", [])
+	for outcome in outcomes:
+		if typeof(outcome) != TYPE_DICTIONARY:
+			continue
+		var entry_text: String = str(outcome.get("journal_entry", "")).strip_edges()
+		if entry_text != "":
+			return entry_text
+	return ""
+
+func _append_journal_entry(choice_data: Dictionary) -> void:
+	var entry_text := _extract_journal_entry(choice_data)
+	if entry_text == "":
+		return
+
+	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	if journal and journal.has_method("add_entry"):
+		journal.add_entry(GameManager.current_day, entry_text)
 
 func _dismiss_card() -> void:
 	_set_card_visible(false)

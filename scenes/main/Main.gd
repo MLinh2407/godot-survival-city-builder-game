@@ -8,6 +8,8 @@ extends Node
 @onready var btn_1x: Button = $UILayer/HUD/SpeedControls/Button1x
 @onready var btn_2x: Button = $UILayer/HUD/SpeedControls/Button2x
 @onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
+@onready var btn_journal: Button = $UILayer/HUD/ButtonJournal
+@onready var colony_journal: CanvasLayer = $UILayer/ColonyJournal
 
 @onready var power_label: Label = $UILayer/HUD/PowerLabel
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
@@ -63,6 +65,8 @@ func _ready() -> void:
 	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
 	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
 	if btn_settings: btn_settings.pressed.connect(_on_button_settings_pressed)
+	if btn_journal and colony_journal:
+		btn_journal.pressed.connect(colony_journal.toggle)
 	
 	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 	
@@ -152,6 +156,12 @@ func _set_rate_color(rate_label: Label, value: float) -> void:
 		rate_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 0.8))
 
 func toggle_pause() -> void:
+	# Fire the Day 1 onboarding nudge once on the player's first unpause.
+	if colony_journal and not colony_journal.first_unpause_happened \
+	and TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
+		colony_journal.first_unpause_happened = true
+		colony_journal.fire_day1_nudge()
+
 	if TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
 		get_tree().paused = false
 		set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
@@ -189,6 +199,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 		elif event.keycode == KEY_2:
 			set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
+		elif event.keycode == KEY_J and colony_journal:
+			colony_journal.toggle()
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:

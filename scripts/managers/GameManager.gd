@@ -78,6 +78,11 @@ func _ready() -> void:
 	print("Current Day: ", current_day)
 	print("-------------------------------")
 
+	# Keep GameManager.current_day in sync with TimeManager
+	if TimeManager:
+		TimeManager.day_changed.connect(_on_time_day_changed)
+		current_day = TimeManager.current_day
+
 func _initialize_data_classes() -> void:
 	# 1. Population State
 	population_state = PopulationStateData.new()
@@ -139,6 +144,9 @@ func _initialize_data_classes() -> void:
 
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
+
+func _on_time_day_changed(new_day: int) -> void:
+	current_day = new_day
 # ══════════════════════════════════════════════════════════════════════════════
 # SAVE / LOAD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -178,6 +186,10 @@ func save_game(filename: String) -> void:
 	var d_s = ResourceManager.days_starving if ResourceManager else 0
 	var mat = ResourceManager.materials if ResourceManager else materials
 	var mor = ResourceManager.morale if ResourceManager else 100.0
+	var journal_entries_data: Array = []
+	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	if journal_node and journal_node.has_method("serialise"):
+		journal_entries_data = journal_node.serialise()
 
 	var data = {
 		"game_manager": {
@@ -211,7 +223,8 @@ func save_game(filename: String) -> void:
 			"materials": mat,
 			"morale": mor
 		},
-		"buildings": serialized_buildings
+		"buildings": serialized_buildings,
+		"journal_entries": journal_entries_data
 	}
 	
 	var file_path = SAVES_DIR + filename
@@ -318,5 +331,11 @@ func load_game(filepath: String) -> void:
 					building_sys.set_building_damaged(pos, true)
 				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
+
+	# Restore journal entries after world state is fully restored
+	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	var journal_data: Array = data.get("journal_entries", [])
+	if journal_node and journal_node.has_method("deserialise"):
+		journal_node.deserialise(journal_data)
 	
 	print("Game loaded successfully from: ", filepath)
