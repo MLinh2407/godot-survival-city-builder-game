@@ -16,11 +16,11 @@ texture_margin_bottom = 18.0
 [sub_resource type="Shader" id="5"]
 code = "shader_type canvas_item;
 
-// Cover depth: elliptical vignette + curved corner darkening to read like a bound journal
+// Cover depth
 uniform float vignette = 0.36;
 uniform float grain = 0.045;
 uniform float edge_round = 1.8;
-uniform float corner_radius = 0.10; // uv-space radius for corner darkening
+uniform float corner_radius = 0.10; 
 uniform float corner_dark = 0.28;
 
 float hash(vec2 p) {
@@ -35,7 +35,7 @@ void fragment() {
 	float n = (hash(UV * vec2(900.0, 700.0)) - 0.5) * grain;
 	float alpha = clamp(base - center_soft + n * 0.6, 0.0, 1.0);
 
-	// Corner darkening (each corner adds a soft circular dark spot)
+	// Corner darkening 
 	vec2 uv = UV;
 	float d_tl = length(uv - vec2(corner_radius, 1.0 - corner_radius));
 	float d_tr = length(uv - vec2(1.0 - corner_radius, 1.0 - corner_radius));
@@ -46,7 +46,6 @@ void fragment() {
 	float cb = (1.0 - smoothstep(0.0, corner_radius, d_bl));
 	float cl = (1.0 - smoothstep(0.0, corner_radius, d_br));
 	float corner_sum = clamp(ct + cr + cb + cl, 0.0, 1.0);
-	// soften corner influence toward center so corners don't clip the vignette
 	float corner_influence = corner_sum * corner_dark * (1.0 - smoothstep(0.0, 0.9, r));
 	alpha = clamp(alpha + corner_influence, 0.0, 1.0);
 
@@ -74,7 +73,6 @@ shadow_size = 20
 [sub_resource type="Shader" id="12"]
 code = "shader_type canvas_item;
 
-// Gutter mask using the spine texture luminance to follow actual seam shape
 uniform float strength = 0.78;
 uniform float noise_scale = 360.0;
 
@@ -91,9 +89,7 @@ void fragment(){
 	float m = lum(s.rgb);
 	// emphasize darker parts of the spine texture as mask
 	m = smoothstep(0.18, 0.82, m);
-	// vertical softening to avoid hard banding near top/bottom
 	float vy = smoothstep(0.12, 0.95, 1.0 - abs((UV.y - 0.5) * 2.0));
-	// width fade so it tapers into pages naturally
 	float wf = pow(1.0 - abs(UV.x - 0.5) * 2.0, 1.6);
 	float n = (hash(UV * noise_scale) - 0.5) * 0.06;
 	float a = clamp(m * strength * wf * vy + n, 0.0, 1.0);
@@ -133,7 +129,6 @@ void fragment(){
 	float base = pow(clamp(1.0 - smoothstep(0.0, 1.0, d), 0.0, 1.0), falloff) * strength;
 	float n = (hash(UV * noise_scale) - 0.5) * 0.02;
 	float a = clamp(base + n, 0.0, 1.0);
-	// vertical fade so AO gradient disappears toward top/bottom edges
 	float vy = smoothstep(0.0, 1.0, 1.0 - abs((u.y - 0.5) * 2.0));
 	a *= vy;
 	COLOR = vec4(0.0, 0.0, 0.0, a);
@@ -150,7 +145,7 @@ shader_parameter/side = 0.0
 [sub_resource type="Shader" id="7"]
 code = "shader_type canvas_item;
 
-// Gutter/spine depth: concentrated near center with vertical falloff and noisy edges
+// Gutter/spine depth
 uniform float gutter_pos = 1.0;
 uniform float gutter_dark = 0.22;
 uniform float outer_dark = 0.08;

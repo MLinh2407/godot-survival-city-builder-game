@@ -23,6 +23,7 @@ var sfx_card_open: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_card_
 var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
 var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
 var sfx_journal_close: AudioStream = preload("res://assets/audio/sfx/ui/sfx_journal_close.mp3")
+var sfx_journal_open: AudioStream = preload("res://assets/audio/sfx/ui/sfx_journal_open.mp3")
 
 func play_build_sfx(type: String) -> void:
 	match type:
@@ -97,6 +98,10 @@ func play_ui_sfx(type: String) -> void:
 		"journal_close":
 			if sfx_journal_close:
 				ui_sfx_player.stream = sfx_journal_close
+				ui_sfx_player.play()
+		"journal_open":
+			if sfx_journal_open:
+				ui_sfx_player.stream = sfx_journal_open
 				ui_sfx_player.play()
 		"pause":
 			ui_sfx_player.stream = sfx_pause

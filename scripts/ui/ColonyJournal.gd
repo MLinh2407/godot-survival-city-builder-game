@@ -138,6 +138,8 @@ func open() -> void:
 	visible = true
 	_current_spread = _max_spread()
 	_rebuild_display()
+	if AudioManager:
+		AudioManager.play_ui_sfx("journal_open")
 	_play_open_animation()
 	journal_opened.emit()
 
