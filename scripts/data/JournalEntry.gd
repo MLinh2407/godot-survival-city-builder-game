@@ -1,5 +1,5 @@
-# Data container for a single Colony Journal entry.
-# Created by ColonyJournal.gd and serialised into save files.
+# Data container for a single Colony Journal entry
+# Created by ColonyJournal.gd and serialised into save files
 
 class_name JournalEntry
 extends Resource
@@ -16,3 +16,4 @@ var day: int = 1
 var title: String = ""
 var body: String = ""
 var entry_type: EntryType = EntryType.NARRATIVE
+var read: bool = true

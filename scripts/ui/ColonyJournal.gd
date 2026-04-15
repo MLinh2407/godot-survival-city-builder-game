@@ -103,6 +103,7 @@ func add_entry(
 	e.body = body.strip_edges()
 	e.entry_type = type
 	e.title = title if title != "" else ("Day %d" % day)
+	e.read = false
 	entries.append(e)
 	var newest_index: int = entries.size() - 1
 
@@ -111,6 +112,7 @@ func add_entry(
 		journal_new_entry_notified.emit()
 	else:
 		_latest_viewed_entry_index = newest_index
+		_mark_entries_read_up_to(newest_index)
 		_set_unread_state(false)
 
 	if is_open:
@@ -137,7 +139,6 @@ func toggle() -> void:
 		open()
 
 func _process(delta: float) -> void:
-	# Allow flipping with Left/Right even if GUI elements have focus.
 	if not is_open:
 		return
 	if Input.is_action_just_pressed("ui_left"):
@@ -149,11 +150,13 @@ func open() -> void:
 	is_open = true
 	visible = true
 	_current_spread = clampi(_current_spread, 0, _max_spread())
-	if has_unread and _current_spread >= _max_spread() and _max_spread() > 0:
-		_current_spread = _max_spread() - 1
+	if has_unread:
+		_current_spread = _max_spread()
 	_rebuild_display()
-	if has_unread and _max_spread() == 0:
+	# Mark unread entries as read when the player opens the journal
+	if has_unread:
 		_latest_viewed_entry_index = entries.size() - 1
+		_mark_entries_read_up_to(entries.size() - 1)
 		_set_unread_state(false)
 	if AudioManager:
 		AudioManager.play_ui_sfx("journal_open")
@@ -251,7 +254,29 @@ func _build_entry_node(e) -> VBoxContainer:
 			title_lbl.text = "Day %d -" % e.day
 			title_lbl.add_theme_color_override("font_color", COL_TITLE_DEFAULT)
 
-	container.add_child(title_lbl)
+	# Title + NEW badge for unread entries
+	var title_row := HBoxContainer.new()
+	title_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	# If unread, add a small NEW badge on the left and pulse it
+	if not e.read:
+		var new_lbl := Label.new()
+		new_lbl.text = "NEW"
+		new_lbl.add_theme_font_size_override("font_size", 11)
+		new_lbl.add_theme_color_override("font_color", Color8(255, 92, 0, 255))
+		new_lbl.horizontal_alignment = 2 as HorizontalAlignment
+		new_lbl.size_flags_horizontal = 0
+		title_row.add_child(new_lbl)
+		# pulse animation for the badge
+		var pulse_timer := Timer.new()
+		pulse_timer.wait_time = 1.1
+		pulse_timer.one_shot = false
+		pulse_timer.autostart = true
+		pulse_timer.timeout.connect(Callable(self, "_on_badge_pulse_timeout").bind(new_lbl))
+		title_row.add_child(pulse_timer)
+
+	title_row.add_child(title_lbl)
+	container.add_child(title_row)
 
 	var body_lbl := Label.new()
 	body_lbl.text = e.body
@@ -302,6 +327,11 @@ func _flip_to(new_spread: int, forward: bool) -> void:
 	await tween2.finished
 	anim_page.scale.x = 1.0
 	_is_flipping = false
+
+func _on_badge_pulse_timeout(badge: Label) -> void:
+	var tween := create_tween()
+	tween.tween_property(badge, "scale", Vector2(1.12, 1.12), 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(badge, "scale", Vector2(1.0, 1.0), 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _play_open_animation() -> void:
 	book_root.scale = Vector2(0.88, 0.88)
@@ -400,6 +430,7 @@ func serialise() -> Dictionary:
 			"title": e.title,
 			"body": e.body,
 			"type": e.entry_type,
+			"read": bool(e.read),
 		})
 	return {
 		"entries": out,
@@ -432,6 +463,7 @@ func deserialise(data: Variant) -> void:
 		e.title = str(d.get("title", ""))
 		e.body = str(d.get("body", ""))
 		e.entry_type = int(d.get("type", JournalEntryData.EntryType.NARRATIVE))
+		e.read = bool(d.get("read", true))
 		entries.append(e)
 
 		if e.entry_type == JournalEntryData.EntryType.ONBOARDING:
@@ -450,6 +482,7 @@ func deserialise(data: Variant) -> void:
 		_latest_viewed_entry_index = clampi(_latest_viewed_entry_index, -1, entries.size() - 1)
 		if not has_unread:
 			_latest_viewed_entry_index = entries.size() - 1
+			_mark_entries_read_up_to(entries.size() - 1)
 
 	_current_spread = _max_spread()
 	if is_open:
@@ -474,9 +507,28 @@ func _set_unread_state(next_value: bool) -> void:
 	has_unread = next_value
 	unread_state_changed.emit(has_unread)
 
+func _mark_entries_read_up_to(index: int) -> void:
+	if index < 0:
+		return
+	var changed: bool = false
+	for i in range(0, mini(index + 1, entries.size())):
+		var item = entries[i]
+		if item and not item.read:
+			item.read = true
+			changed = true
+	_latest_viewed_entry_index = maxi(_latest_viewed_entry_index, index)
+	if changed:
+		var unread_found: bool = false
+		for it in entries:
+			if it and not it.read:
+				unread_found = true
+				break
+		_set_unread_state(unread_found)
+
 func _maybe_clear_unread_on_newest_spread() -> void:
 	if not has_unread or entries.is_empty():
 		return
 	if _current_spread >= _max_spread():
 		_latest_viewed_entry_index = entries.size() - 1
+		_mark_entries_read_up_to(entries.size() - 1)
 		_set_unread_state(false)

@@ -486,7 +486,7 @@ func _on_journal_unread_state_changed(is_unread: bool) -> void:
 	if is_unread:
 		journal_unread_badge.modulate.a = 0.72
 		_journal_badge_tween = create_tween()
-		_journal_badge_tween.set_loops()
+		_journal_badge_tween.set_loops(-1)
 		_journal_badge_tween.tween_property(journal_unread_badge, "modulate:a", 1.0, 0.55)
 		_journal_badge_tween.tween_property(journal_unread_badge, "modulate:a", 0.72, 0.55)
 	else:
