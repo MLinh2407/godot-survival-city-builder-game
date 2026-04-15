@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://blrgj6k5l8oud" path="res://assets/ui/hud/icons/settings_button.png" id="6_roob6"]
 [ext_resource type="Texture2D" uid="uid://cqsia5kuppua4" path="res://assets/ui/hud/icons/journal_icon.png" id="7_n12rl"]
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
+[ext_resource type="SpriteFrames" uid="uid://yiuy3kj65fx0" path="res://assets/ui/hud/gifs/writing_gif.gif" id="8_0cxqb"]
 [ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
 [ext_resource type="Texture2D" uid="uid://btdxucbr8e6mv" path="res://assets/ui/hud/icons/helmet_white.png" id="9_helmet_icon"]
@@ -113,6 +114,18 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_journal_badge"]
+bg_color = Color(0.92, 0.12, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.28)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_resource_bg"]
 bg_color = Color(0.101961, 0.129412, 0.176471, 0.95)
 border_width_left = 1
@@ -188,7 +201,7 @@ tile_shape = 1
 tile_size = Vector2i(64, 64)
 sources/0 = SubResource("TileSetAtlasSource_ko0rf")
 
-[node name="Main" type="Node" unique_id=1028254611]
+[node name="PromptWritingGif" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
 
 [node name="UILayer" type="CanvasLayer" parent="." unique_id=921052177]
@@ -282,7 +295,7 @@ z_index = -1
 offset_left = 438.0
 offset_top = 692.0
 offset_right = 824.0
-offset_bottom = 706.0
+offset_bottom = 702.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_slider_track_border")
 
 [node name="HopeOrderTrackFill" type="ColorRect" parent="UILayer/HUD" unique_id=2039724866]
@@ -423,6 +436,53 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 icon = ExtResource("7_n12rl")
 expand_icon = true
 script = ExtResource("2_nha0i")
+
+[node name="JournalUnreadBadge" type="Panel" parent="UILayer/HUD/ButtonJournal" unique_id=2065614801]
+visible = false
+layout_mode = 0
+offset_left = 18.0
+offset_top = -8.0
+offset_right = 38.0
+offset_bottom = 12.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_journal_badge")
+
+[node name="BadgeText" type="Label" parent="UILayer/HUD/ButtonJournal/JournalUnreadBadge" unique_id=1932125977]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 18.0
+offset_bottom = 19.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="JournalWritePrompt" type="Control" parent="UILayer/HUD" unique_id=1291123465]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1000.0
+offset_top = 92.0
+offset_right = 1234.0
+offset_bottom = 126.0
+mouse_filter = 2
+
+[node name="PromptWritingGif" type="AnimatedSprite2D" parent="UILayer/HUD/JournalWritePrompt" unique_id=160468532]
+position = Vector2(204, 578.50006)
+scale = Vector2(0.22000012, 0.22000012)
+sprite_frames = ExtResource("8_0cxqb")
+animation = &"gif"
+
+[node name="PromptText" type="Label" parent="UILayer/HUD/JournalWritePrompt" unique_id=1251098322]
+layout_mode = 0
+offset_left = 123.0
+offset_top = 606.0
+offset_right = 314.0
+offset_bottom = 624.0
+theme_override_colors/font_color = Color(0.92, 0.95, 0.98, 0.96)
+theme_override_font_sizes/font_size = 13
+text = "The pages feel heavier..."
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 549.0

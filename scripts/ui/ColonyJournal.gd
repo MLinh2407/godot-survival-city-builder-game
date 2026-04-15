@@ -3,10 +3,12 @@ class_name ColonyJournal
 
 const JournalEntryData = preload("res://scripts/data/JournalEntry.gd")
 const FONT_BODY = preload("res://assets/ui/fonts/SpecialElite-Regular.ttf")
-const FONT_HEADING = preload("res://assets/ui/fonts/Cinzel-VariableFont_wght.ttf")
+const FONT_HEADING = preload("res://assets/ui/fonts/Cinzel-Bold.tres")
 
 signal journal_opened
 signal journal_closed
+signal unread_state_changed(has_unread: bool)
+signal journal_new_entry_notified
 
 @export var debug_fill: bool = true
 @export_range(0.18, 1.20, 0.01) var flip_duration: float = 0.36
@@ -25,6 +27,8 @@ const COL_SEPARATOR := Color(0.38, 0.28, 0.17, 0.32)
 
 var entries: Array = []
 var is_open: bool = false
+var has_unread: bool = false
+var _latest_viewed_entry_index: int = -1
 
 var _current_spread: int = 0
 var _is_flipping: bool = false
@@ -100,6 +104,14 @@ func add_entry(
 	e.entry_type = type
 	e.title = title if title != "" else ("Day %d" % day)
 	entries.append(e)
+	var newest_index: int = entries.size() - 1
+
+	if not is_open:
+		_set_unread_state(true)
+		journal_new_entry_notified.emit()
+	else:
+		_latest_viewed_entry_index = newest_index
+		_set_unread_state(false)
 
 	if is_open:
 		_current_spread = _max_spread()
@@ -136,8 +148,13 @@ func _process(delta: float) -> void:
 func open() -> void:
 	is_open = true
 	visible = true
-	_current_spread = _max_spread()
+	_current_spread = clampi(_current_spread, 0, _max_spread())
+	if has_unread and _current_spread >= _max_spread() and _max_spread() > 0:
+		_current_spread = _max_spread() - 1
 	_rebuild_display()
+	if has_unread and _max_spread() == 0:
+		_latest_viewed_entry_index = entries.size() - 1
+		_set_unread_state(false)
 	if AudioManager:
 		AudioManager.play_ui_sfx("journal_open")
 	_play_open_animation()
@@ -276,6 +293,7 @@ func _flip_to(new_spread: int, forward: bool) -> void:
 	_current_spread = new_spread
 	_populate_spread(_current_spread)
 	_update_nav_buttons()
+	_maybe_clear_unread_on_newest_spread()
 
 	var tween2 := create_tween()
 	tween2.tween_property(anim_page, "scale:x", flip_settle_scale, open_time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -374,7 +392,7 @@ func _load_death_text_from_json(char_name: String) -> String:
 
 	return "%s is gone." % char_name
 
-func serialise() -> Array:
+func serialise() -> Dictionary:
 	var out: Array = []
 	for e in entries:
 		out.append({
@@ -383,16 +401,30 @@ func serialise() -> Array:
 			"body": e.body,
 			"type": e.entry_type,
 		})
-	return out
+	return {
+		"entries": out,
+		"has_unread": has_unread,
+		"latest_viewed_entry_index": _latest_viewed_entry_index,
+	}
 
-func deserialise(data: Array) -> void:
+func deserialise(data: Variant) -> void:
 	entries.clear()
 	_nudge_1_fired = false
 	_nudge_2_fired = false
 	_nudge_3_fired = false
 	first_unpause_happened = false
+	has_unread = false
+	_latest_viewed_entry_index = -1
 
-	for d in data:
+	var entry_data: Array = []
+	if typeof(data) == TYPE_DICTIONARY:
+		entry_data = data.get("entries", [])
+		has_unread = bool(data.get("has_unread", false))
+		_latest_viewed_entry_index = int(data.get("latest_viewed_entry_index", -1))
+	elif typeof(data) == TYPE_ARRAY:
+		entry_data = data
+
+	for d in entry_data:
 		if typeof(d) != TYPE_DICTIONARY:
 			continue
 		var e := JournalEntryData.new()
@@ -411,6 +443,40 @@ func deserialise(data: Array) -> void:
 			elif e.day == 3:
 				_nudge_3_fired = true
 
+	if entries.is_empty():
+		has_unread = false
+		_latest_viewed_entry_index = -1
+	else:
+		_latest_viewed_entry_index = clampi(_latest_viewed_entry_index, -1, entries.size() - 1)
+		if not has_unread:
+			_latest_viewed_entry_index = entries.size() - 1
+
 	_current_spread = _max_spread()
 	if is_open:
 		_rebuild_display()
+
+	unread_state_changed.emit(has_unread)
+
+func has_unread_entries() -> bool:
+	return has_unread
+
+func get_unread_count() -> int:
+	if entries.is_empty() or not has_unread:
+		return 0
+	var unread_total: int = entries.size() - (_latest_viewed_entry_index + 1)
+	if unread_total <= 0:
+		return 1
+	return unread_total
+
+func _set_unread_state(next_value: bool) -> void:
+	if has_unread == next_value:
+		return
+	has_unread = next_value
+	unread_state_changed.emit(has_unread)
+
+func _maybe_clear_unread_on_newest_spread() -> void:
+	if not has_unread or entries.is_empty():
+		return
+	if _current_spread >= _max_spread():
+		_latest_viewed_entry_index = entries.size() - 1
+		_set_unread_state(false)

@@ -8,6 +8,7 @@ var music_player_b: AudioStreamPlayer
 var is_playing_a: bool = true
 
 var ui_sfx_player_slider: AudioStreamPlayer
+var ui_sfx_player_journal: AudioStreamPlayer
 
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
@@ -24,6 +25,7 @@ var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_bu
 var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
 var sfx_journal_close: AudioStream = preload("res://assets/audio/sfx/ui/sfx_journal_close.mp3")
 var sfx_journal_open: AudioStream = preload("res://assets/audio/sfx/ui/sfx_journal_open.mp3")
+var sfx_ui_journal_entry: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_journal_entry.mp3")
 
 func play_build_sfx(type: String) -> void:
 	match type:
@@ -66,6 +68,10 @@ func _ready() -> void:
 	ui_sfx_player_slider = AudioStreamPlayer.new()
 	ui_sfx_player_slider.bus = "SFX"
 	add_child(ui_sfx_player_slider)
+
+	ui_sfx_player_journal = AudioStreamPlayer.new()
+	ui_sfx_player_journal.bus = "SFX"
+	add_child(ui_sfx_player_journal)
 	
 	# Music Players
 	music_player_a = AudioStreamPlayer.new()
@@ -112,6 +118,10 @@ func play_ui_sfx(type: String) -> void:
 		"slider_move":
 			ui_sfx_player_slider.stream = sfx_slider_move
 			ui_sfx_player_slider.play()
+		"sfx_ui_journal_entry", "journal_entry":
+			if sfx_ui_journal_entry and ui_sfx_player_journal:
+				ui_sfx_player_journal.stream = sfx_ui_journal_entry
+				ui_sfx_player_journal.play()
 		_:
 			return
 			

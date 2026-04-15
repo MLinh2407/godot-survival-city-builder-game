@@ -135,14 +135,39 @@ func _extract_journal_entry(choice_data: Dictionary) -> String:
 			return entry_text
 	return ""
 
+func _recursive_find(node: Node, target_name: String):
+	if not node:
+		return null
+	if node.name == target_name:
+		return node
+	for child in node.get_children():
+		if child is Node:
+			var res = _recursive_find(child, target_name)
+			if res:
+				return res
+	return null
+
 func _append_journal_entry(choice_data: Dictionary) -> void:
 	var entry_text := _extract_journal_entry(choice_data)
 	if entry_text == "":
 		return
 
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	if not journal:
+		journal = _recursive_find(get_tree().get_root(), "ColonyJournal")
+
 	if journal and journal.has_method("add_entry"):
 		journal.add_entry(GameManager.current_day, entry_text)
+		# Ensure the journal node emits its notification signal
+		if journal.has_signal("journal_new_entry_notified"):
+			journal.journal_new_entry_notified.emit()
+
+		var main_node = _recursive_find(get_tree().get_root(), "Main")
+		if main_node:
+			if main_node.has_method("notify_journal_entry"):
+				main_node.notify_journal_entry()
+		else:
+			pass
 
 func _dismiss_card() -> void:
 	_set_card_visible(false)

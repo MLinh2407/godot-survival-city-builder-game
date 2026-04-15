@@ -186,7 +186,7 @@ func save_game(filename: String) -> void:
 	var d_s = ResourceManager.days_starving if ResourceManager else 0
 	var mat = ResourceManager.materials if ResourceManager else materials
 	var mor = ResourceManager.morale if ResourceManager else 100.0
-	var journal_entries_data: Array = []
+	var journal_entries_data: Variant = []
 	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal_node and journal_node.has_method("serialise"):
 		journal_entries_data = journal_node.serialise()
@@ -334,7 +334,7 @@ func load_game(filepath: String) -> void:
 
 	# Restore journal entries after world state is fully restored
 	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
-	var journal_data: Array = data.get("journal_entries", [])
+	var journal_data: Variant = data.get("journal_entries", [])
 	if journal_node and journal_node.has_method("deserialise"):
 		journal_node.deserialise(journal_data)
 	

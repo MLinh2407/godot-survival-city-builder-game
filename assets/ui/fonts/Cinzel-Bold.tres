@@ -1,0 +1,9 @@
+[gd_resource type="FontVariation" format=3 uid="uid://cq150pa235q3e"]
+
+[ext_resource type="FontFile" uid="uid://bi2n6rbdyobsp" path="res://assets/ui/fonts/Cinzel-VariableFont_wght.ttf" id="1_5box5"]
+
+[resource]
+base_font = ExtResource("1_5box5")
+variation_opentype = {
+2003265652: 600
+}

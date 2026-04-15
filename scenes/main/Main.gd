@@ -10,6 +10,11 @@ extends Node
 @onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
 @onready var btn_journal: Button = $UILayer/HUD/ButtonJournal
 @onready var colony_journal: CanvasLayer = $UILayer/ColonyJournal
+@onready var journal_unread_badge: Panel = $UILayer/HUD/ButtonJournal/JournalUnreadBadge
+@onready var journal_unread_badge_text: Label = $UILayer/HUD/ButtonJournal/JournalUnreadBadge/BadgeText
+@onready var journal_write_prompt: Control = $UILayer/HUD/JournalWritePrompt
+@onready var journal_prompt_text: Label = $UILayer/HUD/JournalWritePrompt/PromptText
+@onready var journal_prompt_gif: AnimatedSprite2D = $UILayer/HUD/JournalWritePrompt/PromptWritingGif
 
 @onready var power_label: Label = $UILayer/HUD/PowerLabel
 @onready var food_label: Label = $UILayer/HUD/FoodLabel
@@ -41,8 +46,26 @@ var hud_fx_t: float = 0.0
 var _last_hope_order_value: float = -1.0
 const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
+@export var use_journal_unread_count: bool = true
+@export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
 
 var settings_ui: CanvasLayer
+var _journal_prompt_serial: int = 0
+var _last_journal_prompt_msec: int = -10000
+var _journal_badge_tween: Tween
+var _journal_prompt_dot_timer: float = 0.0
+var _journal_prompt_dot_count: int = 1
+var _power_bar_tween: Tween
+var _food_bar_tween: Tween
+var _morale_bar_tween: Tween
+var _hope_slider_tween: Tween
+
+const UI_BAR_TWEEN_DURATION: float = 0.6
+const UI_SLIDER_TWEEN_DURATION: float = 0.45
+const JOURNAL_PROMPT_DURATION_SEC: float = 3.2
+const JOURNAL_PROMPT_BURST_WINDOW_MSEC: int = 1400
+const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
+const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -64,9 +87,53 @@ func _ready() -> void:
 	if btn_pause: btn_pause.pressed.connect(toggle_pause)
 	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
 	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
-	if btn_settings: btn_settings.pressed.connect(_on_button_settings_pressed)
+	if btn_settings:
+		btn_settings.focus_mode = Control.FOCUS_NONE
+		if btn_settings.has_signal("gui_input"):
+			btn_settings.gui_input.connect(func(ev):
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+					_on_button_settings_pressed()
+			)
 	if btn_journal and colony_journal:
-		btn_journal.pressed.connect(colony_journal.toggle)
+		btn_journal.focus_mode = Control.FOCUS_NONE
+		if btn_journal.has_signal("gui_input"):
+			btn_journal.gui_input.connect(func(ev):
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+					colony_journal.toggle()
+			)
+
+	if colony_journal and colony_journal.has_signal("unread_state_changed"):
+		colony_journal.unread_state_changed.connect(_on_journal_unread_state_changed)
+	if colony_journal and colony_journal.has_signal("journal_new_entry_notified"):
+		colony_journal.journal_new_entry_notified.connect(_on_journal_new_entry_notified)
+	if colony_journal and colony_journal.has_signal("journal_opened"):
+		colony_journal.journal_opened.connect(_on_journal_opened)
+
+	if journal_write_prompt:
+		journal_write_prompt.visible = false
+	if journal_prompt_text:
+		journal_prompt_text.text = JOURNAL_PROMPT_BASE_TEXT + "."
+	if journal_prompt_gif:
+		if ResourceLoader.exists(journal_prompt_gif_path):
+			var gif_resource := load(journal_prompt_gif_path)
+			if gif_resource is SpriteFrames:
+				journal_prompt_gif.sprite_frames = gif_resource
+				var anim_names: PackedStringArray = journal_prompt_gif.sprite_frames.get_animation_names()
+				if not anim_names.is_empty():
+					journal_prompt_gif.animation = anim_names[0]
+				journal_prompt_gif.visible = true
+				journal_prompt_gif.play()
+			else:
+				journal_prompt_gif.visible = false
+				push_warning("Main: expected SpriteFrames for gif path %s" % journal_prompt_gif_path)
+		else:
+			journal_prompt_gif.visible = false
+			push_warning("Main: journal prompt gif not found at %s" % journal_prompt_gif_path)
+
+	if colony_journal and colony_journal.has_method("has_unread_entries"):
+		_on_journal_unread_state_changed(colony_journal.has_unread_entries())
+	else:
+		_on_journal_unread_state_changed(false)
 	
 	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 	
@@ -100,6 +167,8 @@ func _on_population_changed() -> void:
 
 func _process(delta: float) -> void:
 	_sync_hope_order_visuals()
+	_update_journal_prompt_dots(delta)
+	_refresh_hope_order_visuals()
 	if get_tree() and get_tree().paused:
 		return
 
@@ -156,7 +225,7 @@ func _set_rate_color(rate_label: Label, value: float) -> void:
 		rate_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 0.8))
 
 func toggle_pause() -> void:
-	# Fire the Day 1 onboarding nudge once on the player's first unpause.
+	# Fire the Day 1 onboarding nudge once on first unpause
 	if colony_journal and not colony_journal.first_unpause_happened \
 	and TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
 		colony_journal.first_unpause_happened = true
@@ -218,9 +287,16 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 
 	if power_bar:
 		if ResourceManager.power_capacity > 0:
-			power_bar.value = clamp((p / ResourceManager.power_capacity) * 100.0, 0.0, 100.0)
+			var target_power_val = clamp((p / ResourceManager.power_capacity) * 100.0, 0.0, 100.0)
+			if _power_bar_tween:
+				_power_bar_tween.kill()
+			_power_bar_tween = create_tween()
+			_power_bar_tween.tween_property(power_bar, "value", target_power_val, UI_BAR_TWEEN_DURATION)
 		else:
-			power_bar.value = 0.0
+			if _power_bar_tween:
+				_power_bar_tween.kill()
+			_power_bar_tween = create_tween()
+			_power_bar_tween.tween_property(power_bar, "value", 0.0, UI_BAR_TWEEN_DURATION)
 		
 		var power_is_critical = ResourceManager.power_capacity > 0 and ResourceManager.power_capacity < ResourceManager.power_draw
 		var power_is_warning = ResourceManager.power_capacity > 0 and (p / ResourceManager.power_capacity) <= GameConstants.WARNING_THRESHOLD and not power_is_critical
@@ -244,9 +320,16 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 
 	if food_bar:
 		if ResourceManager.max_food > 0:
-			food_bar.value = clamp((f / ResourceManager.max_food) * 100.0, 0.0, 100.0)
+			var target_food_val = clamp((f / ResourceManager.max_food) * 100.0, 0.0, 100.0)
+			if _food_bar_tween:
+				_food_bar_tween.kill()
+			_food_bar_tween = create_tween()
+			_food_bar_tween.tween_property(food_bar, "value", target_food_val, UI_BAR_TWEEN_DURATION)
 		else:
-			food_bar.value = 0.0
+			if _food_bar_tween:
+				_food_bar_tween.kill()
+			_food_bar_tween = create_tween()
+			_food_bar_tween.tween_property(food_bar, "value", 0.0, UI_BAR_TWEEN_DURATION)
 		
 		var food_ratio = 0.0
 		if ResourceManager.max_food > 0:
@@ -272,7 +355,11 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 		morale_label.text = "MORALE " + str(morale_i) + "/100"
 
 	if morale_bar:
-		morale_bar.value = clamp(m, 0.0, 100.0)
+		var target_morale = clamp(m, 0.0, 100.0)
+		if _morale_bar_tween:
+			_morale_bar_tween.kill()
+		_morale_bar_tween = create_tween()
+		_morale_bar_tween.tween_property(morale_bar, "value", target_morale, UI_BAR_TWEEN_DURATION)
 		
 		var morale_ratio = m / 100.0
 		var morale_is_critical = morale_ratio <= GameConstants.CRITICAL_THRESHOLD
@@ -294,7 +381,6 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 		materials_label.text = str(_mat)
 
 	if hope_slider:
-		hope_slider.value = GameManager.hope_order_slider
 		_update_hope_order_visuals()
 
 	_update_rates()
@@ -302,7 +388,6 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 func _on_hope_order_changed(new_value: float) -> void:
 	_last_hope_order_value = new_value
 	if hope_slider:
-		hope_slider.value = new_value
 		_update_hope_order_visuals()
 		AudioManager.play_ui_sfx("slider_move")
 
@@ -318,12 +403,15 @@ func _update_hope_order_visuals() -> void:
 		return
 
 	var slider_value: float = clampf(GameManager.hope_order_slider, 0.0, 100.0)
-	hope_slider.value = slider_value
+	if _hope_slider_tween:
+		_hope_slider_tween.kill()
+	_hope_slider_tween = create_tween()
+	_hope_slider_tween.tween_property(hope_slider, "value", slider_value, UI_SLIDER_TWEEN_DURATION)
 
 	var hope_upper: float = GameConstants.SLIDER_HOPE_UPPER
 	var order_lower: float = GameConstants.SLIDER_ORDER_LOWER
 
-	# Color interpolation parameter (for choosing Hope / Order / Neutral)
+	# Color interpolation parameter (Hope / Order / Neutral)
 	var t_color: float
 	if slider_value <= hope_upper:
 		t_color = 0.0
@@ -343,25 +431,202 @@ func _update_hope_order_visuals() -> void:
 		slider_color = ORDER_COLOR
 	hope_slider.modulate = slider_color
 
-	# Fill position uses full 0..100 proportion so 1 unit = 1% of track width
-	var t_fill: float = slider_value / 100.0
-
-	if hope_track_border and hope_track_fill:
-		var inset: float = 2.0
-		var inner_left: float = hope_track_border.offset_left + inset
-		var inner_right: float = hope_track_border.offset_right - inset
-		var inner_top: float = hope_track_border.offset_top + inset
-		var inner_bottom: float = hope_track_border.offset_bottom - inset
-		var inner_width: float = maxf(inner_right - inner_left, 1.0)
-		var fill_right: float = inner_left + inner_width * t_fill
-
-		hope_track_fill.offset_left = inner_left
-		hope_track_fill.offset_top = inner_top
-		hope_track_fill.offset_right = fill_right
-		hope_track_fill.offset_bottom = inner_bottom
-		hope_track_fill.color = Color(slider_color.r, slider_color.g, slider_color.b, 0.95)
+	# Apply base modulate color for the slider control
+	hope_slider.modulate = slider_color
 
 	if hope_label:
 		hope_label.add_theme_color_override("font_color", HOPE_COLOR)
 	if order_label:
 		order_label.add_theme_color_override("font_color", ORDER_COLOR)
+
+func _refresh_hope_order_visuals() -> void:
+	if not hope_slider:
+		return
+	var current = hope_slider.value
+	var hope_upper: float = GameConstants.SLIDER_HOPE_UPPER
+	var order_lower: float = GameConstants.SLIDER_ORDER_LOWER
+	var t_color: float
+	if current <= hope_upper:
+		t_color = 0.0
+	elif current >= order_lower:
+		t_color = 1.0
+	else:
+		t_color = (current - hope_upper) / maxf(order_lower - hope_upper, 1.0)
+	var slider_color: Color
+	if current > hope_upper and current < order_lower:
+		slider_color = Color(0.85, 0.85, 0.85, 1.0)
+	elif t_color <= 0.0:
+		slider_color = HOPE_COLOR
+	else:
+		slider_color = ORDER_COLOR
+	if hope_track_border and hope_track_fill:
+		var inset: float = 0
+		var inner_left: float = hope_track_border.offset_left + inset
+		var inner_right: float = hope_track_border.offset_right - inset
+		var inner_top: float = hope_track_border.offset_top + inset
+		var inner_bottom: float = hope_track_border.offset_bottom + inset
+		var inner_width: float = maxf(inner_right - inner_left, 1.0)
+		var fill_right: float = inner_left + inner_width * (current / 100.0)
+		hope_track_fill.offset_left = inner_left
+		hope_track_fill.offset_top = inner_top
+		hope_track_fill.offset_right = fill_right
+		hope_track_fill.offset_bottom = inner_bottom
+		hope_track_fill.color = Color(slider_color.r, slider_color.g, slider_color.b, 0.95)
+	hope_slider.modulate = slider_color
+
+func _on_journal_unread_state_changed(is_unread: bool) -> void:
+	if not journal_unread_badge:
+		return
+	if _journal_badge_tween:
+		_journal_badge_tween.kill()
+		_journal_badge_tween = null
+	journal_unread_badge.visible = is_unread
+	_update_journal_badge_text(is_unread)
+
+	if is_unread:
+		journal_unread_badge.modulate.a = 0.72
+		_journal_badge_tween = create_tween()
+		_journal_badge_tween.set_loops()
+		_journal_badge_tween.tween_property(journal_unread_badge, "modulate:a", 1.0, 0.55)
+		_journal_badge_tween.tween_property(journal_unread_badge, "modulate:a", 0.72, 0.55)
+	else:
+		journal_unread_badge.modulate.a = 1.0
+
+func _on_journal_new_entry_notified() -> void:
+	print("Main: _on_journal_new_entry_notified() called")
+	var now_msec: int = Time.get_ticks_msec()
+	var in_burst: bool = (now_msec - _last_journal_prompt_msec) <= JOURNAL_PROMPT_BURST_WINDOW_MSEC
+	_last_journal_prompt_msec = now_msec
+	_update_journal_badge_text(true)
+
+	if not journal_write_prompt:
+		return
+
+	if journal_write_prompt.visible and in_burst:
+		_schedule_hide_journal_prompt()
+		return
+
+	_show_journal_prompt()
+
+func _on_journal_opened() -> void:
+	_hide_journal_prompt(true)
+
+func _show_journal_prompt() -> void:
+	if not journal_write_prompt:
+		return
+
+	_journal_prompt_dot_timer = 0.0
+	_journal_prompt_dot_count = 1
+	if journal_prompt_text:
+		journal_prompt_text.text = JOURNAL_PROMPT_BASE_TEXT + "."
+	if AudioManager:
+		AudioManager.play_ui_sfx("sfx_ui_journal_entry")
+	if journal_prompt_gif and journal_prompt_gif.sprite_frames:
+		journal_prompt_gif.visible = true
+		journal_prompt_gif.play()
+
+	journal_write_prompt.visible = true
+	journal_write_prompt.modulate.a = 0.0
+	journal_write_prompt.scale = Vector2(0.96, 0.96)
+
+	var tween := create_tween()
+	tween.tween_property(journal_write_prompt, "modulate:a", 1.0, 0.18)
+	tween.parallel().tween_property(journal_write_prompt, "scale", Vector2(1.0, 1.0), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	_schedule_hide_journal_prompt()
+
+func _schedule_hide_journal_prompt() -> void:
+	_journal_prompt_serial += 1
+	var serial_now: int = _journal_prompt_serial
+	await get_tree().create_timer(JOURNAL_PROMPT_DURATION_SEC).timeout
+	if serial_now != _journal_prompt_serial:
+		return
+	_hide_journal_prompt(false)
+
+func _hide_journal_prompt(immediate: bool) -> void:
+	if not journal_write_prompt:
+		return
+
+	_journal_prompt_serial += 1
+	if immediate:
+		if journal_prompt_gif:
+			journal_prompt_gif.stop()
+		journal_write_prompt.visible = false
+		journal_write_prompt.modulate.a = 1.0
+		journal_write_prompt.scale = Vector2(1.0, 1.0)
+		return
+
+	var tween := create_tween()
+	tween.tween_property(journal_write_prompt, "modulate:a", 0.0, 0.16)
+	tween.tween_callback(func():
+		if journal_write_prompt:
+			if journal_prompt_gif:
+				journal_prompt_gif.stop()
+			journal_write_prompt.visible = false
+			journal_write_prompt.modulate.a = 1.0
+			journal_write_prompt.scale = Vector2(1.0, 1.0)
+)
+
+func _update_journal_prompt_dots(delta: float) -> void:
+	if not journal_write_prompt or not journal_prompt_text:
+		return
+	if not journal_write_prompt.visible:
+		return
+
+	_journal_prompt_dot_timer += delta
+	if _journal_prompt_dot_timer < JOURNAL_PROMPT_DOT_INTERVAL_SEC:
+		return
+
+	_journal_prompt_dot_timer = 0.0
+	_journal_prompt_dot_count += 1
+	if _journal_prompt_dot_count > 3:
+		_journal_prompt_dot_count = 1
+
+	journal_prompt_text.text = JOURNAL_PROMPT_BASE_TEXT + ".".repeat(_journal_prompt_dot_count)
+
+func _update_journal_badge_text(is_unread: bool) -> void:
+	if not journal_unread_badge or not journal_unread_badge_text:
+		return
+
+	var display_text: String = "!"
+	if not is_unread:
+		display_text = "!"
+	else:
+		if not use_journal_unread_count:
+			display_text = "!"
+		else:
+			var unread_count: int = 1
+			if colony_journal and colony_journal.has_method("get_unread_count"):
+				unread_count = int(colony_journal.get_unread_count())
+			if unread_count > 99:
+				display_text = "99+"
+			else:
+				display_text = str(unread_count)
+
+	journal_unread_badge_text.text = display_text
+	_resize_journal_badge(display_text)
+
+func _resize_journal_badge(display_text: String) -> void:
+	if not journal_unread_badge or not journal_unread_badge_text:
+		return
+
+	var bubble_width: float = 20.0
+	if display_text.length() == 2:
+		bubble_width = 24.0
+	elif display_text.length() >= 3:
+		bubble_width = 30.0
+
+	var right_edge: float = 38.0
+	journal_unread_badge.offset_left = right_edge - bubble_width
+	journal_unread_badge.offset_right = right_edge
+	journal_unread_badge.offset_top = -8.0
+	journal_unread_badge.offset_bottom = 12.0
+
+	journal_unread_badge_text.offset_left = 2.0
+	journal_unread_badge_text.offset_top = 1.0
+	journal_unread_badge_text.offset_right = bubble_width - 2.0
+	journal_unread_badge_text.offset_bottom = 19.0
+
+func notify_journal_entry() -> void:
+	print("Main: notify_journal_entry() invoked")
+	_on_journal_new_entry_notified()
