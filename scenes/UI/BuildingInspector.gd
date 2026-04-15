@@ -286,9 +286,9 @@ func _on_upgrade_pressed() -> void:
 				var b = building_system.active_buildings[pos]
 				print("[DEBUG] Building", b.building_name, "pos", pos, "base_power", b.base_production_power, "is_upgraded", b.is_upgraded, "workers", b.workers_assigned)
 
-	# Play upgrade SFX
+	# Play SFX for user feedback
 	if AudioManager and AudioManager.has_method("play_build_sfx"):
-		AudioManager.play_build_sfx("upgrade")
+		AudioManager.play_build_sfx("place")
 
 	if not ResourceManager.consume_materials(cost):
 		push_warning("Upgrade failed: insufficient materials")

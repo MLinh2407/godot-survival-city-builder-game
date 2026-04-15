@@ -23,6 +23,7 @@ PopulationManager="*uid://d3voqymr74q5n"
 AudioManager="*uid://ddhlbd5igyi77"
 TimeManager="*res://scripts/managers/TimeManager.gd"
 JournalManager="*uid://dkxlw4r4hhgxk"
+EndingManager="*uid://dwu6np34ixhan"
 
 [display]
 

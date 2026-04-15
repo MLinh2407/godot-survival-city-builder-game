@@ -98,6 +98,10 @@ func _ready() -> void:
 		food_bar.get_parent().add_child(_ration_buffer_bar)
 		_ration_buffer_bar.visible = false
 
+	# TEMP VERIFICATION — remove after confirming
+	GameManager.hope_order_slider = 10.0
+	print("TEST: Slider forced to 10 — expect Hope zone modifiers in next day tick")
+
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
 	if pop_label and p:
