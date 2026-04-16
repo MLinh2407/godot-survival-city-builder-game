@@ -1,7 +1,7 @@
 class_name DialogueEngine
 extends Node
-
 signal card_dismissed
+signal choice_made(event_id: String, choice_id: String, choice_data: Dictionary)
 
 @export var dialogue_root_path: NodePath = NodePath("../../UILayer/DialogueBox")
 @export var backdrop_path: NodePath = NodePath("../../UILayer/DialogueBox/DialogueBackdrop")
@@ -113,6 +113,7 @@ func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictio
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
 	print("%s/%s" % [event_id, choice_id])
+	choice_made.emit(event_id, choice_id, choice_data)
 	_dismiss_card()
 
 func _extract_hope_order_delta(choice_data: Dictionary) -> float:

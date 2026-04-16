@@ -14,7 +14,7 @@ const MAX_WORKERS_LATE_GAME: int       = 85   # worker pool grows slowly to this
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DAY_LENGTH_SECONDS: float        = 90.0   # real seconds per game day at 1× speed
-const DAY_LENGTH_FAST: float           = 45.0   # real seconds per game day at 2× speed
+const DAY_LENGTH_FAST: float           = 10.0   # real seconds per game day at 2× speed
 const TOTAL_DAYS: int                  = 35
 const STORM_START_DAY: int             = 26     # Storm Warning fires — Act III begins
 const STORM_HIT_DAY: int               = 35     # storm lands, game ends

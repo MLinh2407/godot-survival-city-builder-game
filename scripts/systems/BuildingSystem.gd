@@ -404,6 +404,14 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	emit_signal("building_state_changed", grid_pos)
 
 	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+	
+func set_building_damaged_randomly() -> void:
+	if active_buildings.is_empty(): return
+	var keys = active_buildings.keys()
+	# Fisher-Yates or simple random choice, we can just grab an array since Dictionary keys is an array in GDScript 4
+	var target_pos = keys[randi() % keys.size()]
+	set_building_damaged(target_pos, true)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # OUTPUT QUERY 
 # ══════════════════════════════════════════════════════════════════════════════

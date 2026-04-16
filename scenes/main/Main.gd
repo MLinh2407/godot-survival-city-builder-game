@@ -85,9 +85,6 @@ func _ready() -> void:
 	_on_population_changed()
 	_on_hope_order_changed(GameManager.hope_order_slider)
 
-	if dialogue_engine:
-		dialogue_engine.call_deferred("show_event", "cold_night")
-	
 	if has_node("BuildingSystem"):
 		var bs = $BuildingSystem
 		if not bs.workers_changed.is_connected(_on_population_changed):
