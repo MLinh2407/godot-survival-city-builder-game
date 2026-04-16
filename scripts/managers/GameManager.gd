@@ -1,6 +1,8 @@
 extends Node
 
 signal hope_order_changed(new_value: float)
+signal named_character_died(character_name: String)
+signal journal_entry_fired(title: String, body: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
@@ -38,6 +40,7 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 
 var med_clinic_built: bool = false # Set TRUE by BuildingSystem on placement
+var med_clinic_upgraded_to_tier_2: bool = false # Set TRUE by BuildingInspector on upgrade
 var rook_militia_stopped: bool = false # Set TRUE by CrisisEventSystem Day 24 Option B
 var rook_militia_sanctioned: bool = false # Set TRUE by CrisisEventSystem Day 24 Option A
 var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
@@ -68,6 +71,7 @@ var colonist_meridian: ColonistData
 func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
+	TimeManager.day_changed.connect(_on_day_changed)
 	
 	print("--- GameManager Initialized ---")
 	print("Current Population: ", current_population)
@@ -139,6 +143,75 @@ func _initialize_data_classes() -> void:
 
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
+
+func set_character_alive(identifier: String, is_alive: bool) -> void:
+	if current_day > 33:
+		return # Locks permanently after Day 33
+	
+	var changed = false
+	var lower_id = identifier.to_lower()
+	match lower_id:
+		"yuna":
+			if yuna_alive != is_alive:
+				yuna_alive = is_alive
+				colonist_yuna.is_alive = is_alive
+				changed = true
+		"rook":
+			if rook_alive != is_alive:
+				rook_alive = is_alive
+				colonist_rook.is_alive = is_alive
+				changed = true
+		"vasquez":
+			if vasquez_alive != is_alive:
+				vasquez_alive = is_alive
+				colonist_vasquez.is_alive = is_alive
+				changed = true
+		"meridian":
+			if meridian_alive != is_alive:
+				meridian_alive = is_alive
+				colonist_meridian.is_alive = is_alive
+				changed = true
+
+	if changed and not is_alive:
+		named_character_died.emit(lower_id)
+
+func _on_day_changed(new_day: int) -> void:
+	current_day = new_day
+	if current_day > 33:
+		return
+	
+	if current_day == 20 and yuna_alive:
+		if not med_clinic_built or not med_clinic_upgraded_to_tier_2:
+			if current_population < 600:
+				set_character_alive("yuna", false)
+				_fire_death_journal_entry("yuna_tran")
+
+func _fire_death_journal_entry(char_id: String) -> void:
+	var path = "res://data/character_deaths.json"
+	if not FileAccess.file_exists(path):
+		push_error("GameManager: character_deaths.json missing!")
+		return
+		
+	var file = FileAccess.open(path, FileAccess.READ)
+	var content = file.get_as_text()
+	file.close()
+
+	var json = JSON.new()
+	if json.parse(content) != OK:
+		push_error("GameManager: Failed to parse character_deaths.json")
+		return
+		
+	var data = json.get_data()
+	if data and data.has("deaths"):
+		for death in data["deaths"]:
+			if death.get("character_id") == char_id:
+				var entry = death.get("journal_entry", {})
+				var title = entry.get("title", "Journal Entry")
+				var body = entry.get("body", "No content.")
+				journal_entry_fired.emit(title, body)
+				JournalManager.unlock_entry(char_id, title, body)
+				return
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SAVE / LOAD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -192,6 +265,7 @@ func save_game(filename: String) -> void:
 			"vasquez_alive": vasquez_alive,
 			"meridian_alive": meridian_alive,
 			"med_clinic_built": med_clinic_built,
+			"med_clinic_upgraded_to_tier_2": med_clinic_upgraded_to_tier_2,
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
 			"vasquez_trade_accepted": vasquez_trade_accepted
@@ -255,6 +329,7 @@ func load_game(filepath: String) -> void:
 	vasquez_alive = gm_data.get("vasquez_alive", vasquez_alive)
 	meridian_alive = gm_data.get("meridian_alive", meridian_alive)
 	med_clinic_built = gm_data.get("med_clinic_built", med_clinic_built)
+	med_clinic_upgraded_to_tier_2 = gm_data.get("med_clinic_upgraded_to_tier_2", med_clinic_upgraded_to_tier_2)
 	rook_militia_stopped = gm_data.get("rook_militia_stopped", rook_militia_stopped)
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)

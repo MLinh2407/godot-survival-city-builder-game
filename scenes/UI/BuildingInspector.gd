@@ -297,6 +297,10 @@ func _on_upgrade_pressed() -> void:
 	# Apply upgrade flag and update visuals/outputs
 	target_building.is_upgraded = true
 
+	if target_building.building_type == BuildingData.BuildingType.MED_CLINIC:
+		if GameManager:
+			GameManager.med_clinic_upgraded_to_tier_2 = true
+
 	# Adjust base production where applicable
 	match target_building.building_type:
 		BuildingData.BuildingType.COAL_GENERATOR:

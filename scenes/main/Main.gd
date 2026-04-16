@@ -41,12 +41,25 @@ const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 
 var settings_ui: CanvasLayer
+var journal_ui: Control
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
+	
+	journal_ui = preload("res://scenes/UI/ColonyJournalUI.tscn").instantiate()
+	# Optional: place into a canvas layer here if needed, or add to Main.
+	$UILayer.add_child(journal_ui)
+	
+	var journal_btn = Button.new()
+	journal_btn.text = "Journal (J)"
+	journal_btn.position = Vector2(1100, 50)
+	journal_btn.size = Vector2(100, 30)
+	var normal_style = preload("res://scenes/main/Main.tscn") # Not the best way, but we can reuse basic button styling or just use default.
+	journal_btn.pressed.connect(journal_ui.toggle_journal)
+	$UILayer/HUD.add_child(journal_btn)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -189,6 +202,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 		elif event.keycode == KEY_2:
 			set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
+		elif event.keycode == KEY_J:
+			if journal_ui and journal_ui.has_method("toggle_journal"):
+				journal_ui.toggle_journal()
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:

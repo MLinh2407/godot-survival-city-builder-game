@@ -22,6 +22,7 @@ ResourceManager="*uid://dwh6slo30k3e8"
 PopulationManager="*uid://d3voqymr74q5n"
 AudioManager="*uid://ddhlbd5igyi77"
 TimeManager="*res://scripts/managers/TimeManager.gd"
+JournalManager="*res://scripts/managers/JournalManager.gd"
 
 [display]
 
