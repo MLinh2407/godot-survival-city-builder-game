@@ -44,6 +44,13 @@ func _on_day_changed(new_day: int) -> void:
 		if ResourceManager.morale < 30.0:
 			_trigger_unrest_riot(building_system)
 
+	# Check for "Vasquez Late Dialogue" on Day 28
+	if new_day == 28 and GameManager.call("get", "vasquez_intel_shared") == true:
+		if JournalManager:
+			var title = "Day 28 — Grid-9 Transmission"
+			var body = "Vasquez came over the radio at 1800. He didn't ask for engineers this time. He just wanted to confirm the eastern tunnel routing from the intelligence I gave him. He actually sounded like he respected the data. I'm noting this down because it's the first time someone outside these walls has treated us like an equal player instead of a salvage operation."
+			JournalManager.unlock_entry("vasquez_late_dialogue", title, body)
+
 	# Regular event checking
 	if main_node and main_node.has_node("Events/DialogueEngine"):
 		var de = main_node.get_node("Events/DialogueEngine")
@@ -63,6 +70,11 @@ func _on_day_changed(new_day: int) -> void:
 		if new_day == 8:
 			if ResourceManager.morale < 50.0:
 				de.show_event("the_deserters")
+				
+		# Day 27
+		if new_day == 27:
+			if GameManager.call("get", "rook_militia_stopped") == true and GameManager.call("get", "rook_reconciliation_taken") == false:
+				de.show_event("rook_reconciliation")
 
 func _trigger_intro_yuna(de: Node) -> void:
 	de.show_event("intro_yuna")
@@ -103,6 +115,13 @@ func _handle_resource_outcome(event_id: String, choice_id: String, outcome: Dict
 	# Check specific flags
 	if event_id == "the_deserters" and choice_id == "option_b":
 		GameManager.set("deserters_lockdown_taken", true)
+		
+	if outcome.has("vasquez_late_dialogue_unlocked"):
+		GameManager.set("vasquez_intel_shared", outcome["vasquez_late_dialogue_unlocked"])
+	if outcome.has("reconciliation_window_open"):
+		GameManager.set("rook_militia_stopped", outcome["reconciliation_window_open"])
+	if outcome.has("rook_reconciliation_taken"):
+		GameManager.set("rook_reconciliation_taken", outcome["rook_reconciliation_taken"])
 		
 	# Food Modifiers
 	if outcome.has("food_rate_delta_per_day"):

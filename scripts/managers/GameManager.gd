@@ -46,6 +46,7 @@ var rook_militia_sanctioned: bool = false # Set TRUE by CrisisEventSystem Day 24
 var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
 var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
 var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
+var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -177,6 +178,12 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
+	
+	if current_day == 33 and rook_alive:
+		if rook_militia_stopped and not rook_reconciliation_taken:
+			set_character_alive("rook", false)
+			_fire_death_journal_entry("rook")
+			
 	if current_day > 33:
 		return
 	
@@ -268,7 +275,8 @@ func save_game(filename: String) -> void:
 			"med_clinic_upgraded_to_tier_2": med_clinic_upgraded_to_tier_2,
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
-			"vasquez_trade_accepted": vasquez_trade_accepted
+			"vasquez_trade_accepted": vasquez_trade_accepted,
+			"vasquez_intel_shared": vasquez_intel_shared
 		},
 		"time_manager": {
 			"current_day": day,
@@ -333,6 +341,7 @@ func load_game(filepath: String) -> void:
 	rook_militia_stopped = gm_data.get("rook_militia_stopped", rook_militia_stopped)
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)
+	vasquez_intel_shared = gm_data.get("vasquez_intel_shared", vasquez_intel_shared)
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})
