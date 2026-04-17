@@ -1,0 +1,165 @@
+[gd_scene format=3 uid="uid://cqa6om655jfnw"]
+
+[ext_resource type="Script" uid="uid://nba0mbj4dsfp" path="res://scripts/ui/MainMenu.gd" id="1"]
+[ext_resource type="Shader" uid="uid://b38df6bv8pt5l" path="res://assets/shaders/shine.gdshader" id="2"]
+[ext_resource type="Texture2D" uid="uid://c5fspo3wdom0w" path="res://assets/ui/main_menu/title.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://c0qk7xs2cjbl" path="res://assets/ui/main_menu/menu_button.png" id="4"]
+
+[sub_resource type="ShaderMaterial" id="1"]
+shader = ExtResource("2")
+shader_parameter/Angle_deg = 30.0
+shader_parameter/Brightness = 2.5
+shader_parameter/Band_Soft = 0.06
+shader_parameter/Stage_Count = 2
+shader_parameter/Stage1_Duration = 1.0
+shader_parameter/Stage2_Duration = 1.5
+shader_parameter/Stage3_Duration = 1.0
+shader_parameter/Stage1_Width = 0.12
+shader_parameter/Stage2_Width = 0.12
+shader_parameter/Stage3_Width = 0.12
+shader_parameter/Stage1_LeftToRight = true
+shader_parameter/Stage2_LeftToRight = false
+shader_parameter/Stage3_LeftToRight = true
+shader_parameter/One_Shot = false
+shader_parameter/OneShot_Delay = 0.0
+shader_parameter/Phase_Offset = 0.0
+shader_parameter/Wiggle_Angle = false
+shader_parameter/Wiggle_Amount_deg = 15.0
+shader_parameter/Shine_Pause = 0.4
+
+[node name="MainMenu" type="Control" unique_id=380966829]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="LiveBackground" type="TextureRect" parent="." unique_id=1357005886]
+z_index = -100
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 697.0
+offset_top = 274.0
+offset_right = 697.0
+offset_bottom = 274.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="LiveBackgroundNode2D" type="Node2D" parent="." unique_id=1707914462]
+z_index = -101
+
+[node name="LeftColumn" type="MarginContainer" parent="." unique_id=942654646]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.33
+anchor_top = 1.0
+anchor_right = 0.33
+anchor_bottom = 1.0
+offset_left = -403.40002
+offset_top = -920.89
+offset_right = 220.59998
+offset_bottom = -362.89
+grow_horizontal = 0
+grow_vertical = 2
+scale = Vector2(2, 2)
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 28
+
+[node name="VBox" type="VBoxContainer" parent="LeftColumn" unique_id=377925494]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="Title" type="TextureRect" parent="LeftColumn/VBox" unique_id=978230431]
+material = SubResource("1")
+custom_minimum_size = Vector2(400, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+texture = ExtResource("3")
+stretch_mode = 6
+
+[node name="Buttons" type="VBoxContainer" parent="LeftColumn/VBox" unique_id=629695543]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 5
+
+[node name="NewGame" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1066933912]
+layout_mode = 2
+texture_normal = ExtResource("4")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/NewGame" unique_id=783025984]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "NEW GAME"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LoadGame" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1589802443]
+layout_mode = 2
+texture_normal = ExtResource("4")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/LoadGame" unique_id=1985828943]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "LOAD GAME"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Settings" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1321456169]
+layout_mode = 2
+texture_normal = ExtResource("4")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/Settings" unique_id=1387473871]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "SETTINGS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Exit" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1003743248]
+layout_mode = 2
+texture_normal = ExtResource("4")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/Exit" unique_id=1807608828]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "EXIT"
+horizontal_alignment = 1
+vertical_alignment = 1

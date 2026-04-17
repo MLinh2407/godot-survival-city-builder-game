@@ -13,6 +13,7 @@ var ui_sfx_player_journal: AudioStreamPlayer
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
+var track_4: AudioStream = preload("res://assets/audio/music/Track_4.mp3")
 
 # UI SFX Streams (using button_click as placeholder for pause/unpause)
 var sfx_hover: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_hover.mp3")
@@ -76,10 +77,12 @@ func _ready() -> void:
 	# Music Players
 	music_player_a = AudioStreamPlayer.new()
 	music_player_a.bus = "Music"
+	music_player_a.finished.connect(_on_music_player_a_finished)
 	add_child(music_player_a)
 	
 	music_player_b = AudioStreamPlayer.new()
 	music_player_b.bus = "Music"
+	music_player_b.finished.connect(_on_music_player_b_finished)
 	add_child(music_player_b)
 	
 	# Start Background Track 1
@@ -165,3 +168,12 @@ func on_crisis_card_opened() -> void:
 
 func on_crisis_card_dismissed() -> void:
 	crossfade_to(track_1, 1.5)
+
+func _on_music_player_a_finished() -> void:
+	# Loops at the stream level, restart on finish to guarantee looping
+	if music_player_a and music_player_a.stream:
+		music_player_a.play()
+
+func _on_music_player_b_finished() -> void:
+	if music_player_b and music_player_b.stream:
+		music_player_b.play()
