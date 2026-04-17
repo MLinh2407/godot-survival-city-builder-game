@@ -179,6 +179,19 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
 	
+	if current_day == 20 and yuna_alive:
+		if not med_clinic_built or not med_clinic_upgraded_to_tier_2:
+			if current_population < 600:
+				set_character_alive("yuna", false)
+				_fire_death_journal_entry("yuna_tran")
+
+	if current_day == 30 and vasquez_alive:
+		if vasquez_trade_accepted:
+			var survival_rate = float(current_population) / 847.0
+			if survival_rate < 0.50:
+				set_character_alive("vasquez", false)
+				_fire_death_journal_entry("vasquez")
+
 	if current_day == 33 and rook_alive:
 		if rook_militia_stopped and not rook_reconciliation_taken:
 			set_character_alive("rook", false)
@@ -186,12 +199,6 @@ func _on_day_changed(new_day: int) -> void:
 			
 	if current_day > 33:
 		return
-	
-	if current_day == 20 and yuna_alive:
-		if not med_clinic_built or not med_clinic_upgraded_to_tier_2:
-			if current_population < 600:
-				set_character_alive("yuna", false)
-				_fire_death_journal_entry("yuna_tran")
 
 func _fire_death_journal_entry(char_id: String) -> void:
 	var path = "res://data/character_deaths.json"

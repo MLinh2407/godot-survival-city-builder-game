@@ -67,7 +67,6 @@ func process_daily_population_tick(new_day: int) -> void:
 	_process_disease_tick(pop_data)
 	_process_starvation_tick(pop_data)
 	_process_desertion_tick(pop_data)
-	_process_character_deaths(new_day, pop_data)
 	
 	_recalculate_workers(pop_data)
 	population_changed.emit()
@@ -181,36 +180,6 @@ func _process_desertion_tick(pop_data: PopulationStateData) -> void:
 			
 			if pop_data.total_population == 0:
 				population_zero.emit()
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 4. NARRATIVE CHECKS (Named Characters)
-# ══════════════════════════════════════════════════════════════════════════════
-func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
-	# YUNA'S DEATH CHECK
-	if day == GameConstants.YUNA_DEATH_DAY and GameManager.colonist_yuna.is_alive:
-		var pop_too_low = pop_data.total_population < GameConstants.YUNA_DEATH_POPULATION_THRESHOLD
-		var no_clinic = not GameManager.med_clinic_built
-		
-		if pop_too_low and no_clinic:
-			GameManager.colonist_yuna.is_alive = false
-			GameManager.yuna_alive = false 
-			character_died.emit("Yuna")
-			
-	# VASQUEZ'S DEATH CHECK
-	if day == GameConstants.VASQUEZ_DEATH_DAY and GameManager.colonist_vasquez.is_alive:
-		if GameManager.vasquez_trade_accepted:
-			var survival_rate = float(pop_data.total_population) / float(GameConstants.STARTING_POPULATION)
-			if survival_rate < GameConstants.VASQUEZ_DEATH_SURVIVAL_THRESHOLD:
-				GameManager.colonist_vasquez.is_alive = false
-				GameManager.vasquez_alive = false
-				character_died.emit("Vasquez")
-			
-	# ROOK'S DEATH CHECK
-	if day == GameConstants.ROOK_RECONCILIATION_DEADLINE and GameManager.colonist_rook.is_alive:
-		if GameManager.rook_militia_stopped and not GameManager.rook_reconciliation_taken:
-			GameManager.colonist_rook.is_alive = false
-			GameManager.rook_alive = false
-			character_died.emit("Rook")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
