@@ -2,45 +2,68 @@ extends Node
 
 var critical_warning_player: AudioStreamPlayer
 var ui_sfx_player: AudioStreamPlayer
-
 var music_player_a: AudioStreamPlayer
 var music_player_b: AudioStreamPlayer
 var is_playing_a: bool = true
-
 var ui_sfx_player_slider: AudioStreamPlayer
 
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
 
-# UI SFX Streams (using button_click as placeholder for pause/unpause)
-var sfx_hover: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_hover.mp3")
-var sfx_click: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
-var sfx_pause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
-var sfx_unpause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
-var sfx_slider_move: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
-var sfx_build_repair: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
-var sfx_build_place: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
+# ── UI SFX ───────────────────────────────────────────────────────────────────
+var sfx_hover:        AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_hover.mp3")
+var sfx_click:        AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
+var sfx_pause:        AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
+var sfx_unpause:      AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
+var sfx_slider_move:  AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_slider_move.mp3")
+var sfx_card_open:    AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_card_open.mp3")
+var sfx_card_dismiss: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_card_dismiss.mp3")
 
-var sfx_death_colonist: AudioStream = null   
-var sfx_desertion: AudioStream = null       
+# ── BUILD SFX ────────────────────────────────────────────────────────────────
+# sfx_build_place   → place, upgrade, remove, damage, memorial_place, invalid
+# sfx_build_finish  → repair, power_online, power_offline
+# sfx_build_worker  → worker_assign, worker_remove
+# sfx_build_shield  → shield_apply
+var sfx_build_place:  AudioStream = preload("res://assets/audio/sfx/build/sfx_build_place.mp3")
+var sfx_build_finish: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_finish.mp3")
+var sfx_build_worker: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_worker_assign.mp3")
+var sfx_build_shield: AudioStream = preload("res://assets/audio/sfx/build/sfx_build_shield_apply.mp3")
 
+# ── EVENT SFX  ────────────────────────────────────────────
+var sfx_death_colonist: AudioStream = preload("res://assets/audio/sfx/events/sfx_event_death_colonist.mp3")
+var sfx_desertion:      AudioStream = preload("res://assets/audio/sfx/events/sfx_event_desertion.mp3")
 func play_build_sfx(type: String) -> void:
+	var stream: AudioStream = null
 	match type:
-		"repair", "upgrade", "place":
-			if ui_sfx_player and sfx_build_place:
-				ui_sfx_player.stream = sfx_build_place
-				ui_sfx_player.play()
-				var t = get_tree().create_timer(2.5)
-				t.timeout.connect(Callable(ui_sfx_player, "stop"))
-		"finish":
-			if ui_sfx_player and sfx_build_repair:
-				ui_sfx_player.stream = sfx_build_repair
-				ui_sfx_player.play()
-				var t2 = get_tree().create_timer(2.5)
-				t2.timeout.connect(Callable(ui_sfx_player, "stop"))
+		# ── sfx_build_place group ──
+		"place", "upgrade", "remove", "damage", "memorial_place", "invalid":
+			stream = sfx_build_place
+		# ── sfx_build_finish group ──
+		"repair", "power_online", "power_offline":
+			stream = sfx_build_finish
+		# ── sfx_build_worker group ──
+		"worker_assign", "worker_remove":
+			stream = sfx_build_worker
+		# ── sfx_build_shield group ──
+		"shield_apply":
+			stream = sfx_build_shield
 		_:
 			return
+	if ui_sfx_player and stream:
+		ui_sfx_player.stream = stream
+		ui_sfx_player.play()
+
+func play_ui_card_sfx(type: String) -> void:
+	var stream: AudioStream = null
+	match type:
+		"open":    stream = sfx_card_open
+		"dismiss": stream = sfx_card_dismiss
+		_:
+			return
+	if ui_sfx_player and stream:
+		ui_sfx_player.stream = stream
+		ui_sfx_player.play()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Keep playing when paused
@@ -75,14 +98,6 @@ func _ready() -> void:
 	
 	# Start Background Track 1
 	play_music(track_1)
-
-	# Event SFX
-	var death_path := "res://assets/audio/sfx/events/sfx_event_death_colonist.mp3"
-	var deser_path := "res://assets/audio/sfx/events/sfx_event_desertion.mp3"
-	if ResourceLoader.exists(death_path):
-		sfx_death_colonist = load(death_path)
-	if ResourceLoader.exists(deser_path):
-		sfx_desertion = load(deser_path)
 
 func play_critical_warning() -> void:
 	if critical_warning_player and critical_warning_player.stream and not critical_warning_player.playing:

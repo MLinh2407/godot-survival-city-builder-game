@@ -27,6 +27,33 @@ func _ready() -> void:
 		TimeManager.storm_hit.connect(_on_storm_hit)
 	print("EndingManager ready — listening for storm_hit signal.")
 
+# 	# TEMP — ending gate verification, remove after confirming
+# 	call_deferred("_test_ending_gates")
+
+# func _test_ending_gates() -> void:
+# 	print("=== ENDING GATE TESTS ===")
+	
+# 	# Test 1: survival 70%, slider 30 → should be The Torch
+# 	GameManager.current_population = int(847 * 0.70)
+# 	GameManager.hope_order_slider = 30.0
+# 	GameManager.yuna_alive = false  # prevent The Signal
+# 	_ending_fired = false
+# 	determine_ending()
+	
+# 	# Test 2: survival 70%, slider 70 → should be The Necessary Evil
+# 	GameManager.current_population = int(847 * 0.70)
+# 	GameManager.hope_order_slider = 70.0
+# 	_ending_fired = false
+# 	determine_ending()
+	
+# 	# Test 3: survival 50%, any slider → should be The Quiet
+# 	GameManager.current_population = int(847 * 0.50)
+# 	GameManager.hope_order_slider = 30.0
+# 	_ending_fired = false
+# 	determine_ending()
+	
+# 	print("=== END GATE TESTS ===")
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STORM HIT — Day 35 trigger
 # ══════════════════════════════════════════════════════════════════════════════

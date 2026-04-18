@@ -99,8 +99,8 @@ func _ready() -> void:
 		_ration_buffer_bar.visible = false
 
 	# TEMP VERIFICATION — remove after confirming
-	GameManager.hope_order_slider = 10.0
-	print("TEST: Slider forced to 10 — expect Hope zone modifiers in next day tick")
+	# GameManager.hope_order_slider = 90.0
+	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state

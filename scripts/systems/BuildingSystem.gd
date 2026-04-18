@@ -8,6 +8,8 @@ signal building_state_changed(grid_pos: Vector2i)
 # signal building_damaged
 
 var active_buildings: Dictionary = {}
+var _prev_powered_states: Dictionary = {}
+var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
 
@@ -49,6 +51,10 @@ const T2_SPRITES = {
 @export var grid_manager: Node2D 
 
 var floating_text_scene = preload("res://scenes/UI/FloatingText.tscn")
+
+func _process(delta: float) -> void:
+	if _power_sfx_cooldown > 0.0:
+		_power_sfx_cooldown -= delta
 
 func _ready() -> void:
 	if grid_manager:
@@ -133,6 +139,7 @@ func _on_day_changed(_day: int) -> void:
 
 				# Apply damage
 				set_building_damaged(grid_pos, true)
+				AudioManager.play_build_sfx("damage")
 				print("BuildingSystem: [%s] has become damaged from neglect." % b.building_name)
 				JournalManager.add_entry(
 					b.building_name + " has fallen into disrepair. " +
@@ -273,6 +280,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.worker_capacity       = 0
 			new_data.power_draw            = 0.0
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
+			AudioManager.play_build_sfx("memorial_place")
 			
 	active_buildings[grid_pos] = new_data
 	# Connect staffing_changed for this instance so visuals update on worker assignment
@@ -322,6 +330,7 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		print("BuildingSystem: Returned %d workers from demolished [%s]" \
 			% [b_data.workers_assigned, b_data.building_name])
 			
+	AudioManager.play_build_sfx("remove")
 	active_buildings.erase(grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
@@ -348,6 +357,7 @@ func assign_worker() -> void:
 		
 	b_data.workers_assigned                        += 1
 	spawn_floating_text(current_selected_grid_pos, "+1 Worker", Color.GREEN)
+	AudioManager.play_build_sfx("worker_assign")
 	GameManager.available_workers                  -= 1
 	GameManager.population_state.available_workers -= 1
 	
@@ -370,6 +380,7 @@ func remove_worker(grid_pos: Vector2i) -> void:
 	
 	b_data.workers_assigned                        -= 1
 	spawn_floating_text(grid_pos, "-1 Worker", Color.RED)
+	AudioManager.play_build_sfx("worker_remove")
 	GameManager.available_workers                  += 1
 	GameManager.population_state.available_workers += 1
 	
@@ -504,8 +515,21 @@ func update_building_visual(grid_pos: Vector2i) -> void:
 	)
 
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
-	# Refresh visuals for all buildings
 	for pos in active_buildings.keys():
+		var b: BuildingData = active_buildings[pos]
+		var power_ok: bool = b.is_powered or b.base_production_power > 0.0
+
+		# Detect power state flip and play SFX once per change cycle
+		if _prev_powered_states.has(pos) and _power_sfx_cooldown <= 0.0:
+			var was_powered: bool = _prev_powered_states[pos]
+			if power_ok and not was_powered:
+				AudioManager.play_build_sfx("power_online")
+				_power_sfx_cooldown = 0.5
+			elif not power_ok and was_powered:
+				AudioManager.play_build_sfx("power_offline")
+				_power_sfx_cooldown = 0.5
+
+		_prev_powered_states[pos] = power_ok
 		update_building_visual(pos)
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:

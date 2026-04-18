@@ -91,6 +91,8 @@ func _build_card(event_data: Dictionary) -> void:
 		_choices_box.add_child(button)
 	_pause_game()
 	_set_card_visible(true)
+	AudioManager.play_ui_card_sfx("open")
+	AudioManager.on_crisis_card_opened()
 
 func _create_choice_button(choice_text: String) -> Button:
 	var button = Button.new()
@@ -128,6 +130,8 @@ func _dismiss_card() -> void:
 	_set_card_visible(false)
 	_clear_choices()
 	_resume_game()
+	AudioManager.play_ui_card_sfx("dismiss")
+	AudioManager.on_crisis_card_dismissed()
 	card_dismissed.emit()
 
 func _clear_choices() -> void:
