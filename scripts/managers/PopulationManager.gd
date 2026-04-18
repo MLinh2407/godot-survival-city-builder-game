@@ -106,6 +106,7 @@ func trigger_outbreak() -> void:
 	GameManager.sick_count = pop_data.sick_count
 	
 	outbreak_started.emit(actual_sick)
+	AudioManager.play_event_sfx("disease_start")
 	print("🚨 OUTBREAK STARTED: ", actual_sick, " workers fell ill.")
 
 func _process_disease_tick(pop_data: PopulationStateData) -> void:
@@ -152,6 +153,7 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		pop_data.sick_count = 0
 		pop_data.outbreak_active = false
 		outbreak_ended.emit()
+		AudioManager.play_event_sfx("disease_end")
 		print("✅ OUTBREAK RESOLVED.")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -214,6 +216,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 			GameManager.colonist_yuna.is_alive = false
 			GameManager.yuna_alive = false 
 			character_died.emit("Yuna")
+			AudioManager.play_event_sfx("death_named")
 			JournalManager.add_entry(
 				"Yuna Tran is gone. She kept working long after she should have stopped.",
 				JournalManager.TYPE_DEATH_NAMED
@@ -227,6 +230,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 				GameManager.colonist_vasquez.is_alive = false
 				GameManager.vasquez_alive = false
 				character_died.emit("Vasquez")
+				AudioManager.play_event_sfx("death_named")
 				JournalManager.add_entry(
 				"The radio from Grid-9 has gone silent. " +
 				"Vasquez's last transmission was three days ago.",
@@ -239,6 +243,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 			GameManager.colonist_rook.is_alive = false
 			GameManager.rook_alive = false
 			character_died.emit("Rook")
+			AudioManager.play_event_sfx("death_named")
 			JournalManager.add_entry(
 				"Rook is gone. Something between us closed and I waited too long to address it.",
 				JournalManager.TYPE_DEATH_NAMED

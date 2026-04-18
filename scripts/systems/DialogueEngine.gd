@@ -93,6 +93,7 @@ func _build_card(event_data: Dictionary) -> void:
 	_set_card_visible(true)
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()
+	_play_event_specific_sfx(_active_event_id)
 
 func _create_choice_button(choice_text: String) -> Button:
 	var button = Button.new()
@@ -188,3 +189,13 @@ func _set_card_visible(is_visible: bool) -> void:
 				var first_btn = _choices_box.get_child(0)
 				if first_btn and first_btn.has_method("grab_focus"):
 					first_btn.grab_focus()
+
+func _play_event_specific_sfx(event_id: String) -> void:
+	match event_id:
+		"the_vasquez_offer":
+			AudioManager.play_event_sfx("radio_vasquez")
+		"meridian_contact":
+			AudioManager.play_event_sfx("meridian_contact")
+		_:
+			# All other Tier 4 crisis events play the generic crisis alert
+			AudioManager.play_event_sfx("crisis_fire")

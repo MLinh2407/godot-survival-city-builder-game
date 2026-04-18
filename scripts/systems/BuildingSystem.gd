@@ -331,6 +331,7 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 			% [b_data.workers_assigned, b_data.building_name])
 			
 	AudioManager.play_build_sfx("remove")
+	AudioManager.remove_ambient(grid_pos)
 	active_buildings.erase(grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
@@ -530,9 +531,16 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 				_power_sfx_cooldown = 0.5
 
 		_prev_powered_states[pos] = power_ok
+
+		AudioManager.update_ambient(pos, b.building_type, _should_ambient_play(b))
+
 		update_building_visual(pos)
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
+	if not active_buildings.has(grid_pos):
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+	AudioManager.update_ambient(grid_pos, b.building_type, _should_ambient_play(b))
 	update_building_visual(grid_pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -584,6 +592,31 @@ func is_water_recycler_staffed() -> bool:
 			if b.workers_assigned > 0 and b.is_powered:
 				return true
 	return false
+
+# Returns true if this building's ambient loop should currently be playing.
+func _should_ambient_play(b: BuildingData) -> bool:
+	match b.building_type:
+		BuildingData.BuildingType.COAL_GENERATOR:
+			# Needs both power and at least one worker
+			return b.is_powered and b.workers_assigned > 0
+		BuildingData.BuildingType.GEOTHERMAL_TAP:
+			# Passive — only needs power
+			return b.is_powered
+		BuildingData.BuildingType.WATER_RECYCLER:
+			# Ambient represents active filtration — needs staff
+			return b.workers_assigned > 0
+		BuildingData.BuildingType.MED_CLINIC:
+			# Ambient represents active clinic — needs staff
+			return b.workers_assigned > 0
+		BuildingData.BuildingType.ARCHIVE_HALL:
+			# Ambient represents humming servers — needs power
+			return b.is_powered
+		BuildingData.BuildingType.SHELTER_BLOCK:
+			# Ambient represents occupied housing — needs power
+			return b.is_powered
+		_:
+			# Relay Hub, Ration Store, Memorial Wall — no ambient loop
+			return false
 
 # ══════════════════════════════════════════════════════════════════════════════
 # VISUAL EFFECTS (FCT)

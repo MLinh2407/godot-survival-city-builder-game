@@ -107,10 +107,10 @@ func _input(event: InputEvent) -> void:
 		# LEFT CLICK
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if current_build_scene != null:
-    			if is_valid_placement(map_pos):
-        			place_building(map_pos)
-    			else:
-        			AudioManager.play_build_sfx("invalid")
+				if is_valid_placement(map_pos):
+					place_building(map_pos)
+				else:
+					AudioManager.play_build_sfx("invalid")
 			else:
 				if occupied_cells.has(map_pos):
 					building_selected.emit(map_pos)
