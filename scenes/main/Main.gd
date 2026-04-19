@@ -32,6 +32,8 @@ extends Node
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
 
+@onready var _camera: Camera2D = $GameWorld/Camera2D  
+
 var was_power_critical: bool = false
 var was_food_critical: bool = false
 var was_morale_critical: bool = false
@@ -42,6 +44,14 @@ const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 var _ration_buffer_bar: ProgressBar = null
 
 var settings_ui: CanvasLayer
+
+# ── Zoom configuration ───────────────────────────────────────────────────────
+const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
+const ZOOM_DEFAULT:   int          = 1    
+const ZOOM_LERP_SPEED: float       = 10.0  
+
+var _zoom_index:  int   = ZOOM_DEFAULT
+var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -116,7 +126,17 @@ func _on_population_changed() -> void:
 		else:
 			disease_label.remove_theme_color_override("font_color")
 
+func _zoom_step(direction: int) -> void:
+	var mouse_world_before: Vector2 = _camera.get_global_transform().affine_inverse() \
+									 * get_viewport().get_mouse_position()
+	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	_zoom_target = ZOOM_STEPS[_zoom_index]
+	var mouse_world_after: Vector2 = _camera.get_global_transform().affine_inverse() \
+									* get_viewport().get_mouse_position()
+	_camera.position += mouse_world_before - mouse_world_after
+
 func _process(delta: float) -> void:
+	_update_camera_zoom(delta)
 	_sync_hope_order_visuals()
 	if get_tree() and get_tree().paused:
 		return
@@ -146,6 +166,16 @@ func _process(delta: float) -> void:
 		top_sweep_line.offset_right = top_sweep_line.offset_left + beam_width
 		var sweep_alpha: float = 0.26 + 0.46 * (0.5 + 0.5 * sin(hud_fx_t * 5.2))
 		top_sweep_line.color = Color(0.58, 1.0, 1.0, sweep_alpha)
+
+func _update_camera_zoom(delta: float) -> void:
+	if not _camera:
+		return
+	var current: float = _camera.zoom.x
+	if abs(current - _zoom_target) > 0.001:
+		var next_zoom: float = lerpf(current, _zoom_target, ZOOM_LERP_SPEED * delta)
+		_camera.zoom = Vector2(next_zoom, next_zoom)
+	else:
+		_camera.zoom = Vector2(_zoom_target, _zoom_target)
 
 func _update_rates() -> void:
 	if power_rate_lbl:
@@ -205,12 +235,19 @@ func _on_button_settings_pressed() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE:
-			toggle_pause()
-		elif event.keycode == KEY_1:
-			set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
-		elif event.keycode == KEY_2:
-			set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
+		match event.keycode:
+			KEY_SPACE: toggle_pause()
+			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
+			# Keyboard zoom shortcuts 
+			KEY_EQUAL, KEY_KP_ADD:      _zoom_step(+1)   # '+'  key zooms in
+			KEY_MINUS, KEY_KP_SUBTRACT: _zoom_step(-1)   # '-'  key zooms out
+
+	# ── mouse-wheel zoom ──
+	if event is InputEventMouseButton and event.pressed:
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_UP:   _zoom_step(+1)
+			MOUSE_BUTTON_WHEEL_DOWN: _zoom_step(-1)
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
