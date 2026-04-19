@@ -53,6 +53,15 @@ mouse_filter = 0
 [node name="LiveBackgroundNode2D" type="Node2D" parent="." unique_id=1707914462]
 z_index = -101
 
+[node name="Backdrop" type="ColorRect" parent="." unique_id=199112233]
+z_index = -2
+layout_mode = 0
+offset_left = -27.0
+offset_top = -30.0
+offset_right = 1324.0
+offset_bottom = 744.0
+color = Color(0, 0, 0, 0.1)
+
 [node name="LeftColumn" type="MarginContainer" parent="." unique_id=942654646]
 layout_mode = 1
 anchors_preset = -1
@@ -60,9 +69,9 @@ anchor_left = 0.33
 anchor_top = 1.0
 anchor_right = 0.33
 anchor_bottom = 1.0
-offset_left = -403.40002
+offset_left = -409.40002
 offset_top = -920.89
-offset_right = 220.59998
+offset_right = 214.59998
 offset_bottom = -362.89
 grow_horizontal = 0
 grow_vertical = 2
@@ -98,10 +107,12 @@ texture_normal = ExtResource("4")
 stretch_mode = 3
 
 [node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/NewGame" unique_id=783025984]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
@@ -116,10 +127,12 @@ texture_normal = ExtResource("4")
 stretch_mode = 3
 
 [node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/LoadGame" unique_id=1985828943]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
@@ -134,10 +147,12 @@ texture_normal = ExtResource("4")
 stretch_mode = 3
 
 [node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/Settings" unique_id=1387473871]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
@@ -152,10 +167,12 @@ texture_normal = ExtResource("4")
 stretch_mode = 3
 
 [node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/Exit" unique_id=1807608828]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5

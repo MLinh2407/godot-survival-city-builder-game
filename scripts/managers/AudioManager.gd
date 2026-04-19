@@ -15,7 +15,7 @@ var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
 var track_4: AudioStream = preload("res://assets/audio/music/Track_4.mp3")
 
-# UI SFX Streams (using button_click as placeholder for pause/unpause)
+# UI SFX Streams 
 var sfx_hover: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_hover.mp3")
 var sfx_click: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3")
 var sfx_pause: AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_click.mp3") # Placeholder
@@ -84,9 +84,6 @@ func _ready() -> void:
 	music_player_b.bus = "Music"
 	music_player_b.finished.connect(_on_music_player_b_finished)
 	add_child(music_player_b)
-	
-	# Start Background Track 1
-	play_music(track_1)
 
 func play_critical_warning() -> void:
 	if critical_warning_player and critical_warning_player.stream and not critical_warning_player.playing:
@@ -130,11 +127,16 @@ func play_ui_sfx(type: String) -> void:
 			
 
 func play_music(stream: AudioStream) -> void:
+	# Stop the other player to prevent overlapping audio
 	if is_playing_a:
+		if music_player_b and music_player_b.playing:
+			music_player_b.stop()
 		music_player_a.stream = stream
 		music_player_a.play()
 		music_player_a.volume_db = 0.0
 	else:
+		if music_player_a and music_player_a.playing:
+			music_player_a.stop()
 		music_player_b.stream = stream
 		music_player_b.play()
 		music_player_b.volume_db = 0.0
