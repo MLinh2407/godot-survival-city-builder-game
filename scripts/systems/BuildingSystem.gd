@@ -283,6 +283,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			AudioManager.play_build_sfx("memorial_place")
 			
 	active_buildings[grid_pos] = new_data
+	new_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
 	# Connect staffing_changed for this instance so visuals update on worker assignment
 	new_data.staffing_changed.connect(Callable(self, "_on_staffing_changed").bind(grid_pos))
 	print("BuildingSystem: Registered [%s] at %s | Slots: %d | Base power: %.1f | Base food: %.1f" \

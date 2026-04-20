@@ -27,6 +27,8 @@ enum BuildingCategory {
     SOCIAL      # Tier 3 in build menu
 }
 
+@export var footprint_size: Vector2i = Vector2i(1, 1)
+
 # Identity
 @export var building_type: BuildingType = BuildingType.COAL_GENERATOR
 @export var building_name: String = ""

@@ -300,13 +300,22 @@ func load_game(filepath: String) -> void:
 			var ty = b.get("type", 0)
 			
 			# Map integer BuildingType to string key if required by spawn function
-			var b_type_str = ""
-			if ty == BuildingData.BuildingType.COAL_GENERATOR: b_type_str = "coal"
-			elif ty == BuildingData.BuildingType.HYDROPONIC_BAY: b_type_str = "hydro"
-			elif ty == BuildingData.BuildingType.SHELTER_BLOCK: b_type_str = "shelter"
-			else:
-				# Future mapping fallback
-				b_type_str = "coal"
+			var type_map: Dictionary = {
+				BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+				BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+				BuildingData.BuildingType.RELAY_HUB:       "relay",
+				BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+				BuildingData.BuildingType.RATION_STORE:    "ration",
+				BuildingData.BuildingType.WATER_RECYCLER:  "water",
+				BuildingData.BuildingType.MED_CLINIC:      "med",
+				BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+				BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+				BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+			}
+			var b_type_str: String = type_map.get(ty, "")
+			if b_type_str == "":
+				push_warning("GameManager.load_game: unknown building type %d, skipping" % ty)
+				continue
 
 			# Safely spawn it physically and then rewrite the visual configuration.
 			grid_manager.spawn_building_from_save(b_type_str, pos)
