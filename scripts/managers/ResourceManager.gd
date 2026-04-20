@@ -106,6 +106,8 @@ func _recalculate_power() -> void:
 			var efficiency: float = b.staffing_ratio
 			if b.is_damaged:
 				efficiency *= GameConstants.BUILDING_DAMAGE_OUTPUT
+			if GameManager.meridian_trusted:
+				efficiency *= GameConstants.MERIDIAN_EFFICIENCY_BOOST
 			power_capacity += b.base_production_power * efficiency
 
 	# Pass 2 — sum all power consumers
@@ -137,6 +139,9 @@ func _process_food_tick() -> void:
 	for grid_pos in building_system.active_buildings:
 		var output = building_system.get_effective_output(grid_pos)
 		food_production += output.food
+
+	if GameManager.vasquez_trade_accepted and GameManager.vasquez_alive:
+		food_production += 8.0
 
 	# Hope/Order modifier on food production
 	var slider: float = GameManager.hope_order_slider

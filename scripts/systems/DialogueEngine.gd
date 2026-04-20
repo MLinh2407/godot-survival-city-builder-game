@@ -1,7 +1,7 @@
 class_name DialogueEngine
 extends Node
-
 signal card_dismissed
+signal choice_made(event_id: String, choice_id: String, choice_data: Dictionary)
 
 @export var dialogue_root_path: NodePath = NodePath("../../UILayer/DialogueBox")
 @export var backdrop_path: NodePath = NodePath("../../UILayer/DialogueBox/DialogueBackdrop")
@@ -112,8 +112,8 @@ func _create_choice_button(choice_text: String) -> Button:
 func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictionary) -> void:
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
-	_append_journal_entry(choice_data)
 	print("%s/%s" % [event_id, choice_id])
+	choice_made.emit(event_id, choice_id, choice_data)
 	_dismiss_card()
 
 func _extract_hope_order_delta(choice_data: Dictionary) -> float:
@@ -124,16 +124,6 @@ func _extract_hope_order_delta(choice_data: Dictionary) -> float:
 		if outcome.has("hope_order_delta") and outcome["hope_order_delta"] != null:
 			return float(outcome["hope_order_delta"])
 	return 0.0
-
-func _extract_journal_entry(choice_data: Dictionary) -> String:
-	var outcomes: Array = choice_data.get("outcomes", [])
-	for outcome in outcomes:
-		if typeof(outcome) != TYPE_DICTIONARY:
-			continue
-		var entry_text: String = str(outcome.get("journal_entry", "")).strip_edges()
-		if entry_text != "":
-			return entry_text
-	return ""
 
 func _recursive_find(node: Node, target_name: String):
 	if not node:
@@ -146,28 +136,6 @@ func _recursive_find(node: Node, target_name: String):
 			if res:
 				return res
 	return null
-
-func _append_journal_entry(choice_data: Dictionary) -> void:
-	var entry_text := _extract_journal_entry(choice_data)
-	if entry_text == "":
-		return
-
-	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
-	if not journal:
-		journal = _recursive_find(get_tree().get_root(), "ColonyJournal")
-
-	if journal and journal.has_method("add_entry"):
-		journal.add_entry(GameManager.current_day, entry_text)
-		# Ensure the journal node emits its notification signal
-		if journal.has_signal("journal_new_entry_notified"):
-			journal.journal_new_entry_notified.emit()
-
-		var main_node = _recursive_find(get_tree().get_root(), "Main")
-		if main_node:
-			if main_node.has_method("notify_journal_entry"):
-				main_node.notify_journal_entry()
-		else:
-			pass
 
 func _dismiss_card() -> void:
 	_set_card_visible(false)

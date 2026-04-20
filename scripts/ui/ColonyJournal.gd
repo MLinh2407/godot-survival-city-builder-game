@@ -10,7 +10,6 @@ signal journal_closed
 signal unread_state_changed(has_unread: bool)
 signal journal_new_entry_notified
 
-@export var debug_fill: bool = true
 @export_range(0.18, 1.20, 0.01) var flip_duration: float = 0.36
 @export_range(0.00, 0.20, 0.005) var flip_min_width: float = 0.04
 @export_range(1.00, 1.10, 0.005) var flip_settle_scale: float = 1.02
@@ -76,22 +75,16 @@ func _ready() -> void:
 	if PopulationManager:
 		PopulationManager.colonist_died.connect(_on_colonist_died)
 		PopulationManager.worker_deserted.connect(_on_worker_deserted)
-		PopulationManager.character_died.connect(_on_character_died)
 		PopulationManager.starvation_deaths.connect(_on_starvation_deaths)
 		PopulationManager.outbreak_started.connect(_on_outbreak_started)
 		PopulationManager.outbreak_ended.connect(_on_outbreak_ended)
 	else:
 		push_warning("ColonyJournal: PopulationManager not found.")
 
-	# Debug: populate with sample entries for page-flip testing
-	if debug_fill and entries.is_empty():
-		for i in range(1, 11):
-			var e := JournalEntryData.new()
-			e.day = i
-			e.title = "Test Entry %d" % i
-			e.body = "This is a sample journal entry number %d. Use this to test the page flipping animation and navigation." % i
-			e.entry_type = JournalEntryData.EntryType.NARRATIVE
-			entries.append(e)
+	if GameManager:
+		GameManager.named_character_died.connect(_on_character_died)
+	else:
+		push_warning("ColonyJournal: GameManager not found.")
 
 func add_entry(
 		day: int,
@@ -412,11 +405,12 @@ func _load_death_text_from_json(char_name: String) -> String:
 		push_warning("ColonyJournal: character_deaths.json parse failed")
 		return "%s is gone." % char_name
 
+	var lower_name := char_name.to_lower()
 	for death in parsed.get("deaths", []):
 		if typeof(death) != TYPE_DICTIONARY:
 			continue
-		if death.get("display_name", "").begins_with(char_name) \
-		or death.get("character_id", "") == char_name.to_lower().replace(" ", "_"):
+		var char_id: String = death.get("character_id", "").to_lower()
+		if char_id == lower_name or char_id.begins_with(lower_name):
 			var journal_entry = death.get("journal_entry", {})
 			return journal_entry.get("body", "%s is gone." % char_name)
 

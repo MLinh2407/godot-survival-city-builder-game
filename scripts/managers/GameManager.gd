@@ -1,6 +1,7 @@
 extends Node
 
 signal hope_order_changed(new_value: float)
+signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
@@ -38,11 +39,13 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 
 var med_clinic_built: bool = false # Set TRUE by BuildingSystem on placement
+var med_clinic_upgraded_to_tier_2: bool = false # Set TRUE by BuildingInspector on upgrade
 var rook_militia_stopped: bool = false # Set TRUE by CrisisEventSystem Day 24 Option B
 var rook_militia_sanctioned: bool = false # Set TRUE by CrisisEventSystem Day 24 Option A
 var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
 var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
 var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
+var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -68,6 +71,7 @@ var colonist_meridian: ColonistData
 func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
+	TimeManager.day_changed.connect(_on_day_changed)
 	
 	print("--- GameManager Initialized ---")
 	print("Current Population: ", current_population)
@@ -77,11 +81,6 @@ func _ready() -> void:
 	print("Alive Flags - Yuna: ", yuna_alive, " | Rook: ", rook_alive, " | Vasquez: ", vasquez_alive, " | Meridian: ", meridian_alive)
 	print("Current Day: ", current_day)
 	print("-------------------------------")
-
-	# Keep GameManager.current_day in sync with TimeManager
-	if TimeManager:
-		TimeManager.day_changed.connect(_on_time_day_changed)
-		current_day = TimeManager.current_day
 
 func _initialize_data_classes() -> void:
 	# 1. Population State
@@ -145,8 +144,40 @@ func _initialize_data_classes() -> void:
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
 
-func _on_time_day_changed(new_day: int) -> void:
+func set_character_alive(identifier: String, is_alive: bool) -> void:
+	if current_day > 33:
+		return # Locks permanently after Day 33
+	
+	var changed = false
+	var lower_id = identifier.to_lower()
+	match lower_id:
+		"yuna":
+			if yuna_alive != is_alive:
+				yuna_alive = is_alive
+				colonist_yuna.is_alive = is_alive
+				changed = true
+		"rook":
+			if rook_alive != is_alive:
+				rook_alive = is_alive
+				colonist_rook.is_alive = is_alive
+				changed = true
+		"vasquez":
+			if vasquez_alive != is_alive:
+				vasquez_alive = is_alive
+				colonist_vasquez.is_alive = is_alive
+				changed = true
+		"meridian":
+			if meridian_alive != is_alive:
+				meridian_alive = is_alive
+				colonist_meridian.is_alive = is_alive
+				changed = true
+
+	if changed and not is_alive:
+		named_character_died.emit(lower_id)
+
+func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SAVE / LOAD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -174,7 +205,6 @@ func save_game(filename: String) -> void:
 				"is_shielded": b_data.is_shielded
 			})
 	
-	# Try to safely find TimeManager and ResourceManager (they are Autoloads, so this is safe)
 	var day = TimeManager.current_day if TimeManager else current_day
 	var elapsed = TimeManager.time_elapsed if TimeManager else 0.0
 	var speed = TimeManager.current_speed if TimeManager else 1
@@ -204,9 +234,11 @@ func save_game(filename: String) -> void:
 			"vasquez_alive": vasquez_alive,
 			"meridian_alive": meridian_alive,
 			"med_clinic_built": med_clinic_built,
+			"med_clinic_upgraded_to_tier_2": med_clinic_upgraded_to_tier_2,
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
-			"vasquez_trade_accepted": vasquez_trade_accepted
+			"vasquez_trade_accepted": vasquez_trade_accepted,
+			"vasquez_intel_shared": vasquez_intel_shared
 		},
 		"time_manager": {
 			"current_day": day,
@@ -268,9 +300,11 @@ func load_game(filepath: String) -> void:
 	vasquez_alive = gm_data.get("vasquez_alive", vasquez_alive)
 	meridian_alive = gm_data.get("meridian_alive", meridian_alive)
 	med_clinic_built = gm_data.get("med_clinic_built", med_clinic_built)
+	med_clinic_upgraded_to_tier_2 = gm_data.get("med_clinic_upgraded_to_tier_2", med_clinic_upgraded_to_tier_2)
 	rook_militia_stopped = gm_data.get("rook_militia_stopped", rook_militia_stopped)
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)
+	vasquez_intel_shared = gm_data.get("vasquez_intel_shared", vasquez_intel_shared)
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})

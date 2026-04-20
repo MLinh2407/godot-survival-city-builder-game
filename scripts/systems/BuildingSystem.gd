@@ -64,6 +64,9 @@ func _ready() -> void:
 	ResourceManager.register_building_system(self)
 	PopulationManager.register_building_system(self)
 	TimeManager.day_changed.connect(_on_day_changed)
+	
+	if GameManager:
+		GameManager.named_character_died.connect(_on_named_character_died)
 
 	# React to resource changes so power dimming updates instantly
 	if ResourceManager:
@@ -231,7 +234,10 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.category          = BuildingData.BuildingCategory.SURVIVAL
 			new_data.worker_capacity   = GameConstants.MED_CLINIC_SLOTS
 			new_data.power_draw        = GameConstants.MED_CLINIC_POWER_DRAW
-			new_data.base_morale_bonus = GameConstants.MED_CLINIC_MORALE_PASSIVE
+			if GameManager.yuna_alive:
+				new_data.base_morale_bonus = GameConstants.MED_CLINIC_MORALE_PASSIVE
+			else:
+				new_data.base_morale_bonus = 0.0
 			GameManager.med_clinic_built = true  # Narrative flag — Yuna death check needs this
 
 		"archive":
@@ -398,6 +404,21 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	emit_signal("building_state_changed", grid_pos)
 
 	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+	
+func set_building_damaged_randomly() -> void:
+	if active_buildings.is_empty(): return
+	var keys = active_buildings.keys()
+	# Fisher-Yates or simple random choice, we can just grab an array since Dictionary keys is an array in GDScript 4
+	var target_pos = keys[randi() % keys.size()]
+	set_building_damaged(target_pos, true)
+
+func get_med_clinic_count() -> int:
+	var count: int = 0
+	for pos in active_buildings:
+		if active_buildings[pos].building_type == BuildingData.BuildingType.MED_CLINIC:
+			count += 1
+	return count
+
 # ══════════════════════════════════════════════════════════════════════════════
 # OUTPUT QUERY 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -488,6 +509,21 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
 	update_building_visual(grid_pos)
+
+func _on_named_character_died(char_name: String) -> void:
+	if char_name == "yuna":
+		var changed = false
+		for pos in active_buildings.keys():
+			var b = active_buildings[pos]
+			if b.building_type == BuildingData.BuildingType.MED_CLINIC:
+				b.base_morale_bonus = 0.0
+				changed = true
+		if changed and ResourceManager:
+			if ResourceManager.has_method("_recalculate_power"):
+				ResourceManager._recalculate_power()
+			elif ResourceManager.has_method("calculate_power"):
+				ResourceManager.calculate_power()
+			ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # QUERY HELPERS — called by ResourceManager and PopulationManager

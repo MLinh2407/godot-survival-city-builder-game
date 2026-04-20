@@ -3,6 +3,36 @@
   "note": "hope_order_delta: negative = Hope push (slider moves left), positive = Order push (slider moves right). Range 0–100.",
   "events": [
     {
+      "event_id": "intro_kael",
+      "trigger_day": 1,
+      "trigger_condition": "always",
+      "setup_text": "[PLACEHOLDER: Kael's opening briefing text]",
+      "choices": [
+        {
+          "id": "continue",
+          "text": "Continue",
+          "outcomes": []
+        }
+      ],
+      "hope_order_delta": 0,
+      "hope_order_delta_note": "No mechanical effect, just narrative."
+    },
+    {
+      "event_id": "intro_yuna",
+      "trigger_day": 1,
+      "trigger_condition": "always",
+      "setup_text": "[PLACEHOLDER: Yuna's opening briefing text]",
+      "choices": [
+        {
+          "id": "continue",
+          "text": "Continue",
+          "outcomes": []
+        }
+      ],
+      "hope_order_delta": 0,
+      "hope_order_delta_note": "No mechanical effect, just narrative."
+    },
+    {
       "event_id": "cold_night",
       "trigger_day": 3,
       "trigger_condition": "always",
@@ -369,6 +399,47 @@
         }
       ],
       "hope_order_delta": 0
+    },
+    {
+      "event_id": "rook_reconciliation",
+      "trigger_day": 27,
+      "trigger_condition": "rook_militia_stopped == true AND rook_reconciliation_taken == false",
+      "setup_text": "You find Rook alone in the mess hall. It's been a few days since you shut down his scavenging operation. The anger is mostly gone now, replaced by a quiet distance. You have a narrow window to say something.",
+      "choices": [
+        {
+          "id": "option_a",
+          "text": "Sit down. Explain the decision.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "Sets rook_reconciliation_taken to true, keeping him in the colony. rook_alive stays true.",
+              "rook_reconciliation_taken": true
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "I sat with Rook. I told him why I stopped the militia. He didn't agree, but he listened. He packed up his salvage gear and went back to his bunk. He's going to stay.",
+              "hope_order_delta": 5
+            }
+          ]
+        },
+        {
+          "id": "option_b",
+          "text": "Walk past. The decision stands on its own.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No mechanical effect immediately, but allows the Day 33 death condition to remain valid."
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "I walked past Rook in the mess hall earlier today. I gave the order, I don't need to justify it. He didn't look up. The distance between us is wider now.",
+              "hope_order_delta": -5
+            }
+          ]
+        }
+      ],
+      "hope_order_delta": null,
+      "hope_order_delta_note": "Per-choice — see hope_order_delta inside each outcome object."
     }
   ]
 }

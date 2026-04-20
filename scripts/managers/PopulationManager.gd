@@ -189,12 +189,13 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 	# YUNA'S DEATH CHECK
 	if day == GameConstants.YUNA_DEATH_DAY and GameManager.colonist_yuna.is_alive:
 		var pop_too_low = pop_data.total_population < GameConstants.YUNA_DEATH_POPULATION_THRESHOLD
-		var no_clinic = not GameManager.med_clinic_built
+		var no_clinic = not GameManager.med_clinic_built or not GameManager.med_clinic_upgraded_to_tier_2
 		
 		if pop_too_low and no_clinic:
 			GameManager.colonist_yuna.is_alive = false
 			GameManager.yuna_alive = false 
 			character_died.emit("Yuna")
+			GameManager.named_character_died.emit("yuna")  # For BuildingSystem morale bonus removal
 			
 	# VASQUEZ'S DEATH CHECK
 	if day == GameConstants.VASQUEZ_DEATH_DAY and GameManager.colonist_vasquez.is_alive:
@@ -204,6 +205,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 				GameManager.colonist_vasquez.is_alive = false
 				GameManager.vasquez_alive = false
 				character_died.emit("Vasquez")
+				GameManager.named_character_died.emit("vasquez")  # Reserved for future BuildingSystem effects
 			
 	# ROOK'S DEATH CHECK
 	if day == GameConstants.ROOK_RECONCILIATION_DEADLINE and GameManager.colonist_rook.is_alive:
@@ -211,6 +213,7 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 			GameManager.colonist_rook.is_alive = false
 			GameManager.rook_alive = false
 			character_died.emit("Rook")
+			GameManager.named_character_died.emit("rook")  # Reserved for future BuildingSystem effects
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
@@ -239,24 +242,3 @@ func _recalculate_workers(pop_data: PopulationStateData) -> void:
 	GameManager.current_population = pop_data.total_population
 	GameManager.available_workers = pop_data.available_workers
 	GameManager.sick_count = pop_data.sick_count
-
-# ══════════════════════════════════════════════════════════════════════════════
-# DEBUG / TESTING ONLY 
-# ══════════════════════════════════════════════════════════════════════════════
-#func _input(event: InputEvent) -> void:
-#	if event is InputEventKey and event.pressed:
-#		if event.keycode == KEY_P:
-#			print("\n--- DEBUG: FORCING NEXT DAY ---")
-#			GameManager.current_day += 1
-#			process_daily_population_tick(GameManager.current_day)
-		
-#		if event.keycode == KEY_O:
-#			trigger_outbreak()
-			
-#		if event.keycode == KEY_F:
-#			GameManager.resource_food.current_value = 0.0
-#			print("TEST: Food artificially set to 0.0")
-			
-#		if event.keycode == KEY_M:
-#			GameManager.resource_morale.current_value = 5.0
-#			print("TEST: Morale artificially set to 5.0")

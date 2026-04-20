@@ -125,7 +125,6 @@ func play_ui_sfx(type: String) -> void:
 		_:
 			return
 			
-
 func play_music(stream: AudioStream) -> void:
 	if is_playing_a:
 		music_player_a.stream = stream
