@@ -294,12 +294,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 
 	# Recalculate power so `is_powered` flags are up-to-date and visuals reflect power state
 	if ResourceManager:
-		if ResourceManager.has_method("_recalculate_power"):
-			# Use internal recalculation function if available to avoid extra emits
-			ResourceManager._recalculate_power()
-		else:
-			if ResourceManager.has_method("calculate_power"):
-				ResourceManager.calculate_power()
+		ResourceManager.calculate_power()
 
 	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
 		var placed_node = grid_manager.occupied_cells[grid_pos]

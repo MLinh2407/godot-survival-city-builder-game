@@ -49,12 +49,14 @@ var _last_fp_valid:  bool     = false
 func _ready() -> void:
     ghost_sprite.visible = false
     hover_cursor.visible = false
-    ghost_sprite.z_index = 100   
+    ghost_sprite.z_index = 100
 
-    _footprint_node          = Node2D.new()
-    _footprint_node.z_index  = 0  
-                                  
+    _footprint_node         = Node2D.new()
+    _footprint_node.z_index = 0   
     add_child(_footprint_node)
+
+    if building_container:
+        building_container.z_index = 1
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
@@ -99,21 +101,25 @@ func _rebuild_footprint_overlay(anchor: Vector2i, b_type: String, valid: bool) -
     for child in _footprint_node.get_children():
         child.queue_free()
 
-    var color: Color = Color(0.20, 1.00, 0.30, 0.55) if valid \
-                                                      else Color(1.00, 0.20, 0.20, 0.55)
+    var color: Color = Color(0.20, 1.00, 0.30, 0.50) if valid \
+                                                      else Color(1.00, 0.20, 0.20, 0.50)
+
+    var half_w: float = 32.0
+    var half_h: float = 16.0
+    if base_grid and base_grid.tile_set:
+        half_w = base_grid.tile_set.tile_size.x * 0.5
+        half_h = half_w * 0.5   
 
     for cell in get_footprint_cells(anchor, b_type):
-        var c:  Vector2 = base_grid.map_to_local(cell)
-
-        var vt: Vector2 = (c + base_grid.map_to_local(cell + Vector2i( 0, -1))) * 0.5
-        var vr: Vector2 = (c + base_grid.map_to_local(cell + Vector2i( 1,  0))) * 0.5
-        var vb: Vector2 = (c + base_grid.map_to_local(cell + Vector2i( 0,  1))) * 0.5
-        var vl: Vector2 = (c + base_grid.map_to_local(cell + Vector2i(-1,  0))) * 0.5
-
+        var c: Vector2 = base_grid.map_to_local(cell)
         var poly := Polygon2D.new()
-        poly.polygon  = PackedVector2Array([vt, vr, vb, vl])
-        poly.color    = color
-        poly.position = Vector2.ZERO   
+        poly.polygon = PackedVector2Array([
+            c + Vector2(     0, -half_h),   # top
+            c + Vector2( half_w,      0),   # right
+            c + Vector2(     0,  half_h),   # bottom
+            c + Vector2(-half_w,      0),   # left
+        ])
+        poly.color = color
         _footprint_node.add_child(poly)
 
 func _clear_footprint_overlay() -> void:
