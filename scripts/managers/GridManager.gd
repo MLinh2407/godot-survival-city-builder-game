@@ -23,7 +23,7 @@ const BUILDING_FOOTPRINTS: Dictionary = {
 const GRID_BOUNDS_MIN = Vector2i(-5, -5)
 const GRID_BOUNDS_MAX = Vector2i(5,  5)
 
-const BUILDING_GROUND_FACTOR: float = 0.3
+const BUILDING_GROUND_FACTOR: float = 0.25
 
 var occupied_cells:  Dictionary = {}   
 var cell_to_anchor:  Dictionary = {}   
@@ -44,6 +44,10 @@ var _ghost_y_offset: float = 0.0
 var _footprint_node: Node2D
 var _last_fp_anchor: Vector2i = Vector2i(-9999, -9999)
 var _last_fp_valid:  bool     = false
+var _hover_highlight:     Node2D
+var _selection_highlight: Node2D
+var _last_hovered_anchor: Vector2i = Vector2i(-9999, -9999)
+var _selected_anchor:     Vector2i = Vector2i(-9999, -9999)
 
 # ── _ready ───────────────────────────────────────────────────────────────────
 func _ready() -> void:
@@ -51,12 +55,35 @@ func _ready() -> void:
     hover_cursor.visible = false
     ghost_sprite.z_index = 100
 
-    _footprint_node         = Node2D.new()
-    _footprint_node.z_index = 0   
+    # Footprint fill — absolute z=1, above base grid tiles (z=0)
+    _footprint_node              = Node2D.new()
+    _footprint_node.z_index      = 1
+    _footprint_node.z_as_relative = false
     add_child(_footprint_node)
 
+    # Hover outline — absolute z=2
+    _hover_highlight              = Node2D.new()
+    _hover_highlight.z_index      = 2
+    _hover_highlight.z_as_relative = false
+    add_child(_hover_highlight)
+
+    # Selection outline — absolute z=3
+    _selection_highlight              = Node2D.new()
+    _selection_highlight.z_index      = 3
+    _selection_highlight.z_as_relative = false
+    add_child(_selection_highlight)
+
+    # Buildings render above all overlays — absolute z=4
     if building_container:
-        building_container.z_index = 1
+        building_container.z_index      = 4
+        building_container.z_as_relative = false
+
+    # Ghost is absolute z=100 (above everything during placement)
+    ghost_sprite.z_as_relative = false
+
+    # GridManager listens to its own signals to drive selection highlight
+    building_selected.connect(_on_selection_changed)
+    building_deselected.connect(_on_selection_cleared)
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
@@ -126,8 +153,7 @@ func _clear_footprint_overlay() -> void:
     if _footprint_node.get_child_count() == 0:
         _last_fp_anchor = Vector2i(-9999, -9999)
         return
-    for child in _footprint_node.get_children():
-        child.queue_free()
+    _clear_node(_footprint_node)
     _last_fp_anchor = Vector2i(-9999, -9999)
 
 # ── Build mode ────────────────────────────────────────────────────────────────
@@ -165,11 +191,13 @@ func _process(_delta: float) -> void:
     var map_pos: Vector2i    = base_grid.local_to_map(local_mouse)
 
     if current_build_scene != null:
-        # ── BUILD MODE ──────────────────────────────────────────────────────
+        # ── BUILD MODE ───────────────────────────────────────────────────────
         hover_cursor.visible = false
         ghost_sprite.visible = true
+        _clear_node(_hover_highlight)
+        _last_hovered_anchor = Vector2i(-9999, -9999)
 
-        ghost_sprite.position = base_grid.map_to_local(map_pos)       \
+        ghost_sprite.position = base_grid.map_to_local(map_pos)                \
                               + get_footprint_centre_offset(current_build_type) \
                               + Vector2(0.0, _ghost_y_offset)
 
@@ -178,25 +206,34 @@ func _process(_delta: float) -> void:
             _last_fp_anchor = map_pos
             _last_fp_valid  = valid
             _rebuild_footprint_overlay(map_pos, current_build_type, valid)
+
     else:
-        # ── SELECTION MODE ───────────────────────────────────────────────────
+        # ── SELECTION MODE ────────────────────────────────────────────────────
         ghost_sprite.visible = false
         _clear_footprint_overlay()
 
+        # Hover highlight over whichever building tile the cursor is on
         if cell_to_anchor.has(map_pos):
             var anchor: Vector2i = cell_to_anchor[map_pos]
-            hover_cursor.position = base_grid.map_to_local(anchor)          \
-                                  + get_footprint_centre_offset(_get_type_for_anchor(anchor))
-            hover_cursor.visible = true
+            hover_cursor.visible = false
+
+            if anchor != _last_hovered_anchor:
+                _last_hovered_anchor = anchor
+                var b_type: String = _get_type_for_anchor(anchor)
+                _draw_footprint_outline(
+                    _hover_highlight, anchor, b_type,
+                    Color(0.0, 0.95, 1.0, 0.85), 
+                    2.0
+                )
         else:
             hover_cursor.visible = false
+            if _last_hovered_anchor != Vector2i(-9999, -9999):
+                _clear_node(_hover_highlight)
+                _last_hovered_anchor = Vector2i(-9999, -9999)
 
 # ── Validity check ────────────────────────────────────────────────────────────
 func is_valid_placement(anchor: Vector2i, b_type: String = "") -> bool:
     for cell in get_footprint_cells(anchor, b_type):
-        if cell.x < GRID_BOUNDS_MIN.x or cell.x > GRID_BOUNDS_MAX.x or \
-           cell.y < GRID_BOUNDS_MIN.y or cell.y > GRID_BOUNDS_MAX.y:
-            return false
         if cell_to_anchor.has(cell):
             return false
     return true
@@ -290,3 +327,58 @@ func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
     for cell in get_footprint_cells(anchor, b_type):
         cell_to_anchor[cell] = anchor
     building_placed.emit(b_type, anchor)
+
+# ── Highlight helpers ─────────────────────────────────────────────────────────
+
+# Draws a Line2D diamond outline for each tile in the footprint.
+# color    = line colour
+# width    = line thickness in pixels
+func _draw_footprint_outline(
+        container: Node2D,
+        anchor:    Vector2i,
+        b_type:    String,
+        color:     Color,
+        width:     float) -> void:
+
+    _clear_node(container)
+
+    var half_w: float = 32.0
+    var half_h: float = 16.0
+    if base_grid and base_grid.tile_set:
+        half_w = base_grid.tile_set.tile_size.x * 0.5
+        half_h = half_w * 0.5
+
+    for cell in get_footprint_cells(anchor, b_type):
+        var c: Vector2 = base_grid.map_to_local(cell)
+        var line := Line2D.new()
+        # Diamond: top → right → bottom → left → top (closed loop)
+        line.add_point(c + Vector2(     0, -half_h))
+        line.add_point(c + Vector2( half_w,      0))
+        line.add_point(c + Vector2(     0,  half_h))
+        line.add_point(c + Vector2(-half_w,      0))
+        line.add_point(c + Vector2(     0, -half_h))
+        line.width         = width
+        line.default_color = color
+        line.z_index       = 0
+        container.add_child(line)
+
+# Removes all children from a Node2D container safely.
+func _clear_node(container: Node2D) -> void:
+    if container == null: return
+    for child in container.get_children():
+        child.queue_free()
+
+# Called when GridManager emits building_selected
+func _on_selection_changed(anchor: Vector2i) -> void:
+    _selected_anchor = anchor
+    var b_type: String = _get_type_for_anchor(anchor)
+    _draw_footprint_outline(
+        _selection_highlight, anchor, b_type,
+        Color(1.0, 0.85, 0.0, 1.0),
+        3.0
+    )
+
+# Called when GridManager emits building_deselected
+func _on_selection_cleared() -> void:
+    _selected_anchor = Vector2i(-9999, -9999)
+    _clear_node(_selection_highlight)

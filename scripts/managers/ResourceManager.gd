@@ -100,11 +100,9 @@ func _on_day_changed(new_day: int) -> void:
 func _recalculate_power() -> void:
 	power_capacity = 0.0
 	power_draw     = 0.0
-
 	var all_buildings = building_system.active_buildings
 
 	# Pass 1 — sum all power producers
-	# Generators always produce regardless of is_powered (they ARE the power source)
 	for grid_pos in all_buildings:
 		var b: BuildingData = all_buildings[grid_pos]
 		if b.base_production_power > 0.0:
@@ -121,14 +119,17 @@ func _recalculate_power() -> void:
 
 	net_power = power_capacity - power_draw
 
-	# Pass 3 — set is_powered flag on every building
-	# Simple rule: enough total capacity = everything powered.
-	# Priority shutdown system comes in a later pass.
-	var grid_has_power: bool = net_power >= 0.0
+	# Pass 3 — set is_powered flag
+	var grid_has_power: bool
+	if power_capacity == 0.0:
+		grid_has_power = true
+	else:
+		grid_has_power = net_power >= 0.0
+
 	for grid_pos in all_buildings:
 		var b: BuildingData = all_buildings[grid_pos]
 		if b.base_production_power > 0.0:
-			b.is_powered = true       # Generators are always "on"
+			b.is_powered = true
 		else:
 			b.is_powered = grid_has_power
 
