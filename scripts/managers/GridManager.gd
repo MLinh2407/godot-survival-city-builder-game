@@ -38,50 +38,41 @@ var anchor_to_type:  Dictionary = {}
 var current_build_type:  String      = ""
 var current_build_scene: PackedScene = null
 
+var _hovered_building_node:  Node2D = null
+var _selected_building_node: Node2D = null
+
+const HOVER_MODULATE:    Color = Color(1.45, 1.45, 1.45, 1.0)   # bright white-ish
+const SELECTED_MODULATE: Color = Color(0.75, 1.10, 1.25, 1.0)   # cyan tint
+const NORMAL_MODULATE:   Color = Color(1.0,  1.0,  1.0,  1.0)   # restore
+
 # Cached per build-mode session so _process doesn't recompute every frame
 var _ghost_y_offset: float = 0.0
 
 var _footprint_node: Node2D
 var _last_fp_anchor: Vector2i = Vector2i(-9999, -9999)
 var _last_fp_valid:  bool     = false
-var _hover_highlight:     Node2D
-var _selection_highlight: Node2D
 var _last_hovered_anchor: Vector2i = Vector2i(-9999, -9999)
 var _selected_anchor:     Vector2i = Vector2i(-9999, -9999)
 
 # ── _ready ───────────────────────────────────────────────────────────────────
 func _ready() -> void:
-    ghost_sprite.visible = false
-    hover_cursor.visible = false
-    ghost_sprite.z_index = 100
+    ghost_sprite.visible    = false
+    hover_cursor.visible    = false
+    ghost_sprite.z_index    = 100
+    ghost_sprite.z_as_relative = false
 
-    # Footprint fill — absolute z=1, above base grid tiles (z=0)
-    _footprint_node              = Node2D.new()
-    _footprint_node.z_index      = 1
+    # Footprint fill layer — absolute z=1
+    _footprint_node               = Node2D.new()
+    _footprint_node.z_index       = 1
     _footprint_node.z_as_relative = false
     add_child(_footprint_node)
 
-    # Hover outline — absolute z=2
-    _hover_highlight              = Node2D.new()
-    _hover_highlight.z_index      = 2
-    _hover_highlight.z_as_relative = false
-    add_child(_hover_highlight)
-
-    # Selection outline — absolute z=3
-    _selection_highlight              = Node2D.new()
-    _selection_highlight.z_index      = 3
-    _selection_highlight.z_as_relative = false
-    add_child(_selection_highlight)
-
-    # Buildings render above all overlays — absolute z=4
+    # Buildings render above footprint — absolute z=4
     if building_container:
-        building_container.z_index      = 4
+        building_container.z_index       = 4
         building_container.z_as_relative = false
 
-    # Ghost is absolute z=100 (above everything during placement)
-    ghost_sprite.z_as_relative = false
-
-    # GridManager listens to its own signals to drive selection highlight
+    # GridManager listens to its own signals to drive building highlights
     building_selected.connect(_on_selection_changed)
     building_deselected.connect(_on_selection_cleared)
 
@@ -128,26 +119,44 @@ func _rebuild_footprint_overlay(anchor: Vector2i, b_type: String, valid: bool) -
     for child in _footprint_node.get_children():
         child.queue_free()
 
-    var color: Color = Color(0.20, 1.00, 0.30, 0.50) if valid \
-                                                      else Color(1.00, 0.20, 0.20, 0.50)
+    # Fill colour — semi-transparent
+    var fill_color: Color   = Color(0.20, 1.00, 0.30, 0.35) if valid \
+                                                             else Color(1.00, 0.20, 0.20, 0.35)
+    # Border colour — darker and fully opaque so individual tiles are visible
+    var border_color: Color = Color(0.05, 0.60, 0.10, 1.00) if valid \
+                                                             else Color(0.70, 0.05, 0.05, 1.00)
 
     var half_w: float = 32.0
     var half_h: float = 16.0
     if base_grid and base_grid.tile_set:
         half_w = base_grid.tile_set.tile_size.x * 0.5
-        half_h = half_w * 0.5   
+        half_h = half_w * 0.5
 
     for cell in get_footprint_cells(anchor, b_type):
         var c: Vector2 = base_grid.map_to_local(cell)
-        var poly := Polygon2D.new()
-        poly.polygon = PackedVector2Array([
-            c + Vector2(     0, -half_h),   # top
-            c + Vector2( half_w,      0),   # right
-            c + Vector2(     0,  half_h),   # bottom
-            c + Vector2(-half_w,      0),   # left
-        ])
-        poly.color = color
-        _footprint_node.add_child(poly)
+
+        # Diamond vertices for this cell
+        var vt: Vector2 = c + Vector2(      0, -half_h)
+        var vr: Vector2 = c + Vector2( half_w,       0)
+        var vb: Vector2 = c + Vector2(      0,  half_h)
+        var vl: Vector2 = c + Vector2(-half_w,       0)
+
+        # --- Fill polygon ---
+        var fill := Polygon2D.new()
+        fill.polygon = PackedVector2Array([vt, vr, vb, vl])
+        fill.color   = fill_color
+        _footprint_node.add_child(fill)
+
+        # --- Border line (closed diamond loop) ---
+        var border := Line2D.new()
+        border.add_point(vt)
+        border.add_point(vr)
+        border.add_point(vb)
+        border.add_point(vl)
+        border.add_point(vt)       
+        border.width         = 1.5
+        border.default_color = border_color
+        _footprint_node.add_child(border)
 
 func _clear_footprint_overlay() -> void:
     if _footprint_node.get_child_count() == 0:
@@ -191,11 +200,14 @@ func _process(_delta: float) -> void:
     var map_pos: Vector2i    = base_grid.local_to_map(local_mouse)
 
     if current_build_scene != null:
-        # ── BUILD MODE ───────────────────────────────────────────────────────
+        # ── BUILD MODE ────────────────────────────────────────────────────────
         hover_cursor.visible = false
         ghost_sprite.visible = true
-        _clear_node(_hover_highlight)
-        _last_hovered_anchor = Vector2i(-9999, -9999)
+
+        # Clear any building hover that was active before entering build mode
+        _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
+        _hovered_building_node  = null
+        _last_hovered_anchor    = Vector2i(-9999, -9999)
 
         ghost_sprite.position = base_grid.map_to_local(map_pos)                \
                               + get_footprint_centre_offset(current_build_type) \
@@ -208,28 +220,34 @@ func _process(_delta: float) -> void:
             _rebuild_footprint_overlay(map_pos, current_build_type, valid)
 
     else:
-        # ── SELECTION MODE ────────────────────────────────────────────────────
+        # ── SELECTION MODE ─────────────────────────────────────────────────────
         ghost_sprite.visible = false
         _clear_footprint_overlay()
 
-        # Hover highlight over whichever building tile the cursor is on
         if cell_to_anchor.has(map_pos):
             var anchor: Vector2i = cell_to_anchor[map_pos]
-            hover_cursor.visible = false
 
             if anchor != _last_hovered_anchor:
+                # Restore previous hovered building (unless it is selected)
+                if _hovered_building_node != null \
+                and _hovered_building_node != _selected_building_node:
+                    _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
+
                 _last_hovered_anchor = anchor
-                var b_type: String = _get_type_for_anchor(anchor)
-                _draw_footprint_outline(
-                    _hover_highlight, anchor, b_type,
-                    Color(0.0, 0.95, 1.0, 0.85), 
-                    2.0
-                )
+
+                # Brighten the newly hovered building (skip if already selected)
+                var node: Node2D = occupied_cells.get(anchor, null)
+                _hovered_building_node = node
+                if node != null and node != _selected_building_node:
+                    _apply_building_modulate(node, HOVER_MODULATE)
         else:
-            hover_cursor.visible = false
+            # Cursor left all buildings
             if _last_hovered_anchor != Vector2i(-9999, -9999):
-                _clear_node(_hover_highlight)
-                _last_hovered_anchor = Vector2i(-9999, -9999)
+                if _hovered_building_node != null \
+                and _hovered_building_node != _selected_building_node:
+                    _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
+                _hovered_building_node  = null
+                _last_hovered_anchor    = Vector2i(-9999, -9999)
 
 # ── Validity check ────────────────────────────────────────────────────────────
 func is_valid_placement(anchor: Vector2i, b_type: String = "") -> bool:
@@ -294,6 +312,16 @@ func place_building(anchor: Vector2i) -> void:
 
 func remove_building(anchor: Vector2i) -> void:
     if not occupied_cells.has(anchor): return
+
+    # Clean up highlight state for removed building
+    var node: Node2D = occupied_cells[anchor]
+    if node == _hovered_building_node:
+        _hovered_building_node  = null
+        _last_hovered_anchor    = Vector2i(-9999, -9999)
+    if node == _selected_building_node:
+        _selected_building_node = null
+        _selected_anchor        = Vector2i(-9999, -9999)
+
     occupied_cells[anchor].queue_free()
     occupied_cells.erase(anchor)
     anchor_to_type.erase(anchor)
@@ -333,34 +361,34 @@ func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
 # Draws a Line2D diamond outline for each tile in the footprint.
 # color    = line colour
 # width    = line thickness in pixels
-func _draw_footprint_outline(
-        container: Node2D,
-        anchor:    Vector2i,
-        b_type:    String,
-        color:     Color,
-        width:     float) -> void:
+# func _draw_footprint_outline(
+#         container: Node2D,
+#         anchor:    Vector2i,
+#         b_type:    String,
+#         color:     Color,
+#         width:     float) -> void:
 
-    _clear_node(container)
+#     _clear_node(container)
 
-    var half_w: float = 32.0
-    var half_h: float = 16.0
-    if base_grid and base_grid.tile_set:
-        half_w = base_grid.tile_set.tile_size.x * 0.5
-        half_h = half_w * 0.5
+#     var half_w: float = 32.0
+#     var half_h: float = 16.0
+#     if base_grid and base_grid.tile_set:
+#         half_w = base_grid.tile_set.tile_size.x * 0.5
+#         half_h = half_w * 0.5
 
-    for cell in get_footprint_cells(anchor, b_type):
-        var c: Vector2 = base_grid.map_to_local(cell)
-        var line := Line2D.new()
-        # Diamond: top → right → bottom → left → top (closed loop)
-        line.add_point(c + Vector2(     0, -half_h))
-        line.add_point(c + Vector2( half_w,      0))
-        line.add_point(c + Vector2(     0,  half_h))
-        line.add_point(c + Vector2(-half_w,      0))
-        line.add_point(c + Vector2(     0, -half_h))
-        line.width         = width
-        line.default_color = color
-        line.z_index       = 0
-        container.add_child(line)
+#     for cell in get_footprint_cells(anchor, b_type):
+#         var c: Vector2 = base_grid.map_to_local(cell)
+#         var line := Line2D.new()
+#         # Diamond: top → right → bottom → left → top (closed loop)
+#         line.add_point(c + Vector2(     0, -half_h))
+#         line.add_point(c + Vector2( half_w,      0))
+#         line.add_point(c + Vector2(     0,  half_h))
+#         line.add_point(c + Vector2(-half_w,      0))
+#         line.add_point(c + Vector2(     0, -half_h))
+#         line.width         = width
+#         line.default_color = color
+#         line.z_index       = 0
+#         container.add_child(line)
 
 # Removes all children from a Node2D container safely.
 func _clear_node(container: Node2D) -> void:
@@ -370,15 +398,32 @@ func _clear_node(container: Node2D) -> void:
 
 # Called when GridManager emits building_selected
 func _on_selection_changed(anchor: Vector2i) -> void:
-    _selected_anchor = anchor
-    var b_type: String = _get_type_for_anchor(anchor)
-    _draw_footprint_outline(
-        _selection_highlight, anchor, b_type,
-        Color(1.0, 0.85, 0.0, 1.0),
-        3.0
-    )
+    # Restore previously selected building
+    if _selected_building_node != null:
+        # If still hovered restore hover tint, otherwise restore to normal
+        if _selected_building_node == _hovered_building_node:
+            _apply_building_modulate(_selected_building_node, HOVER_MODULATE)
+        else:
+            _apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
 
-# Called when GridManager emits building_deselected
+    _selected_anchor       = anchor
+    _selected_building_node = occupied_cells.get(anchor, null)
+    # Selected overrides hover — apply cyan tint
+    _apply_building_modulate(_selected_building_node, SELECTED_MODULATE)
+
 func _on_selection_cleared() -> void:
-    _selected_anchor = Vector2i(-9999, -9999)
-    _clear_node(_selection_highlight)
+    if _selected_building_node != null:
+        _apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
+    _selected_building_node = null
+    _selected_anchor        = Vector2i(-9999, -9999)
+
+# Applies modulate to the Sprite2D inside a building node.
+# Falls back to the node itself if no Sprite2D child found.
+func _apply_building_modulate(node: Node2D, color: Color) -> void:
+    if node == null:
+        return
+    var sprite: Sprite2D = node.get_node_or_null("Sprite2D")
+    if sprite:
+        sprite.modulate = color
+    else:
+        node.modulate = color
