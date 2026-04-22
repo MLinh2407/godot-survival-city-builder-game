@@ -14,7 +14,7 @@ const MAX_WORKERS_LATE_GAME: int       = 85   # worker pool grows slowly to this
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DAY_LENGTH_SECONDS: float        = 90.0   # real seconds per game day at 1× speed
-const DAY_LENGTH_FAST: float           = 1.0   # real seconds per game day at 2× speed
+const DAY_LENGTH_FAST: float           = 10.0   # real seconds per game day at 2× speed
 const TOTAL_DAYS: int                  = 35
 const STORM_START_DAY: int             = 26     # Storm Warning fires — Act III begins
 const STORM_HIT_DAY: int               = 35     # storm lands, game ends
@@ -196,7 +196,7 @@ const YUNA_DEATH_DAY: int                       = 20
 const YUNA_DEATH_POPULATION_THRESHOLD: int      = 600
 const VASQUEZ_DEATH_DAY: int                    = 30
 const VASQUEZ_DEATH_SURVIVAL_THRESHOLD: float   = 0.50
-const ROOK_RECONCILIATION_DEADLINE: int         = 33
+const ROOK_RECONCILIATION_DEADLINE: int         = 32
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -188,6 +188,73 @@ corner_radius_bottom_left = 8
 shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 6
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dialogue_portrait"]
+bg_color = Color(0.03, 0.1, 0.16, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.9, 1, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="Shader" id="Shader_dialogue_portrait_hologram"]
+code = "shader_type canvas_item;
+
+uniform vec4 baseColor : source_color = vec4(0.24, 0.83, 0.97, 1.0);
+uniform float speed = 4.0;
+uniform vec4 linesColor : source_color = vec4(0.42, 0.95, 1.0, 1.0);
+uniform float linesColorIntensity = 1.0;
+uniform float lineDensity = 32.0;
+uniform float lineWidth = 0.2;
+uniform float lineEdgeSoftness = 0.08;
+uniform float tintStrength = 0.55;
+uniform float lineStrength = 0.1;
+uniform float effectStrength = 0.62;
+uniform float flickerSpeed = 0.6;
+uniform float flickerAmount = 0.02;
+uniform float sweepSpeed = 2.0;
+uniform float sweepAmount = 0.16;
+uniform float sweepWidth = 0.24;
+
+void fragment() {
+	vec4 src = texture(TEXTURE, UV);
+	float scan = fract((UV.y + TIME * speed * 0.01) * lineDensity);
+	float line_dist = abs(scan - 0.5);
+	float line_mask = 1.0 - smoothstep(lineWidth, lineWidth + lineEdgeSoftness, line_dist);
+
+	float flicker = 1.0 - flickerAmount + flickerAmount * (0.5 + 0.5 * sin(TIME * flickerSpeed));
+	float sweep_center = fract(1.0 - TIME * sweepSpeed * 0.1);
+	float sweep = 1.0 + sweepAmount * smoothstep(sweepWidth, 0.0, abs(UV.y - sweep_center));
+
+	vec3 base_tinted = mix(src.rgb, src.rgb * baseColor.rgb, tintStrength);
+	vec3 line_tinted = linesColor.rgb * line_mask * lineStrength * linesColorIntensity;
+	vec3 hologram = clamp((base_tinted + line_tinted) * flicker * sweep, 0.0, 1.0);
+
+	COLOR.rgb = mix(src.rgb, hologram, effectStrength);
+	COLOR.a = src.a;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dialogue_portrait_hologram"]
+shader = SubResource("Shader_dialogue_portrait_hologram")
+shader_parameter/baseColor = Color(0.3058, 0.835, 0.960, 1.)
+shader_parameter/speed = 7.0
+shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1.)
+shader_parameter/linesColorIntensity = 1.5
+shader_parameter/lineDensity = 25.0
+shader_parameter/lineWidth = 0.25
+shader_parameter/lineEdgeSoftness = 0.08
+shader_parameter/tintStrength = 0.55
+shader_parameter/lineStrength = 0.25
+shader_parameter/effectStrength = 0.62
+shader_parameter/flickerSpeed = 0.6
+shader_parameter/flickerAmount = 0.02
+shader_parameter/sweepSpeed = 0.3
+shader_parameter/sweepAmount = 0.16
+shader_parameter/sweepWidth = 0.24
+
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
@@ -704,6 +771,27 @@ offset_top = 164.0
 offset_right = 1068.0
 offset_bottom = 584.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_card")
+
+[node name="DialoguePortraitFrame" type="Panel" parent="UILayer/DialogueBox" unique_id=713390174]
+visible = false
+layout_mode = 0
+offset_left = 236.0
+offset_top = 194.0
+offset_right = 392.0
+offset_bottom = 350.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_portrait")
+
+[node name="DialoguePortraitImage" type="TextureRect" parent="UILayer/DialogueBox/DialoguePortraitFrame" unique_id=214639620]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 148.0
+offset_bottom = 148.0
+material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
 
 [node name="DialogueText" type="Label" parent="UILayer/DialogueBox" unique_id=938481883]
 layout_mode = 0

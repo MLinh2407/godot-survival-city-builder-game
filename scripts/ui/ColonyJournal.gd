@@ -345,7 +345,7 @@ func _on_day_changed(new_day: int) -> void:
 			_nudge_2_fired = true
 			add_entry(
 				2,
-				"Yuna flagged a water contamination concern. We are still filtering manually but it will not hold long.",
+				"Yuna flagged a water contamination concern. We are still filtering manually but it will not hold long. We need to build the Water Recycler ASAP!",
 				JournalEntryData.EntryType.ONBOARDING
 			)
 
@@ -354,7 +354,7 @@ func _on_day_changed(new_day: int) -> void:
 			_nudge_3_fired = true
 			add_entry(
 				3,
-				"Current food reserves will last approximately 27 more days at current consumption. That is the runway we have.",
+				"Current food reserves will last approximately 27 more days at current consumption. That is the runway we have. Please build the Hydroponic Bay to fix the problem!",
 				JournalEntryData.EntryType.ONBOARDING
 			)
 

@@ -46,6 +46,7 @@ var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reco
 var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
 var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
 var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
+var deserters_lockdown_taken: bool = false
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -238,7 +239,10 @@ func save_game(filename: String) -> void:
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
 			"vasquez_trade_accepted": vasquez_trade_accepted,
-			"vasquez_intel_shared": vasquez_intel_shared
+			"vasquez_intel_shared": vasquez_intel_shared,
+			"deserters_lockdown_taken": deserters_lockdown_taken,
+			"meridian_trusted": meridian_trusted,
+			"rook_militia_sanctioned": rook_militia_sanctioned
 		},
 		"time_manager": {
 			"current_day": day,
@@ -305,6 +309,9 @@ func load_game(filepath: String) -> void:
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)
 	vasquez_intel_shared = gm_data.get("vasquez_intel_shared", vasquez_intel_shared)
+	deserters_lockdown_taken = gm_data.get("deserters_lockdown_taken", false)
+	meridian_trusted = gm_data.get("meridian_trusted", false)
+	rook_militia_sanctioned = gm_data.get("rook_militia_sanctioned", false)
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})

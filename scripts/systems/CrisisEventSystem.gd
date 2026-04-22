@@ -9,6 +9,8 @@ var _temporary_effects = []
 
 # One-shot guard flags so events don't re-fire on load
 var _fired_events: Dictionary = {}
+var _sub_event_journals_by_id: Dictionary = {}
+var _event_journals_by_slug: Dictionary = {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -20,6 +22,9 @@ func _ready() -> void:
 	var de = _get_dialogue_engine()
 	if de:
 		de.choice_made.connect(_on_choice_made)
+
+	_load_event_journals()
+	_load_sub_event_journals()
 
 	if TimeManager and TimeManager.current_day == 1:
 		_on_day_changed(1)
@@ -40,6 +45,139 @@ func _get_building_system() -> Node:
 		return main.get_node_or_null("BuildingSystem")
 	return null
 
+func _load_sub_event_journals() -> void:
+	_sub_event_journals_by_id.clear()
+	var file = FileAccess.open("res://data/sub_events.json", FileAccess.READ)
+	if not file:
+		push_warning("CrisisEventSystem: Failed to open data/sub_events.json")
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("CrisisEventSystem: sub_events.json has invalid root")
+		return
+
+	var sub_events: Array = parsed.get("sub_events", [])
+	if typeof(sub_events) != TYPE_ARRAY:
+		push_warning("CrisisEventSystem: sub_events key is not an array")
+		return
+
+	for sub_event in sub_events:
+		if typeof(sub_event) != TYPE_DICTIONARY:
+			continue
+		var journal_entry = sub_event.get("journal_entry", null)
+		if typeof(journal_entry) != TYPE_DICTIONARY:
+			continue
+		var sub_event_id = str(sub_event.get("sub_event_id", "")).strip_edges()
+		if sub_event_id != "":
+			_sub_event_journals_by_id[sub_event_id] = journal_entry
+		var legacy_id = str(sub_event.get("legacy_sub_event_id", "")).strip_edges()
+		if legacy_id != "":
+			_sub_event_journals_by_id[legacy_id] = journal_entry
+
+func _extract_first_journal_body(outcomes: Array) -> String:
+	for outcome in outcomes:
+		if typeof(outcome) != TYPE_DICTIONARY:
+			continue
+		var body = str(outcome.get("journal_entry", "")).strip_edges()
+		if body != "":
+			return body
+	return ""
+
+func _load_event_journals() -> void:
+	_event_journals_by_slug.clear()
+	var file = FileAccess.open("res://data/events.json", FileAccess.READ)
+	if not file:
+		push_warning("CrisisEventSystem: Failed to open data/events.json")
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("CrisisEventSystem: events.json has invalid root")
+		return
+
+	var events: Array = parsed.get("events", [])
+	if typeof(events) != TYPE_ARRAY:
+		push_warning("CrisisEventSystem: events key is not an array")
+		return
+
+	for event in events:
+		if typeof(event) != TYPE_DICTIONARY:
+			continue
+		var event_id = str(event.get("event_id", "")).strip_edges()
+
+		if event_id == "the_fever":
+			var fever_outcomes: Array = event.get("conditional_outcomes", [])
+			for branch in fever_outcomes:
+				if typeof(branch) != TYPE_DICTIONARY:
+					continue
+				var condition = str(branch.get("condition", ""))
+				var body = _extract_first_journal_body(branch.get("outcomes", []))
+				if body == "":
+					continue
+				if condition.find("med_clinic_staffed == true") != -1:
+					_event_journals_by_slug["the_fever_staffed"] = {
+						"title": "Day 16 — The Fever",
+						"body": body
+					}
+				elif condition.find("med_clinic_staffed == false") != -1:
+					_event_journals_by_slug["the_fever_unstaffed"] = {
+						"title": "Day 16 — The Fever",
+						"body": body
+					}
+
+		elif event_id == "the_storm_warning":
+			var storm_body = str(event.get("setup_text", "")).strip_edges()
+			if storm_body != "":
+				_event_journals_by_slug["storm_warning_day_26"] = {
+					"title": "Day 26 — Storm Warning",
+					"body": storm_body
+				}
+
+		elif event_id == "the_last_broadcast":
+			var broadcast_outcomes: Array = event.get("conditional_outcomes", [])
+			for branch in broadcast_outcomes:
+				if typeof(branch) != TYPE_DICTIONARY:
+					continue
+				var condition = str(branch.get("condition", ""))
+				var body = _extract_first_journal_body(branch.get("outcomes", []))
+				if body == "":
+					continue
+				if condition == "all_players":
+					_event_journals_by_slug["last_broadcast_day_28"] = {
+						"title": "Day 28 — The Last Broadcast",
+						"body": body
+					}
+				elif condition.find("archive_hall_built == true") != -1 and condition.find("meridian_trusted") == -1:
+					_event_journals_by_slug["last_broadcast_cache_day_28"] = {
+						"title": "Day 28 — Supply Cache Recovered",
+						"body": body
+					}
+
+func _fire_sub_event_journal(
+	slug: String,
+	fallback_title: String,
+	fallback_body: String,
+	format_args: Array = []
+) -> void:
+	var title = fallback_title
+	var body = fallback_body
+	if _sub_event_journals_by_id.has(slug):
+		var journal_entry: Dictionary = _sub_event_journals_by_id[slug]
+		title = str(journal_entry.get("title", fallback_title))
+		body = str(journal_entry.get("body", fallback_body))
+	elif _event_journals_by_slug.has(slug):
+		var event_journal: Dictionary = _event_journals_by_slug[slug]
+		title = str(event_journal.get("title", fallback_title))
+		body = str(event_journal.get("body", fallback_body))
+
+	if not format_args.is_empty() and body.find("%") != -1:
+		body = body % format_args
+
+	_fire_journal(slug, title, body)
+
 func _fire_event_once(event_id: String) -> void:
 	if _fired_events.has(event_id):
 		return
@@ -48,13 +186,6 @@ func _fire_event_once(event_id: String) -> void:
 		_fired_events[event_id] = true
 		de.show_event(event_id)
 
-# func _fire_journal(slug: String, title: String, body: String) -> void:
-# 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
-# 	if journal and journal.has_method("add_entry"):
-# 		journal.add_entry(GameManager.current_day, body, 0, title)
-# 		if journal.has_signal("journal_new_entry_notified"):
-# 			journal.journal_new_entry_notified.emit()
-
 func _fire_journal(slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal and journal.has_method("add_entry"):
@@ -62,7 +193,6 @@ func _fire_journal(slug: String, title: String, body: String) -> void:
 		journal.add_entry(TimeManager.current_day, body, entry_type, title)
 	else:
 		push_warning("CrisisEventSystem: ColonyJournal not found at Main/UILayer/ColonyJournal")
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DAY CHANGED
@@ -122,8 +252,8 @@ func _on_day_changed(new_day: int) -> void:
 	if new_day == 26:
 		_handle_storm_warning()
 
-	# ── Day 27: Rook Reconciliation (conditional window) ─────────────────
-	if new_day == 27:
+	# ── Day 25–32: Rook Reconciliation (conditional window) ──────────────
+	if new_day >= 25 and new_day <= GameConstants.ROOK_RECONCILIATION_DEADLINE:
 		if GameManager.rook_militia_stopped and not GameManager.rook_reconciliation_taken:
 			_fire_event_once("rook_reconciliation")
 
@@ -135,10 +265,10 @@ func _on_day_changed(new_day: int) -> void:
 	if new_day == 28 and GameManager.vasquez_intel_shared:
 		if not _fired_events.has("vasquez_late_dialogue"):
 			_fired_events["vasquez_late_dialogue"] = true
-			_fire_journal(
+			_fire_sub_event_journal(
 				"vasquez_late_dialogue",
 				"Day 28 — Grid-9 Transmission",
-				"Vasquez came over the radio at 1800. He didn't ask for engineers this time. He just wanted to confirm the eastern tunnel routing from the intelligence I gave him. He actually sounded like he respected the data. I'm noting this down because it's the first time someone outside these walls has treated us like an equal player instead of a salvage operation."
+				""
 			)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -157,14 +287,18 @@ func _handle_the_fever() -> void:
 	if bs and bs.has_method("get_workers_for_building_type"):
 		clinic_staffed = bs.get_workers_for_building_type(BuildingData.BuildingType.MED_CLINIC) > 0
 
-	var title = "Day 16 — The Fever"
-	var body: String
 	if clinic_staffed:
-		body = "The Fever broke on Day 20. Twenty-one sick at peak. Yuna's staff worked through it. Nobody died. The colony is down workers for a week and morale took the hit but the Med Clinic held. She told me later she was worried we'd run out of antivirals. We didn't. Barely."
+		_fire_sub_event_journal(
+			"the_fever_staffed",
+			"Day 16 — The Fever",
+			""
+		)
 	else:
-		body = "The Fever is in its fourth day and we have no treatment capacity. People are dying at a rate I cannot stop without a staffed Med Clinic. I made a calculation error somewhere in the first two weeks. I am living in it now."
-
-	_fire_journal("the_fever_day_16", title, body)
+		_fire_sub_event_journal(
+			"the_fever_unstaffed",
+			"Day 16 — The Fever",
+			""
+		)
 
 func _handle_storm_warning() -> void:
 	if _fired_events.has("the_storm_warning"):
@@ -172,8 +306,12 @@ func _handle_storm_warning() -> void:
 	_fired_events["the_storm_warning"] = true
 
 	var source = "MERIDIAN" if GameManager.meridian_trusted else "the Archive Hall weather node"
-	var body = "%s detected it first — the data is the same either way: an electromagnetic storm is approaching Grid-7. Impact on Day 35. Unshielded electronics will not survive it. Every production building runs on salvaged electronics. You have nine days. Decide what stays on." % source
-	_fire_journal("storm_warning_day_26", "Day 26 — Storm Warning", body)
+	_fire_sub_event_journal(
+		"storm_warning_day_26",
+		"Day 26 — Storm Warning",
+		"",
+		[source]
+	)
 	# TODO: Hook into Storm Prep UI to allow per-building shielding over Days 26–34.
 
 func _handle_last_broadcast() -> void:
@@ -189,10 +327,10 @@ func _handle_last_broadcast() -> void:
 			ResourceManager.morale, ResourceManager.materials
 		)
 
-	_fire_journal(
+	_fire_sub_event_journal(
 		"last_broadcast_day_28",
 		"Day 28 — The Last Broadcast",
-		"At 1400 the Syndicate emergency broadcast came through. It called us 'undesignated population.' Everyone in the colony heard that phrase at the same time. The anger was immediate and it was clean and it was the most unified I have seen eight hundred people since Day 1. Morale went up. I don't think I've ever written that after something like this."
+		""
 	)
 
 	# Check Archive Hall for Materials bonus
@@ -208,18 +346,18 @@ func _handle_last_broadcast() -> void:
 				ResourceManager.net_power, ResourceManager.food,
 				ResourceManager.morale, ResourceManager.materials
 			)
-		_fire_journal(
+		_fire_sub_event_journal(
 			"last_broadcast_cache_day_28",
 			"Day 28 — Supply Cache Recovered",
-			"MERIDIAN found a secondary data layer in the broadcast — supply cache coordinates for Syndicate emergency stations in the eastern tunnels. We sent a retrieval team. Twenty-five Materials recovered. I don't know whether to be grateful or angry that their infrastructure is still being useful."
+			""
 		)
 
 	# Check Archive Hall + MERIDIAN trusted for signal seed
 	if archive_built and GameManager.meridian_trusted:
-		_fire_journal(
+		_fire_sub_event_journal(
 			"meridian_signal_detection",
 			"Day 28 — Unknown Signal",
-			"MERIDIAN flagged something else in the broadcast spectrum. A structured signal — not Syndicate, not noise. From the north. I asked MERIDIAN what it was. It said: 'Unknown. It responded to the broadcast. That means it was listening.' It's in the log. I don't know what to do with it yet."
+			""
 		)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -234,10 +372,10 @@ func _trigger_unrest_riot() -> void:
 		return
 	_fired_events["unrest_riot"] = true
 
-	_fire_journal(
-		"unrest_riot_day_10",
+	_fire_sub_event_journal(
+		"unrest_riot",
 		"Day 10 — Unrest in the West Corridor",
-		"The lockdown ended at 0600 and by 0800 there was a disturbance in the west corridor. Nobody was killed. Two security personnel injured. One building took damage — equipment pulled from its housing, fixtures broken. The people who did it are back in their section now.\n\nI could write this up in a way that makes it sound more contained than it was. What it was: people who were told they couldn't leave, in a place where the conditions that made them want to leave haven't changed, expressing that in the only way left available to them. The lockdown held the numbers. It did not hold the tension. The tension found its exit anyway.\n\nThe damaged building needs Materials to repair. Morale dropped further. I kept everyone here. I'm not sure everyone being here is the same as everyone being fine."
+		""
 	)
 
 	if ResourceManager:
@@ -267,10 +405,10 @@ func _trigger_rook_injury() -> void:
 
 	_add_temporary_effect("workers_restored", 2.0, 3)
 
-	_fire_journal(
+	_fire_sub_event_journal(
 		"rook_injury_event",
 		"Rook's Militia — Injury Report",
-		"Two of Rook's team took structural injuries in the collapsed section — one a fractured radius, one a concussion from a debris fall. They're off rotation. Rook filed the report himself. He didn't ask me to reconsider anything. The operation continues with the ten that are healthy."
+		""
 	)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -406,7 +544,14 @@ func _process_temporary_effects() -> void:
 	var to_remove = []
 
 	for effect in _temporary_effects:
+		var target: String = str(effect.get("target", ""))
 		effect["days_remaining"] -= 1
+
+		# Recurring daily modifiers should still apply on the day they reach 0
+		if target == "food" or target == "morale_decay":
+			if effect["days_remaining"] < 0:
+				to_remove.append(effect)
+			continue
 
 		# Special: Rook injury check fires near Day 33
 		if effect["target"] == "check_rook_injury" and effect["days_remaining"] <= 0:

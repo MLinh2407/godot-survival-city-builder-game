@@ -14,41 +14,56 @@
       "location": "Colony Journal — optional read",
       "mandatory": false,
       "journal_entry": {
-        "title": "Day 28–30 — Vasquez Transmission (Recorded)",
-        "body": "Vasquez came through on channel 7 this afternoon. It was the first time since the counter-offer in Week 2. He said he'd used the eastern tunnel survey data — he didn't say how, but the numbers he cited were specific enough that he'd clearly read the whole thing. He said the coordinates I gave him led his salvage teams to a sealed maintenance corridor that gave Grid-9 access to three functioning water recyclers they'd been cut off from for six months.\n\nHe didn't say thank you, exactly. He said: 'The intelligence was worth more than the engineers would have been.' That's as close as Vasquez gets.\n\nHe also said he's been tracking something in the northern broadcast spectrum. He mentioned a coordinate — I wrote it down — and said his communications technician thought it might be a structured response to automated Syndicate emergency signals. He brought it up like it was a minor footnote. I'm not sure he understood what he was giving me.\n\nHe signed off before I could ask more. The coordinate is in the log. MERIDIAN confirmed it matches the signal they detected two days ago."
+        "title": "Day 28–30: Vasquez Transmission (Recorded)",
+        "body": "Vasquez came through on channel 7 this afternoon. It was the first time since the counter-offer in Week 2. He said he'd used the eastern tunnel survey data and he didn't say how, but the numbers he cited were specific enough that he'd clearly read the whole thing. He said the coordinates I gave him led his salvage teams to a sealed maintenance corridor that gave Grid-9 access to three functioning water recyclers they'd been cut off from for six months.\n\nHe didn't say thank you, exactly. He said: 'The intelligence was worth more than the workers would have been.' That's as close as Vasquez gets.\n\nHe also said he's been tracking something in the northern broadcast spectrum. He mentioned a coordinate, then I wrote it down and said his communications technician thought it might be a structured response to automated Syndicate emergency signals. He brought it up like it was a minor footnote. I'm not sure he understood what he was giving me.\n\nHe signed off before I could ask more. The coordinate is in the log. MERIDIAN confirmed it matches the signal they detected two days ago."
       }
     },
     {
-      "sub_event_id": "rook_reconciliation_dialogue",
-      "display_name": "Rook Reconciliation Dialogue",
+      "sub_event_id": "rook_reconciliation",
+      "legacy_sub_event_id": "rook_reconciliation_dialogue",
+      "event_id": "rook_reconciliation",
+      "display_name": "Rook Reconciliation",
       "spawned_by": "rooks_militia — Option B (stop them)",
-      "trigger_condition": "rooks_militia_option_b_taken == true AND rook_alive_flag == 'at risk'",
+      "trigger_condition": "rook_militia_stopped == true AND rook_reconciliation_taken == false",
       "trigger_day_range": [
-        24,
-        33
+        25,
+        32
       ],
-      "location": "Colony Journal — optional interaction, fires once only",
+      "location": "Dialogue card + Colony Journal",
       "mandatory": false,
       "note": "If taken before Day 33: rook_alive stays TRUE. If not taken before Day 33: rook_alive = FALSE permanently on Day 33.",
-      "prompt_text": "Rook hasn't spoken directly to you since the decision on Day 24. He's still working. He's still here. There's a moment, in the corridor outside the operations room, where you could stop and say something. You don't have to. The window closes on Day 33.",
+      "setup_text": "You find Rook alone in the mess hall. It's been a few days since you shut down his scavenging operation. The anger is mostly gone now, replaced by a quiet distance. You have a narrow window to say something.",
+      "character_portrait": "rook",
       "choices": [
         {
-          "id": "reconcile_taken",
-          "text": "Stop. Acknowledge what he did and why you stopped it.",
-          "outcome_journal_entry": {
-            "title": "Reconciliation — Day [FIRES ON DAY TAKEN]",
-            "body": "I stopped Rook in the corridor outside the operations room this morning. He didn't make it easy — he had that particular stillness he gets when he's decided not to be the one to close a distance — but he stopped.\n\nI told him the decision on Day 24 was about the risk, not about what he'd built. That the salvage work he'd been doing since Day 8 was the reason Grid-7 had the materials we did in the first two weeks. That I stopped the militia because I couldn't afford to lose him, not because I thought he was wrong.\n\nHe looked at me for a moment. Then he said: 'You could have said that on Day 24.' He's right. I could have.\n\nHe's still here. He went back to work. I think that's what a reconciliation looks like in a place like this — not a resolution, but a decision to keep working in the same direction."
-          },
-          "mechanical_outcome": "rook_alive = TRUE. rook_reconciliation_taken_flag = TRUE."
+          "id": "option_a",
+          "text": "Pull up a chair. Talk to him as a person, not a Director.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "rook_reconciliation_taken": true
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "I sat with Rook today. I didn't give him a lecture, I just told him why I couldn't live with his blood on my hands. He didn't agree, but he looked me in the eye for the first time in a week. He’s staying. He’s going to work the hydroponics instead. It’s a start.",
+              "hope_order_delta": 5
+            }
+          ]
         },
         {
-          "id": "reconcile_not_taken",
-          "text": "[Do not take this action before Day 33]",
-          "outcome_journal_entry": {
-            "title": "Day 33 — Something Between Them Closed",
-            "body": "Something between them closed. That is the most accurate way I have to describe what happened. There was a window — I knew it was there — and I did not go through it, and on Day 33 I checked the operations log and Rook's name had been removed from the active worker roster by his own hand sometime during the night.\n\nHe filed the paperwork correctly. His inventory manifest is complete and filed. He did not leave without making sure the records were in order. That is probably the most Rook thing he could have done.\n\nI did not find out where he went. I did not look."
-          },
-          "mechanical_outcome": "rook_alive = FALSE permanently. Cannot be reversed after Day 33."
+          "id": "option_b",
+          "text": "Keep walking. Some bridges can't be rebuilt.",
+          "outcomes": [
+            {
+              "type": "resource",
+              "description": "No mechanical effect immediately."
+            },
+            {
+              "type": "narrative",
+              "journal_entry": "I walked past Rook in the mess hall. I gave the order and I stand by it. I didn't owe him an explanation, but seeing him sit there in the dark made the victory feel like a defeat. We're just on completely different pages.",
+              "hope_order_delta": -5
+            }
+          ]
         }
       ]
     },
@@ -71,7 +86,7 @@
         "rook_alive_flag_change": "none — Rook is uninjured"
       },
       "journal_entry": {
-        "title": "Day [30–33] — Tunnel Collapse, East Salvage Corridor",
+        "title": "Day [30–33]: Tunnel Collapse, East Salvage Corridor",
         "body": "Two of Rook's team caught a partial tunnel collapse in the east salvage corridor this afternoon — Devi and the older one, Carrow. Rook got them both out. Devi has a broken arm. Carrow has a concussion and two cracked ribs. Neither is critical. Both are out of rotation for three days minimum, which puts available workers down temporarily.\n\nRook came to report it himself. He was covered in dust and he was calm and he gave me the incident breakdown in the same format as the official salvage reports — location, cause, injuries, recovery estimate. He had clearly written it in his head on the walk over. I told him the Med Clinic could handle it. He said he knew. He left.\n\nHe's fine. The two workers will recover. The east corridor is now flagged as unstable. This is what the risk looked like when it happened. It was smaller than I feared and it was still real."
       }
     },
@@ -85,8 +100,8 @@
       "mandatory": false,
       "note": "Required narrative context for The Signal secret ending. Does not display if Archive Hall not built or MERIDIAN not trusted.",
       "journal_entry": {
-        "title": "Day 28 — Signal (Secondary Layer, Last Broadcast)",
-        "body": "MERIDIAN flagged something in the Syndicate broadcast that wasn't in the primary data layer.\n\nStructured signal. Northern origin — direction confirmed, distance not calculable from our position. The signal pattern is deliberate. It responded to the Syndicate broadcast at specific intervals that don't match any automated emergency protocol MERIDIAN has on record. MERIDIAN cross-referenced the entire Syndicate signal library. No match.\n\nThis means something was listening to the broadcast and chose to answer it. The response is not noise. It is not an automated loop. It is — MERIDIAN's words — 'a signal that knows it is a signal.'\n\nVasquez mentioned a northern coordinate in his last transmission. MERIDIAN confirms the bearing is consistent.\n\nI don't know what to do with this. I've written it in the log because MERIDIAN told me to write things down that might matter later, and I think this might matter later. Right now there's a storm in six days and eight hundred people who need the Hydroponic Bays shielded. The signal can wait.\n\nI'm going to remember it's there."
+        "title": "Day 28: Signal (Secondary Layer, Last Broadcast)",
+        "body": "MERIDIAN flagged something in the Syndicate broadcast that wasn't in the primary data layer.\n\nStructured signal. Northern origin - direction confirmed, distance not calculable from our position. The signal pattern is deliberate. It responded to the Syndicate broadcast at specific intervals that don't match any automated emergency protocol MERIDIAN has on record. MERIDIAN cross-referenced the entire Syndicate signal library. No match.\n\nThis means something was listening to the broadcast and chose to answer it. The response is not noise. It is not an automated loop. MERIDIAN said that it is 'a signal that knows it is a signal.'\n\nVasquez mentioned a northern coordinate in his last transmission. MERIDIAN confirms the bearing is consistent.\n\nI don't know what to do with this. I've written it in the log because MERIDIAN told me to write things down that might matter later and I think this might matter later. Right now there's a storm in six days and hundreds of people who need the Hydroponic Bays shielded. The signal can wait.\n\nI'm going to remember it's there."
       }
     },
     {
@@ -107,8 +122,8 @@
         }
       },
       "journal_entry": {
-        "title": "Day 10 — Unrest in the West Corridor",
-        "body": "The lockdown ended at 0600 and by 0800 there was a disturbance in the west corridor. Nobody was killed. Two security personnel injured. One building took damage — equipment pulled from its housing, fixtures broken. The people who did it are back in their section now.\n\nI could write this up in a way that makes it sound more contained than it was. What it was: people who were told they couldn't leave, in a place where the conditions that made them want to leave haven't changed, expressing that in the only way left available to them. The lockdown held the numbers. It did not hold the tension. The tension found its exit anyway.\n\nThe damaged building needs Materials to repair. Morale dropped further. I kept everyone here. I'm not sure everyone being here is the same as everyone being fine."
+        "title": "Day 10: Unrest in the West Corridor",
+        "body": "The lockdown ended at 06:00 and by 08:00, there was a disturbance in the west corridor. Nobody was killed. Two security personnel injured. One building took damage, equipment pulled from its housing, fixtures broken. The people who did it are back in their section now.\n\nI could write this up in a way that makes it sound more contained than it was. What it was: people who were told they couldn't leave, in a place where the conditions that made them want to leave haven't changed, expressing that in the only way left available to them. The lockdown held the numbers. It did not hold the tension. The tension found its exit anyway.\n\nThe damaged building needs Materials to repair. Morale dropped further. I kept everyone here. I'm not sure everyone being here is the same as everyone being fine."
       }
     }
   ]

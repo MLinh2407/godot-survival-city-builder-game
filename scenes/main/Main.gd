@@ -75,6 +75,7 @@ func _ready() -> void:
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
+	TimeManager.speed_changed.connect(_on_time_speed_changed)
 	ResourceManager.resources_changed.connect(_on_resources_changed)
 	PopulationManager.population_changed.connect(_on_population_changed)
 	GameManager.hope_order_changed.connect(_on_hope_order_changed)
@@ -206,12 +207,24 @@ func _update_rates() -> void:
 		_set_rate_color(power_rate_lbl, power_rate)
 
 	if food_rate_lbl:
-		food_rate_lbl.text = "+0/day"
-		_set_rate_color(food_rate_lbl, 0.0)
+		var food_rate = GameManager.resource_food.net_rate
+		if CrisisEventSystem:
+			food_rate += CrisisEventSystem.active_food_delta
+		var food_rate_i: int = int(round(food_rate))
+		if food_rate_i >= 0:
+			food_rate_lbl.text = "+" + str(food_rate_i) + "/day"
+		else:
+			food_rate_lbl.text = str(food_rate_i) + "/day"
+		_set_rate_color(food_rate_lbl, food_rate)
 
 	if morale_rate_lbl:
-		morale_rate_lbl.text = "-1/day"
-		_set_rate_color(morale_rate_lbl, -1.0)
+		var morale_rate = GameManager.resource_morale.net_rate
+		var morale_rate_i: int = int(round(morale_rate))
+		if morale_rate_i >= 0:
+			morale_rate_lbl.text = "+" + str(morale_rate_i) + "/day"
+		else:
+			morale_rate_lbl.text = str(morale_rate_i) + "/day"
+		_set_rate_color(morale_rate_lbl, morale_rate)
 
 func _set_rate_color(rate_label: Label, value: float) -> void:
 	if value > 0.0:
@@ -222,12 +235,6 @@ func _set_rate_color(rate_label: Label, value: float) -> void:
 		rate_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 0.8))
 
 func toggle_pause() -> void:
-	# Fire the Day 1 onboarding nudge once on first unpause
-	if colony_journal and not colony_journal.first_unpause_happened \
-	and TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
-		colony_journal.first_unpause_happened = true
-		colony_journal.fire_day1_nudge()
-
 	if TimeManager.current_speed == TimeManager.GameSpeed.PAUSED:
 		get_tree().paused = false
 		set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
@@ -275,6 +282,17 @@ func _on_day_changed(new_day: int) -> void:
 func _on_time_changed(time_string: String) -> void:
 	if time_label:
 		time_label.text = "| " + time_string
+
+func _on_time_speed_changed(old_speed: int, new_speed: int) -> void:
+	if TimeManager.current_day != 1:
+		return
+	if old_speed != TimeManager.GameSpeed.PAUSED:
+		return
+	if new_speed == TimeManager.GameSpeed.PAUSED:
+		return
+	if colony_journal and not colony_journal.first_unpause_happened:
+		colony_journal.first_unpause_happened = true
+		colony_journal.fire_day1_nudge()
 
 func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 	if power_label:

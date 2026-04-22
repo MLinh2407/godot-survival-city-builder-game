@@ -2,6 +2,7 @@ extends Node
 
 signal day_changed(new_day: int)
 signal time_changed(time_string: String)
+signal speed_changed(old_speed: int, new_speed: int)
 signal storm_warning_issued
 signal storm_hit
 
@@ -17,12 +18,15 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 func set_game_speed(speed: GameSpeed) -> void:
-	if current_speed != speed:
-		if speed == GameSpeed.PAUSED:
-			AudioManager.play_ui_sfx("pause")
-		elif current_speed == GameSpeed.PAUSED:
-			AudioManager.play_ui_sfx("unpause")
+	if current_speed == speed:
+		return
+	var previous_speed := current_speed
+	if speed == GameSpeed.PAUSED:
+		AudioManager.play_ui_sfx("pause")
+	elif previous_speed == GameSpeed.PAUSED:
+		AudioManager.play_ui_sfx("unpause")
 	current_speed = speed
+	speed_changed.emit(previous_speed, current_speed)
 
 func get_current_day_length() -> float:
 	match current_speed:

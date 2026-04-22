@@ -117,6 +117,8 @@ func _recalculate_power() -> void:
 			power_draw += b.power_draw
 
 	net_power = power_capacity - power_draw
+	GameManager.resource_power.production_rate = power_capacity
+	GameManager.resource_power.consumption_rate = power_draw
 
 	# Pass 3 — set is_powered flag on every building
 	# Simple rule: enough total capacity = everything powered.
@@ -205,6 +207,10 @@ func _process_morale_tick() -> void:
 		decay *= GameConstants.HOPE_MORALE_DECAY_MODIFIER    # 20% slower
 	elif slider >= GameConstants.SLIDER_ORDER_LOWER:
 		decay *= GameConstants.ORDER_MORALE_DECAY_MODIFIER   # 20% faster
+
+	# Event-driven temporary multipliers (e.g. lockdown unrest pressure)
+	if CrisisEventSystem:
+		decay *= CrisisEventSystem.active_morale_decay_mult
 
 	# Active disease drains morale
 	if GameManager.population_state.outbreak_active:
