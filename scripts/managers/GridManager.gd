@@ -45,6 +45,13 @@ const HOVER_MODULATE:    Color = Color(1.45, 1.45, 1.45, 1.0)   # bright white-i
 const SELECTED_MODULATE: Color = Color(0.75, 1.10, 1.25, 1.0)   # cyan tint
 const NORMAL_MODULATE:   Color = Color(1.0,  1.0,  1.0,  1.0)   # restore
 
+const DEMOLISH_HOLD_DURATION: float = 0.5   # seconds to hold for demolition
+
+var _demolish_anchor:   Vector2i = Vector2i(-9999, -9999)
+var _demolish_timer:    float    = 0.0
+var _demolish_active:   bool     = false
+var _demolish_arc:      Node2D   = null     
+
 # Cached per build-mode session so _process doesn't recompute every frame
 var _ghost_y_offset: float = 0.0
 
@@ -196,6 +203,14 @@ func exit_build_mode() -> void:
 
 # ── _process ───────────────────────────────────────────────────────────────────
 func _process(_delta: float) -> void:
+    # ── Demolish hold timer ──────────────────────────────────────────────────
+    if _demolish_active:
+        _demolish_timer += _delta
+        _update_demolish_arc(_demolish_timer / DEMOLISH_HOLD_DURATION)
+        if _demolish_timer >= DEMOLISH_HOLD_DURATION:
+            _complete_demolish()
+            return
+
     var local_mouse: Vector2 = get_local_mouse_position()
     var map_pos: Vector2i    = base_grid.local_to_map(local_mouse)
 
@@ -276,10 +291,25 @@ func _input(event: InputEvent) -> void:
         elif event.button_index == MOUSE_BUTTON_RIGHT:
             if current_build_scene != null:
                 exit_build_mode()
-            elif cell_to_anchor.has(map_pos):
-                remove_building(cell_to_anchor[map_pos])
+            elif event.pressed:
+                # RIGHT PRESS — begin demolish hold if over a building
+                map_pos = base_grid.local_to_map(get_local_mouse_position())
+                if cell_to_anchor.has(map_pos):
+                    _demolish_anchor  = cell_to_anchor[map_pos]
+                    _demolish_timer   = 0.0
+                    _demolish_active  = true
+                    _spawn_demolish_arc(_demolish_anchor)
+            else:
+                # RIGHT RELEASE — cancel demolish if not complete
+                _cancel_demolish()
 
     if event is InputEventKey and event.pressed:
+        # ── Q cancels build mode ──────────────────────────────────────
+        if event.keycode == KEY_Q:
+            if current_build_scene != null:
+                exit_build_mode()
+            return
+
         var keys = building_scenes.keys()
         if event.keycode == KEY_1 and keys.size() > 0: enter_build_mode(keys[0])
         if event.keycode == KEY_2 and keys.size() > 1: enter_build_mode(keys[1])
@@ -427,3 +457,86 @@ func _apply_building_modulate(node: Node2D, color: Color) -> void:
         sprite.modulate = color
     else:
         node.modulate = color
+
+# ── Demolition arc visual ─────────────────────────────────────────────────────
+
+func _spawn_demolish_arc(anchor: Vector2i) -> void:
+    _clear_demolish_arc()
+    var b_type: String   = _get_type_for_anchor(anchor)
+    var centre: Vector2  = base_grid.map_to_local(anchor) + \
+                           get_footprint_centre_offset(b_type)
+
+    _demolish_arc = Node2D.new()
+    _demolish_arc.position     = centre
+    _demolish_arc.z_index      = 200
+    _demolish_arc.z_as_relative = false
+    add_child(_demolish_arc)
+
+    # Background ring (dark, full circle)
+    var bg := _make_arc_polygon(0.0, 1.0, 14.0, 10.0, Color(0.1, 0.1, 0.1, 0.7))
+    _demolish_arc.add_child(bg)
+
+    # Progress arc starts empty — updated each frame
+    var progress_node := Node2D.new()
+    progress_node.name = "Progress"
+    _demolish_arc.add_child(progress_node)
+
+    # Label
+    var label := Label.new()
+    label.text                    = "HOLD"
+    label.name                    = "Label"
+    label.add_theme_font_size_override("font_size", 10)
+    label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3, 1.0))
+    label.position                = Vector2(-14, -6)
+    _demolish_arc.add_child(label)
+
+func _update_demolish_arc(progress: float) -> void:
+    if _demolish_arc == null: return
+    var progress_node: Node2D = _demolish_arc.get_node_or_null("Progress")
+    if progress_node == null: return
+    for child in progress_node.get_children():
+        child.queue_free()
+    if progress <= 0.0: return
+    # Red fill arc showing how far along the hold is
+    var arc := _make_arc_polygon(0.0, progress, 14.0, 10.0, Color(1.0, 0.25, 0.25, 0.90))
+    progress_node.add_child(arc)
+
+# Builds a filled arc as a Polygon2D.
+func _make_arc_polygon(from_t: float, to_t: float, outer_r: float, inner_r: float, color: Color) -> Polygon2D:
+    var steps:      int   = 32
+    var start_angle: float = -PI * 0.5                         
+    var sweep:       float = TAU * clampf(to_t - from_t, 0, 1)
+    var from_angle:  float = start_angle + TAU * from_t
+
+    var points: PackedVector2Array = PackedVector2Array()
+    # Outer arc (clockwise)
+    for i in range(steps + 1):
+        var a: float = from_angle + sweep * (float(i) / float(steps))
+        points.append(Vector2(cos(a), sin(a)) * outer_r)
+    # Inner arc (counter-clockwise, closes the ring shape)
+    for i in range(steps + 1):
+        var a: float = from_angle + sweep * (float(steps - i) / float(steps))
+        points.append(Vector2(cos(a), sin(a)) * inner_r)
+
+    var poly := Polygon2D.new()
+    poly.polygon = points
+    poly.color   = color
+    return poly
+
+func _clear_demolish_arc() -> void:
+    if _demolish_arc != null:
+        _demolish_arc.queue_free()
+        _demolish_arc = null
+
+func _cancel_demolish() -> void:
+    _demolish_active  = false
+    _demolish_timer   = 0.0
+    _demolish_anchor  = Vector2i(-9999, -9999)
+    _clear_demolish_arc()
+
+func _complete_demolish() -> void:
+    var anchor: Vector2i = _demolish_anchor
+    _cancel_demolish()
+    if occupied_cells.has(anchor):
+        remove_building(anchor)
+        AudioManager.play_build_sfx("remove")
