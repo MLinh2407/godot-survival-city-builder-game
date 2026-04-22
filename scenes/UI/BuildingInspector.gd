@@ -220,7 +220,7 @@ func _on_repair_pressed() -> void:
 					found_child = true
 					print("BuildingInspector: Calling repair() on child", child)
 					if AudioManager and AudioManager.has_method("play_build_sfx"):
-						AudioManager.play_build_sfx("place")
+						AudioManager.play_build_sfx("repair")
 					var child_ok: bool = child.repair()
 					if child_ok:
 						_refresh_ui_text()
@@ -236,7 +236,7 @@ func _on_repair_pressed() -> void:
 		var cost:int = GameConstants.REPAIR_COST_BASE
 		print("BuildingInspector: Fallback repair for", target_building, "cost", cost, "materials", ResourceManager.materials)
 		if AudioManager and AudioManager.has_method("play_build_sfx"):
-			AudioManager.play_build_sfx("place")
+			AudioManager.play_build_sfx("repair")
 
 		# Use ResourceManager.consume_materials so HUD updates
 		if not ResourceManager.consume_materials(cost):
@@ -288,7 +288,7 @@ func _on_upgrade_pressed() -> void:
 
 	# Play SFX for user feedback
 	if AudioManager and AudioManager.has_method("play_build_sfx"):
-		AudioManager.play_build_sfx("place")
+		AudioManager.play_build_sfx("upgrade")
 
 	if not ResourceManager.consume_materials(cost):
 		push_warning("Upgrade failed: insufficient materials")
@@ -324,7 +324,9 @@ func _on_upgrade_pressed() -> void:
 	# Wait for particle duration before swapping the sprite
 	await get_tree().create_timer(GameConstants.BUILDING_UPGRADE_PARTICLE_DURATION).timeout
 
-	if gm and gm.has_method("update_building_visual"):
+	if gm and gm.has_method("apply_upgrade_visual"):
+		gm.apply_upgrade_visual(target_building.grid_position)
+	elif gm and gm.has_method("update_building_visual"):
 		gm.update_building_visual(target_building.grid_position)
 
 	if ResourceManager and ResourceManager.has_method("calculate_power"):

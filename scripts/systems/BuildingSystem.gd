@@ -313,6 +313,9 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			elif placed_node.has_method("set_building_state"):
 				placed_node.set_building_state("tier1")
 
+	if b_type != "memorial":
+		AudioManager.play_build_sfx("place")
+
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
@@ -510,6 +513,29 @@ func update_building_visual(grid_pos: Vector2i) -> void:
 		power_color.b + (staff_color.b - power_color.b) * t,
 		power_color.a + (staff_color.a - power_color.a) * t
 	)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# UPGRADE VISUAL: dual-path sync guaranteeing T2 sprite appears
+# ══════════════════════════════════════════════════════════════════════════════
+func apply_upgrade_visual(grid_pos: Vector2i) -> void:
+	if not active_buildings.has(grid_pos):
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+	if not b.is_upgraded:
+		return
+
+	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
+		var node: Node2D = grid_manager.occupied_cells.get(grid_pos, null)
+		if node and node.has_method("set_building_state"):
+			node.set_building_state("tier2")
+		var sprite: Sprite2D = node.get_node_or_null("Sprite2D") if node else null
+		if sprite and T2_SPRITES.has(b.building_type):
+			sprite.texture = T2_SPRITES[b.building_type]
+
+	update_building_visual(grid_pos)
+
+	print("BuildingSystem: apply_upgrade_visual complete at %s | building: %s" \
+		% [str(grid_pos), b.building_name])
 
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
 	for pos in active_buildings.keys():
