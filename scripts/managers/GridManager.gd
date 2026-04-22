@@ -23,7 +23,8 @@ const BUILDING_FOOTPRINTS: Dictionary = {
 const GRID_BOUNDS_MIN = Vector2i(-5, -5)
 const GRID_BOUNDS_MAX = Vector2i(5,  5)
 
-const BUILDING_GROUND_FACTOR: float = 0.25
+const BUILDING_GROUND_FACTOR: float = 0.25    
+const BUILDING_PLACE_FACTOR:  float = 0.18  
 
 var occupied_cells:  Dictionary = {}   
 var cell_to_anchor:  Dictionary = {}   
@@ -52,8 +53,13 @@ var _demolish_timer:    float    = 0.0
 var _demolish_active:   bool     = false
 var _demolish_arc:      Node2D   = null     
 var _blocker_highlight: Node2D = null
+var _hover_highlight: Node2D = null
 
 var _shake_offset: Vector2 = Vector2.ZERO
+
+var _ghost_pulse_t: float = 0.0
+var _selection_outline_node: Node2D = null
+var _current_placement_anchor: Vector2i = Vector2i.ZERO
 
 # Cached per build-mode session so _process doesn't recompute every frame
 var _ghost_y_offset: float = 0.0
@@ -71,25 +77,38 @@ func _ready() -> void:
     ghost_sprite.z_index    = 100
     ghost_sprite.z_as_relative = false
 
-    # Footprint fill layer — absolute z=1
+    # Footprint overlay — z=1
     _footprint_node               = Node2D.new()
     _footprint_node.z_index       = 1
     _footprint_node.z_as_relative = false
     add_child(_footprint_node)
 
+    # Blocker highlight — z=2
     _blocker_highlight               = Node2D.new()
     _blocker_highlight.z_index       = 2
     _blocker_highlight.z_as_relative = false
     add_child(_blocker_highlight)
 
-    # Buildings render above footprint — absolute z=4
+    # Hover / selection highlight nodes — z=3, 4
+    _hover_highlight               = Node2D.new()
+    _hover_highlight.z_index       = 3
+    _hover_highlight.z_as_relative = false
+    add_child(_hover_highlight)
+
+    _selection_outline_node               = Node2D.new()
+    _selection_outline_node.z_index       = 4
+    _selection_outline_node.z_as_relative = false
+    add_child(_selection_outline_node)
+
+    # Buildings above all overlays — z=5
     if building_container:
-        building_container.z_index       = 4
+        building_container.z_index       = 5
         building_container.z_as_relative = false
 
     # GridManager listens to its own signals to drive building highlights
     building_selected.connect(_on_selection_changed)
     building_deselected.connect(_on_selection_cleared)
+
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
@@ -124,9 +143,9 @@ func _get_scale_for_type(b_type: String, b_sprite: Sprite2D) -> float:
         return target_px / float(b_sprite.texture.get_width())
     return target_px / float(GameConstants.BUILDING_SPRITE_SIZE)
 
-func _get_y_offset(b_sprite: Sprite2D, scale_factor: float) -> float:
+func _get_y_offset(b_sprite: Sprite2D, scale_factor: float, ground_factor: float = BUILDING_GROUND_FACTOR) -> float:
     if b_sprite and b_sprite.texture:
-        return -float(b_sprite.texture.get_height()) * scale_factor * BUILDING_GROUND_FACTOR
+        return -float(b_sprite.texture.get_height()) * scale_factor * ground_factor
     return 0.0
 
 # ── Footprint overlay ─────────────────────────────────────────────────────────
@@ -217,69 +236,71 @@ func exit_build_mode() -> void:
     _clear_blocker_highlight()  
 
 # ── _process ───────────────────────────────────────────────────────────────────
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
     # ── Demolish hold timer ──────────────────────────────────────────────────
     if _demolish_active:
-        _demolish_timer += _delta
-        _update_demolish_arc(_demolish_timer / DEMOLISH_HOLD_DURATION)
-        if _demolish_timer >= DEMOLISH_HOLD_DURATION:
-            _complete_demolish()
-            return
+        var current_map: Vector2i = base_grid.local_to_map(get_local_mouse_position())
+        var still_on_target: bool = \
+            cell_to_anchor.get(current_map, Vector2i(-9999, -9999)) == _demolish_anchor
+        if not still_on_target:
+            _cancel_demolish()
+        else:
+            _demolish_timer += delta
+            _update_demolish_arc(_demolish_timer / DEMOLISH_HOLD_DURATION)
+            if _demolish_timer >= DEMOLISH_HOLD_DURATION:
+                _complete_demolish()
+                return
 
     var local_mouse: Vector2 = get_local_mouse_position()
     var map_pos: Vector2i    = base_grid.local_to_map(local_mouse)
 
     if current_build_scene != null:
-        # ── BUILD MODE ────────────────────────────────────────────────────────
+        # ── BUILD MODE ───────────────────────────────────────────────────────
         hover_cursor.visible = false
         ghost_sprite.visible = true
+        _clear_node(_hover_highlight)
+        _last_hovered_anchor = Vector2i(-9999, -9999)
 
-        # Clear any building hover that was active before entering build mode
-        _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
-        _hovered_building_node  = null
-        _last_hovered_anchor    = Vector2i(-9999, -9999)
+        var snapped_anchor: Vector2i = _get_snap_anchor(map_pos)
+        _current_placement_anchor = snapped_anchor
 
-        ghost_sprite.position = base_grid.map_to_local(map_pos)                \
-                        + get_footprint_centre_offset(current_build_type) \
-                        + Vector2(0.0, _ghost_y_offset)                   \
-                        + _shake_offset
+        _ghost_pulse_t += delta * 2.5
+        var pulse_alpha: float = 0.60 + 0.18 * sin(_ghost_pulse_t)
+        ghost_sprite.modulate  = Color(1.0, 1.0, 1.0, pulse_alpha)
 
-        var valid: bool = is_valid_placement(map_pos, current_build_type)
-        if map_pos != _last_fp_anchor or valid != _last_fp_valid:
-            _last_fp_anchor = map_pos
+        ghost_sprite.position = base_grid.map_to_local(snapped_anchor)                \
+                              + get_footprint_centre_offset(current_build_type) \
+                              + Vector2(0.0, _ghost_y_offset)                   \
+                              + _shake_offset
+
+        var valid: bool = is_valid_placement(snapped_anchor, current_build_type)
+        if snapped_anchor != _last_fp_anchor or valid != _last_fp_valid:
+            _last_fp_anchor = snapped_anchor
             _last_fp_valid  = valid
-            _rebuild_footprint_overlay(map_pos, current_build_type, valid)
+            _rebuild_footprint_overlay(snapped_anchor, current_build_type, valid)
 
     else:
-        # ── SELECTION MODE ─────────────────────────────────────────────────────
-        ghost_sprite.visible = false
+        # ── SELECTION MODE ────────────────────────────────────────────────────
+        ghost_sprite.visible  = false
+        ghost_sprite.modulate = Color(1.0, 1.0, 1.0, 0.70)
+        _ghost_pulse_t        = 0.0
         _clear_footprint_overlay()
         _clear_blocker_highlight()
 
         if cell_to_anchor.has(map_pos):
             var anchor: Vector2i = cell_to_anchor[map_pos]
-
+            hover_cursor.visible = false
             if anchor != _last_hovered_anchor:
-                # Restore previous hovered building (unless it is selected)
-                if _hovered_building_node != null \
-                and _hovered_building_node != _selected_building_node:
-                    _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
-
                 _last_hovered_anchor = anchor
-
-                # Brighten the newly hovered building (skip if already selected)
-                var node: Node2D = occupied_cells.get(anchor, null)
-                _hovered_building_node = node
-                if node != null and node != _selected_building_node:
-                    _apply_building_modulate(node, HOVER_MODULATE)
+                _apply_building_modulate(
+                    occupied_cells.get(anchor, null), HOVER_MODULATE)
         else:
-            # Cursor left all buildings
+            hover_cursor.visible = false
             if _last_hovered_anchor != Vector2i(-9999, -9999):
-                if _hovered_building_node != null \
-                and _hovered_building_node != _selected_building_node:
-                    _apply_building_modulate(_hovered_building_node, NORMAL_MODULATE)
-                _hovered_building_node  = null
-                _last_hovered_anchor    = Vector2i(-9999, -9999)
+                var prev_node: Node2D = occupied_cells.get(_last_hovered_anchor, null)
+                if prev_node != null and prev_node != _selected_building_node:
+                    _apply_building_modulate(prev_node, NORMAL_MODULATE)
+                _last_hovered_anchor = Vector2i(-9999, -9999)
 
 # ── Validity check ────────────────────────────────────────────────────────────
 func is_valid_placement(anchor: Vector2i, b_type: String = "") -> bool:
@@ -295,8 +316,8 @@ func _input(event: InputEvent) -> void:
 
         if event.button_index == MOUSE_BUTTON_LEFT:
             if current_build_scene != null:
-                if is_valid_placement(map_pos, current_build_type):
-                    place_building(map_pos)
+                if is_valid_placement(_current_placement_anchor, current_build_type):
+                    place_building(_current_placement_anchor)
                 else:
                     AudioManager.play_build_sfx("invalid")
                     _shake_ghost()
@@ -327,7 +348,6 @@ func _input(event: InputEvent) -> void:
             if current_build_scene != null:
                 exit_build_mode()
             return
-
         var keys = building_scenes.keys()
         if event.keycode == KEY_1 and keys.size() > 0: enter_build_mode(keys[0])
         if event.keycode == KEY_2 and keys.size() > 1: enter_build_mode(keys[1])
@@ -345,11 +365,20 @@ func place_building(anchor: Vector2i) -> void:
     var b_sprite: Sprite2D  = new_building.get_node_or_null("Sprite2D")
     var sf: float           = _get_scale_for_type(current_build_type, b_sprite)
     new_building.scale      = Vector2(sf, sf)
-    new_building.position   = base_grid.map_to_local(anchor)                    \
-                            + get_footprint_centre_offset(current_build_type)   \
-                            + Vector2(0.0, _get_y_offset(b_sprite, sf))
+    new_building.position = base_grid.map_to_local(anchor)                    \
+                        + get_footprint_centre_offset(current_build_type)   \
+                        + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR))
 
     building_container.add_child(new_building)
+
+    var target_scale: Vector2 = new_building.scale
+    new_building.scale = target_scale * 0.0
+    var pop_tween: Tween = new_building.create_tween()
+    pop_tween.tween_property(new_building, "scale", target_scale * 1.08, 0.10) \
+             .set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+    pop_tween.tween_property(new_building, "scale", target_scale, 0.08)        \
+             .set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
     occupied_cells[anchor] = new_building
     anchor_to_type[anchor] = current_build_type
     for cell in get_footprint_cells(anchor, current_build_type):
@@ -357,6 +386,8 @@ func place_building(anchor: Vector2i) -> void:
 
     building_placed.emit(current_build_type, anchor)
     _clear_footprint_overlay()
+    _clear_blocker_highlight()
+
     building_selected.emit(anchor)  
 
 func remove_building(anchor: Vector2i) -> void:
@@ -394,9 +425,9 @@ func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
     var b_sprite: Sprite2D  = new_building.get_node_or_null("Sprite2D")
     var sf: float           = _get_scale_for_type(b_type, b_sprite)
     new_building.scale      = Vector2(sf, sf)
-    new_building.position   = base_grid.map_to_local(anchor)        \
-                            + get_footprint_centre_offset(b_type)   \
-                            + Vector2(0.0, _get_y_offset(b_sprite, sf))
+    new_building.position = base_grid.map_to_local(anchor)        \
+                        + get_footprint_centre_offset(b_type)   \
+                        + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR))
 
     building_container.add_child(new_building)
     occupied_cells[anchor] = new_building
@@ -447,24 +478,23 @@ func _clear_node(container: Node2D) -> void:
 
 # Called when GridManager emits building_selected
 func _on_selection_changed(anchor: Vector2i) -> void:
-    # Restore previously selected building
+    # Restore previous selection
     if _selected_building_node != null:
-        # If still hovered restore hover tint, otherwise restore to normal
-        if _selected_building_node == _hovered_building_node:
-            _apply_building_modulate(_selected_building_node, HOVER_MODULATE)
-        else:
-            _apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
+        _apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
+        _clear_node(_selection_outline_node)
 
-    _selected_anchor       = anchor
+    _selected_anchor        = anchor
     _selected_building_node = occupied_cells.get(anchor, null)
-    # Selected overrides hover — apply cyan tint
     _apply_building_modulate(_selected_building_node, SELECTED_MODULATE)
+
+    _draw_selection_outline(anchor, _get_type_for_anchor(anchor))
 
 func _on_selection_cleared() -> void:
     if _selected_building_node != null:
         _apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
     _selected_building_node = null
     _selected_anchor        = Vector2i(-9999, -9999)
+    _clear_node(_selection_outline_node)
 
 # Applies modulate to the Sprite2D inside a building node.
 # Falls back to the node itself if no Sprite2D child found.
@@ -623,3 +653,92 @@ func _complete_demolish() -> void:
     if occupied_cells.has(anchor):
         remove_building(anchor)
         AudioManager.play_build_sfx("remove")
+
+# ── selection perimeter outline ──────────────────────────────────────
+func _draw_selection_outline(anchor: Vector2i, b_type: String) -> void:
+    _clear_node(_selection_outline_node)
+
+    var cells:    Array[Vector2i] = get_footprint_cells(anchor, b_type)
+    var cell_set: Dictionary      = {}
+    for c in cells:
+        cell_set[c] = true
+
+    var half_w: float = 32.0
+    var half_h: float = 16.0
+    if base_grid and base_grid.tile_set:
+        half_w = base_grid.tile_set.tile_size.x * 0.5
+        half_h = half_w * 0.5
+
+    var edge_defs: Array = [
+        [Vector2i( 0, -1), Vector2(     0, -half_h), Vector2( half_w,      0)],
+        [Vector2i( 1,  0), Vector2( half_w,      0), Vector2(     0,  half_h)],
+        [Vector2i( 0,  1), Vector2(     0,  half_h), Vector2(-half_w,      0)],
+        [Vector2i(-1,  0), Vector2(-half_w,      0), Vector2(     0, -half_h)],
+    ]
+
+    for cell in cells:
+        var c: Vector2 = base_grid.map_to_local(cell)
+        for edge in edge_defs:
+            var neighbour: Vector2i = cell + edge[0]
+            if not cell_set.has(neighbour):
+                var line := Line2D.new()
+                line.add_point(c + edge[1])
+                line.add_point(c + edge[2])
+                line.width         = 2.5
+                line.default_color = Color(0.0, 0.95, 1.0, 1.0)   # neon cyan
+                _selection_outline_node.add_child(line)
+
+# ── snap assist ───────────────────────────────────────────────────────
+func _get_snap_anchor(cursor_anchor: Vector2i) -> Vector2i:
+    if occupied_cells.is_empty() or current_build_type == "":
+        return cursor_anchor
+
+    # Only activate when the cursor footprint is already near an occupied cell
+    var near_occupied: bool = false
+    var probe_dirs: Array[Vector2i] = [
+        Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(0,1), Vector2i(0,0)
+    ]
+    for cell in get_footprint_cells(cursor_anchor, current_build_type):
+        for d in probe_dirs:
+            if cell_to_anchor.has(cell + d):
+                near_occupied = true
+                break
+        if near_occupied:
+            break
+
+    if not near_occupied:
+        return cursor_anchor
+
+    var best_anchor: Vector2i = cursor_anchor
+    var best_adj:    int      = _count_adjacencies(cursor_anchor, current_build_type)
+
+    var offsets: Array[Vector2i] = [
+        Vector2i(-1, 0), Vector2i(1, 0),
+        Vector2i(0, -1), Vector2i(0, 1),
+    ]
+    for offset in offsets:
+        var candidate: Vector2i = cursor_anchor + offset
+        if is_valid_placement(candidate, current_build_type):
+            var adj: int = _count_adjacencies(candidate, current_build_type)
+            if adj > best_adj:
+                best_adj    = adj
+                best_anchor = candidate
+
+    return best_anchor
+
+func _count_adjacencies(anchor: Vector2i, b_type: String) -> int:
+    var footprint_cells: Array[Vector2i] = get_footprint_cells(anchor, b_type)
+    var fp_set: Dictionary = {}
+    for cell in footprint_cells:
+        fp_set[cell] = true
+
+    var count: int = 0
+    var dirs: Array[Vector2i] = [
+        Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(0,1)
+    ]
+    for cell in footprint_cells:
+        for d in dirs:
+            var nb: Vector2i = cell + d
+            if cell_to_anchor.has(nb) and not fp_set.has(nb):
+                count += 1
+    return count
