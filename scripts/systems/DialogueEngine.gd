@@ -25,7 +25,7 @@ var _button_font_color: Color = Color(0.84, 0.95, 1.0, 1.0)
 var _text_default_left: float = 0.0
 var _choices_default_left: float = 0.0
 
-const _PORTRAIT_LAYOUT_SHIFT: float = 172.0
+const _PORTRAIT_LAYOUT_SHIFT: float = 200.0
 const _SPEAKER_LABEL_LEFT: float = 232.0
 const _SPEAKER_LABEL_RIGHT: float = 396.0
 const _SPEAKER_NAME_TOP: float = 352.0
@@ -86,10 +86,20 @@ func _ensure_portrait_labels() -> void:
 		_dialogue_root.add_child(name_label)
 		_portrait_name_label = name_label
 	if _portrait_name_label:
-		_portrait_name_label.offset_left = _SPEAKER_LABEL_LEFT
-		_portrait_name_label.offset_top = _SPEAKER_NAME_TOP
-		_portrait_name_label.offset_right = _SPEAKER_LABEL_RIGHT
-		_portrait_name_label.offset_bottom = _SPEAKER_NAME_BOTTOM
+		# If a portrait frame exists, position the name label just below it to avoid overlap
+		if _portrait_frame and _portrait_frame is Control:
+			var pl = _portrait_frame.offset_left + 6.0
+			var pr = _portrait_frame.offset_right - 6.0
+			var nt = _portrait_frame.offset_bottom + 8.0
+			_portrait_name_label.offset_left = pl
+			_portrait_name_label.offset_right = pr
+			_portrait_name_label.offset_top = nt
+			_portrait_name_label.offset_bottom = nt + 22.0
+		else:
+			_portrait_name_label.offset_left = _SPEAKER_LABEL_LEFT
+			_portrait_name_label.offset_top = _SPEAKER_NAME_TOP
+			_portrait_name_label.offset_right = _SPEAKER_LABEL_RIGHT
+			_portrait_name_label.offset_bottom = _SPEAKER_NAME_BOTTOM
 		_portrait_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_portrait_name_label.add_theme_font_size_override("font_size", 20)
 		_portrait_name_label.add_theme_color_override("font_color", Color(0.25, 0.94, 1.0, 1.0))
@@ -108,10 +118,20 @@ func _ensure_portrait_labels() -> void:
 		_dialogue_root.add_child(role_label)
 		_portrait_role_label = role_label
 	if _portrait_role_label:
-		_portrait_role_label.offset_left = _SPEAKER_LABEL_LEFT
-		_portrait_role_label.offset_top = _SPEAKER_ROLE_TOP
-		_portrait_role_label.offset_right = _SPEAKER_LABEL_RIGHT
-		_portrait_role_label.offset_bottom = _SPEAKER_ROLE_BOTTOM
+		# Place role label beneath the name label
+		if _portrait_frame and _portrait_frame is Control and _portrait_name_label:
+			var rl = _portrait_frame.offset_left + 6.0
+			var rr = _portrait_frame.offset_right - 6.0
+			var rtop = _portrait_name_label.offset_bottom + 4.0
+			_portrait_role_label.offset_left = rl
+			_portrait_role_label.offset_right = rr
+			_portrait_role_label.offset_top = rtop
+			_portrait_role_label.offset_bottom = rtop + 18.0
+		else:
+			_portrait_role_label.offset_left = _SPEAKER_LABEL_LEFT
+			_portrait_role_label.offset_top = _SPEAKER_ROLE_TOP
+			_portrait_role_label.offset_right = _SPEAKER_LABEL_RIGHT
+			_portrait_role_label.offset_bottom = _SPEAKER_ROLE_BOTTOM
 		_portrait_role_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_portrait_role_label.add_theme_font_size_override("font_size", 12)
 		_portrait_role_label.add_theme_color_override("font_color", Color(0.72, 0.75, 0.79, 0.92))
@@ -226,6 +246,36 @@ func _build_card(event_data: Dictionary) -> void:
 		var button = _create_choice_button(choice_text)
 		button.pressed.connect(_on_choice_pressed.bind(_active_event_id, choice_id, choice))
 		_choices_box.add_child(button)
+	# Allow one frame for the label and buttons to update their sizes
+	await get_tree().process_frame
+	# Compute minimal heights for text and choices so the card can shrink-wrap
+	var text_min_h: float = 0.0
+	var choices_min_h: float = 0.0
+	if _text_label:
+		text_min_h = _text_label.get_minimum_size().y
+	if _choices_box:
+		choices_min_h = _choices_box.get_minimum_size().y
+	var portrait_bottom: float = 0.0
+	if _portrait_frame and _portrait_frame.visible:
+		portrait_bottom = _portrait_frame.offset_bottom
+	var content_bottom: float = max(_text_label.offset_top + text_min_h, portrait_bottom)
+	# Place choices under the content with a gap
+	var choices_count = 0
+	if typeof(choices) == TYPE_ARRAY:
+		choices_count = choices.size()
+	var extra_gap: float = 12.0
+	if choices_count > 1:
+		extra_gap = 54.0
+	var choices_top_target: float = content_bottom + extra_gap
+	if _choices_box:
+		_choices_box.offset_top = choices_top_target
+	# Compute desired bottom edge for the card (choices bottom + padding)
+	var bottom_padding: float = 32.0
+	var desired_bottom: float = choices_top_target + choices_min_h + bottom_padding
+	if _card_panel:
+		# Keep a minimum size so the card doesn't collapse too small
+		var min_bottom = _card_panel.offset_top + 240.0
+		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
 	_pause_game()
 	_set_card_visible(true)
 
