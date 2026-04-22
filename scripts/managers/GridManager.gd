@@ -51,6 +51,9 @@ var _demolish_anchor:   Vector2i = Vector2i(-9999, -9999)
 var _demolish_timer:    float    = 0.0
 var _demolish_active:   bool     = false
 var _demolish_arc:      Node2D   = null     
+var _blocker_highlight: Node2D = null
+
+var _shake_offset: Vector2 = Vector2.ZERO
 
 # Cached per build-mode session so _process doesn't recompute every frame
 var _ghost_y_offset: float = 0.0
@@ -73,6 +76,11 @@ func _ready() -> void:
     _footprint_node.z_index       = 1
     _footprint_node.z_as_relative = false
     add_child(_footprint_node)
+
+    _blocker_highlight               = Node2D.new()
+    _blocker_highlight.z_index       = 2
+    _blocker_highlight.z_as_relative = false
+    add_child(_blocker_highlight)
 
     # Buildings render above footprint — absolute z=4
     if building_container:
@@ -165,6 +173,11 @@ func _rebuild_footprint_overlay(anchor: Vector2i, b_type: String, valid: bool) -
         border.default_color = border_color
         _footprint_node.add_child(border)
 
+        if valid:
+            _clear_blocker_highlight()
+        else:
+            _draw_blocker_highlights(anchor, b_type)
+
 func _clear_footprint_overlay() -> void:
     if _footprint_node.get_child_count() == 0:
         _last_fp_anchor = Vector2i(-9999, -9999)
@@ -196,10 +209,12 @@ func exit_build_mode() -> void:
     current_build_type    = ""
     current_build_scene   = null
     _ghost_y_offset       = 0.0
+    _shake_offset         = Vector2.ZERO
     ghost_sprite.visible  = false
     ghost_sprite.texture  = null
     ghost_sprite.modulate = Color.WHITE
     _clear_footprint_overlay()
+    _clear_blocker_highlight()  
 
 # ── _process ───────────────────────────────────────────────────────────────────
 func _process(_delta: float) -> void:
@@ -225,8 +240,9 @@ func _process(_delta: float) -> void:
         _last_hovered_anchor    = Vector2i(-9999, -9999)
 
         ghost_sprite.position = base_grid.map_to_local(map_pos)                \
-                              + get_footprint_centre_offset(current_build_type) \
-                              + Vector2(0.0, _ghost_y_offset)
+                        + get_footprint_centre_offset(current_build_type) \
+                        + Vector2(0.0, _ghost_y_offset)                   \
+                        + _shake_offset
 
         var valid: bool = is_valid_placement(map_pos, current_build_type)
         if map_pos != _last_fp_anchor or valid != _last_fp_valid:
@@ -238,6 +254,7 @@ func _process(_delta: float) -> void:
         # ── SELECTION MODE ─────────────────────────────────────────────────────
         ghost_sprite.visible = false
         _clear_footprint_overlay()
+        _clear_blocker_highlight()
 
         if cell_to_anchor.has(map_pos):
             var anchor: Vector2i = cell_to_anchor[map_pos]
@@ -282,6 +299,7 @@ func _input(event: InputEvent) -> void:
                     place_building(map_pos)
                 else:
                     AudioManager.play_build_sfx("invalid")
+                    _shake_ghost()
             else:
                 if cell_to_anchor.has(map_pos):
                     building_selected.emit(cell_to_anchor[map_pos])
@@ -339,6 +357,7 @@ func place_building(anchor: Vector2i) -> void:
 
     building_placed.emit(current_build_type, anchor)
     _clear_footprint_overlay()
+    building_selected.emit(anchor)  
 
 func remove_building(anchor: Vector2i) -> void:
     if not occupied_cells.has(anchor): return
@@ -457,6 +476,70 @@ func _apply_building_modulate(node: Node2D, color: Color) -> void:
         sprite.modulate = color
     else:
         node.modulate = color
+
+func _shake_ghost() -> void:
+    var tween: Tween = create_tween()
+    var shake_x: float = 6.0  
+    # Four rapid oscillations then snap back to zero
+    tween.tween_method(_set_shake_offset, 0.0, -shake_x, 0.03)
+    tween.tween_method(_set_shake_offset, -shake_x, shake_x, 0.03)
+    tween.tween_method(_set_shake_offset, shake_x, -shake_x, 0.03)
+    tween.tween_method(_set_shake_offset, -shake_x, shake_x, 0.03)
+    tween.tween_method(_set_shake_offset, shake_x, 0.0, 0.03)
+
+func _set_shake_offset(value: float) -> void:
+    _shake_offset = Vector2(value, 0.0)
+
+func _draw_blocker_highlights(anchor: Vector2i, b_type: String) -> void:
+    _clear_node(_blocker_highlight)
+
+    # Collect all unique anchors that are blocking this placement
+    var blocking_anchors: Array[Vector2i] = []
+    for cell in get_footprint_cells(anchor, b_type):
+        if cell_to_anchor.has(cell):
+            var blocker: Vector2i = cell_to_anchor[cell]
+            if not blocking_anchors.has(blocker):
+                blocking_anchors.append(blocker)
+
+    if blocking_anchors.is_empty():
+        return
+
+    var half_w: float = 32.0
+    var half_h: float = 16.0
+    if base_grid and base_grid.tile_set:
+        half_w = base_grid.tile_set.tile_size.x * 0.5
+        half_h = half_w * 0.5
+
+    for blocker_anchor in blocking_anchors:
+        var blocker_type: String = _get_type_for_anchor(blocker_anchor)
+
+        for cell in get_footprint_cells(blocker_anchor, blocker_type):
+            var c: Vector2 = base_grid.map_to_local(cell)
+
+            # Dim red fill showing the occupied footprint
+            var fill := Polygon2D.new()
+            fill.polygon = PackedVector2Array([
+                c + Vector2(     0, -half_h),
+                c + Vector2( half_w,      0),
+                c + Vector2(     0,  half_h),
+                c + Vector2(-half_w,      0),
+            ])
+            fill.color = Color(1.0, 0.15, 0.15, 0.30)
+            _blocker_highlight.add_child(fill)
+
+            # Bright red border so it reads clearly
+            var border := Line2D.new()
+            border.add_point(c + Vector2(     0, -half_h))
+            border.add_point(c + Vector2( half_w,      0))
+            border.add_point(c + Vector2(     0,  half_h))
+            border.add_point(c + Vector2(-half_w,      0))
+            border.add_point(c + Vector2(     0, -half_h))
+            border.width         = 1.5
+            border.default_color = Color(1.0, 0.20, 0.20, 1.0)
+            _blocker_highlight.add_child(border)
+
+func _clear_blocker_highlight() -> void:
+    _clear_node(_blocker_highlight)
 
 # ── Demolition arc visual ─────────────────────────────────────────────────────
 
