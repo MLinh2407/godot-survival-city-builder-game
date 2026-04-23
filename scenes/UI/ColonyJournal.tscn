@@ -195,7 +195,7 @@ shader_parameter/side = 1.0
 shader = SubResource("7")
 
 [node name="ColonyJournal" type="CanvasLayer" unique_id=403299451]
-layer = 10
+layer = 120
 script = ExtResource("1")
 
 [node name="BookRoot" type="Control" parent="." unique_id=1247690041]

@@ -15,6 +15,7 @@ signal journal_new_entry_notified
 @export_range(1.00, 1.10, 0.005) var flip_settle_scale: float = 1.02
 
 const ENTRIES_PER_PAGE: int = 3
+const JOURNAL_CANVAS_LAYER: int = 120
 
 const COL_TITLE_DEFAULT := Color(0.42, 0.24, 0.09, 1.0)
 const COL_TITLE_DEATH := Color(0.55, 0.16, 0.10, 1.0)
@@ -50,7 +51,8 @@ var first_unpause_happened: bool = false
 @onready var empty_label: Label = $BookRoot/EmptyLabel
 
 func _ready() -> void:
-	layer = 10
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	layer = JOURNAL_CANVAS_LAYER
 	visible = false
 
 	if prev_btn:

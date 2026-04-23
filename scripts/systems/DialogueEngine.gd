@@ -18,6 +18,7 @@ var _events_by_id: Dictionary = {}
 var _active_event_id: String = ""
 var _was_tree_paused: bool = false
 var _previous_speed: int = TimeManager.GameSpeed.NORMAL
+var _dialogue_pause_depth: int = 0
 var _button_style_normal: StyleBox
 var _button_style_hover: StyleBox
 var _button_style_pressed: StyleBox
@@ -278,6 +279,9 @@ func _build_card(event_data: Dictionary) -> void:
 		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
 	_pause_game()
 	_set_card_visible(true)
+	AudioManager.play_ui_card_sfx("open")
+	AudioManager.on_crisis_card_opened()
+	_play_event_specific_sfx(_active_event_id)
 
 func _set_portrait_for_event(event_data: Dictionary) -> void:
 	if not _portrait_frame or not _portrait_image:
@@ -397,8 +401,13 @@ func _dismiss_card() -> void:
 	_set_portrait_for_event({})
 	_set_card_visible(false)
 	_clear_choices()
-	_resume_game()
+	AudioManager.play_ui_card_sfx("dismiss")
 	card_dismissed.emit()
+	await get_tree().process_frame
+	_resume_game()
+	if _dialogue_root and _dialogue_root.visible:
+		return
+	AudioManager.on_crisis_card_dismissed()
 
 func _clear_choices() -> void:
 	for child in _choices_box.get_children():
@@ -407,13 +416,19 @@ func _clear_choices() -> void:
 func _pause_game() -> void:
 	if not get_tree():
 		return
-	_was_tree_paused = get_tree().paused
-	_previous_speed = TimeManager.current_speed
+	if _dialogue_pause_depth == 0:
+		_was_tree_paused = get_tree().paused
+		_previous_speed = TimeManager.current_speed
+	_dialogue_pause_depth += 1
 	get_tree().paused = true
 	TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 
 func _resume_game() -> void:
 	if not get_tree():
+		return
+	if _dialogue_pause_depth > 0:
+		_dialogue_pause_depth -= 1
+	if _dialogue_pause_depth > 0:
 		return
 	if _was_tree_paused or _previous_speed == TimeManager.GameSpeed.PAUSED:
 		get_tree().paused = true
@@ -454,3 +469,12 @@ func _set_card_visible(is_visible: bool) -> void:
 				var first_btn = _choices_box.get_child(0)
 				if first_btn and first_btn.has_method("grab_focus"):
 					first_btn.grab_focus()
+
+func _play_event_specific_sfx(event_id: String) -> void:
+	match event_id:
+		"the_vasquez_offer":
+			AudioManager.play_event_sfx("radio_vasquez")
+		"meridian_contact":
+			AudioManager.play_event_sfx("meridian_contact")
+		_:
+			return

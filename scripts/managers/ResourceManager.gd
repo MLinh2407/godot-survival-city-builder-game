@@ -27,6 +27,11 @@ var morale: float   = GameConstants.STARTING_MORALE
 var materials: int  = GameConstants.STARTING_MATERIALS
 var days_starving: int = 0
 
+var ration_buffer: float = 0.0
+var ration_buffer_max: float = 0.0
+var auto_rationing_active: bool = false
+var ration_store_exists: bool = false
+
 # ══════════════════════════════════════════════════════════════════════════════
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -95,11 +100,9 @@ func _on_day_changed(new_day: int) -> void:
 func _recalculate_power() -> void:
 	power_capacity = 0.0
 	power_draw     = 0.0
-
 	var all_buildings = building_system.active_buildings
 
 	# Pass 1 — sum all power producers
-	# Generators always produce regardless of is_powered (they ARE the power source)
 	for grid_pos in all_buildings:
 		var b: BuildingData = all_buildings[grid_pos]
 		if b.base_production_power > 0.0:
@@ -120,14 +123,17 @@ func _recalculate_power() -> void:
 	GameManager.resource_power.production_rate = power_capacity
 	GameManager.resource_power.consumption_rate = power_draw
 
-	# Pass 3 — set is_powered flag on every building
-	# Simple rule: enough total capacity = everything powered.
-	# Priority shutdown system comes in a later pass.
-	var grid_has_power: bool = net_power >= 0.0
+	# Pass 3 — set is_powered flag
+	var grid_has_power: bool
+	if power_capacity == 0.0:
+		grid_has_power = true
+	else:
+		grid_has_power = net_power >= 0.0
+
 	for grid_pos in all_buildings:
 		var b: BuildingData = all_buildings[grid_pos]
 		if b.base_production_power > 0.0:
-			b.is_powered = true       # Generators are always "on"
+			b.is_powered = true
 		else:
 			b.is_powered = grid_has_power
 
@@ -137,7 +143,6 @@ func _recalculate_power() -> void:
 
 func _process_food_tick() -> void:
 	var food_production: float = 0.0
-
 	for grid_pos in building_system.active_buildings:
 		var output = building_system.get_effective_output(grid_pos)
 		food_production += output.food
@@ -148,20 +153,42 @@ func _process_food_tick() -> void:
 	# Hope/Order modifier on food production
 	var slider: float = GameManager.hope_order_slider
 	if slider >= GameConstants.SLIDER_ORDER_LOWER:
-		food_production *= GameConstants.ORDER_FOOD_PRODUCTION_MODIFIER   # +15%
+		food_production *= GameConstants.ORDER_FOOD_PRODUCTION_MODIFIER	  # +15%
 	elif slider <= GameConstants.SLIDER_HOPE_UPPER:
-		food_production *= GameConstants.HOPE_FOOD_EFFICIENCY_MODIFIER    # -5%
+		food_production *= GameConstants.HOPE_FOOD_EFFICIENCY_MODIFIER	  # -5%
 
 	# MERIDIAN efficiency boost
 	if GameManager.meridian_trusted:
 		food_production *= GameConstants.MERIDIAN_EFFICIENCY_BOOST
 
-	# Daily consumption — every living colonist eats
+	# Daily consumption — auto-rationing reduces it when buffer is low (T2 only)
 	var consumption: float = GameManager.current_population * GameConstants.FOOD_CONSUMPTION_PER_COLONIST
 
-	food = maxf(0.0, food + food_production - consumption)
+	if auto_rationing_active:
+		consumption *= 0.75  # 25% reduction — extends survival, costs Morale (applied in morale tick)
 
-	# Store rates for HUD +/- display
+	var net: float = food_production - consumption
+	food += net
+
+	# If food went negative, draw from the Ration Store buffer before starvation counts
+	if food < 0.0 and ration_store_exists and ration_buffer > 0.0:
+		ration_buffer += food   # food is negative, so buffer decreases
+		ration_buffer = maxf(ration_buffer, 0.0)
+		food = 0.0
+
+	food = maxf(food, 0.0)
+
+	# Auto-rationing state (T2 Ration Store only — check upgrade flag)
+	if ration_store_exists and building_system.is_building_upgraded(BuildingData.BuildingType.RATION_STORE):
+		var threshold: float = ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD
+		auto_rationing_active = ration_buffer < threshold and ration_buffer_max > 0.0
+	else:
+		auto_rationing_active = false
+
+	# Sync ResourceData for HUD and save/load
+	GameManager.resource_food.ration_store_buffer  = ration_buffer
+	GameManager.resource_food.ration_store_max     = ration_buffer_max
+	GameManager.resource_food.auto_rationing_active = auto_rationing_active
 	GameManager.resource_food.production_rate  = food_production
 	GameManager.resource_food.consumption_rate = consumption
 
@@ -219,6 +246,10 @@ func _process_morale_tick() -> void:
 	# MERIDIAN surveillance unease
 	if GameManager.meridian_trusted:
 		decay += GameConstants.MERIDIAN_MORALE_DRAIN
+	
+	# Auto-rationing unease — cuts portions, colony feels it
+	if auto_rationing_active:
+		decay += absf(GameConstants.RATION_AUTO_MORALE_PENALTY)
 
 	morale = clampf(morale + morale_gain - decay, 0.0, 100.0)
 
@@ -260,6 +291,41 @@ func _check_thresholds() -> void:
 func _print_debug(day: int) -> void:
 	print("--- Day %d | Power: %.1f (Cap:%.1f / Draw:%.1f) | Food: %.0f | Morale: %.1f | Mat: %d" \
 		% [day, net_power, power_capacity, power_draw, food, morale, materials])
+
+	# Hope/Order slider verification — prints modifier state every day
+	var slider: float = GameManager.hope_order_slider
+	if slider <= GameConstants.SLIDER_HOPE_UPPER:
+		print("    [SLIDER] Hope zone (%.1f) | Morale decay ×%.2f | Food efficiency ×%.2f" \
+			% [slider, GameConstants.HOPE_MORALE_DECAY_MODIFIER, GameConstants.HOPE_FOOD_EFFICIENCY_MODIFIER])
+	elif slider >= GameConstants.SLIDER_ORDER_LOWER:
+		print("    [SLIDER] Order zone (%.1f) | Morale decay ×%.2f | Food production ×%.2f" \
+			% [slider, GameConstants.ORDER_MORALE_DECAY_MODIFIER, GameConstants.ORDER_FOOD_PRODUCTION_MODIFIER])
+	else:
+		print("    [SLIDER] Neutral zone (%.1f) | No passive modifiers active" % slider)
+
+	# Ration Store buffer state
+	if ration_store_exists:
+		print("    [RATION] Buffer: %.0f / %.0f | Auto-rationing: %s" \
+			% [ration_buffer, ration_buffer_max, str(auto_rationing_active)])
+
+func on_ration_store_built(is_upgraded: bool) -> void:
+	ration_store_exists = true
+
+	# Compute buffer capacity: T1 = 50 days, T2 = 100 days of full-colony consumption
+	var days: int = GameConstants.RATION_STORE_BUFFER_T2 if is_upgraded else GameConstants.RATION_STORE_BUFFER_T1
+	ration_buffer_max = days * GameConstants.STARTING_POPULATION * GameConstants.FOOD_CONSUMPTION_PER_COLONIST
+
+	# Buffer starts full on placement — represents pre-existing colony reserves
+	if ration_buffer == 0.0:
+		ration_buffer = ration_buffer_max
+
+	# Sync to ResourceData so save/load and HUD can read it
+	GameManager.resource_food.ration_store_buffer = ration_buffer
+	GameManager.resource_food.ration_store_max    = ration_buffer_max
+
+	resources_changed.emit(net_power, food, morale, materials)
+	print("RationStore built | buffer: %.0f / %.0f | auto-ration threshold: %.0f" \
+		% [ration_buffer, ration_buffer_max, ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLIC API — called externally by events and building upgrades

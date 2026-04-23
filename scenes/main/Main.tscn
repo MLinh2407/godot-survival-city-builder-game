@@ -7,7 +7,6 @@
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://cjbokmfqvdqfy" path="res://scenes/UI/BuildingInspector.tscn" id="3_ostsq"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
-[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 [ext_resource type="Texture2D" uid="uid://blrgj6k5l8oud" path="res://assets/ui/hud/icons/settings_button.png" id="6_roob6"]
 [ext_resource type="Texture2D" uid="uid://cqsia5kuppua4" path="res://assets/ui/hud/icons/journal_icon.png" id="7_n12rl"]
@@ -27,6 +26,7 @@
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -258,15 +258,16 @@ shader_parameter/sweepWidth = 0.24
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ko0rf"]
-texture = ExtResource("5_floor_tile")
-texture_region_size = Vector2i(64, 64)
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n12rl"]
+texture = ExtResource("22_j0f7u")
+texture_region_size = Vector2i(64, 32)
 0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_dc040"]
 tile_shape = 1
-tile_size = Vector2i(64, 64)
-sources/0 = SubResource("TileSetAtlasSource_ko0rf")
+tile_layout = 5
+tile_size = Vector2i(64, 32)
+sources/1 = SubResource("TileSetAtlasSource_n12rl")
 
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
@@ -853,7 +854,7 @@ visible = false
 [node name="HoverCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=1537611551]
 visible = false
 modulate = Color(1, 0.84313726, 0, 0.5019608)
-texture = ExtResource("5_floor_tile")
+texture = ExtResource("22_j0f7u")
 
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true

@@ -38,6 +38,10 @@ extends Node
 @onready var top_sweep_line: ColorRect = $UILayer/HUD/TopSweepLine
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
+@onready var _camera: Camera2D = $GameWorld/Camera2D  
+
+@export var use_journal_unread_count: bool = true
+@export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
@@ -46,9 +50,8 @@ var hud_fx_t: float = 0.0
 var _last_hope_order_value: float = -1.0
 const HOPE_COLOR := Color(0.62, 1.0, 0.78, 1.0)
 const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
-@export var use_journal_unread_count: bool = true
-@export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
 
+var _ration_buffer_bar: ProgressBar = null
 var settings_ui: CanvasLayer
 var _journal_prompt_serial: int = 0
 var _last_journal_prompt_msec: int = -10000
@@ -66,6 +69,14 @@ const JOURNAL_PROMPT_DURATION_SEC: float = 3.2
 const JOURNAL_PROMPT_BURST_WINDOW_MSEC: int = 1400
 const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
 const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
+
+# ── Zoom configuration ───────────────────────────────────────────────────────
+const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
+const ZOOM_DEFAULT:   int          = 1    
+const ZOOM_LERP_SPEED: float       = 10.0  
+
+var _zoom_index:  int   = ZOOM_DEFAULT
+var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -148,6 +159,27 @@ func _ready() -> void:
 		var bs = $BuildingSystem
 		if not bs.workers_changed.is_connected(_on_population_changed):
 			bs.workers_changed.connect(_on_population_changed)
+	
+	# Build the Ration Store buffer extension bar programmatically
+	if food_bar:
+		_ration_buffer_bar = ProgressBar.new()
+		_ration_buffer_bar.show_percentage = false
+		_ration_buffer_bar.min_value = 0.0
+		_ration_buffer_bar.max_value = 100.0
+		_ration_buffer_bar.value = 0.0
+		_ration_buffer_bar.custom_minimum_size = Vector2(40, food_bar.size.y if food_bar.size.y > 0 else 12.0)
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.0, 0.35, 0.38, 0.85)
+		_ration_buffer_bar.add_theme_stylebox_override("fill", style)
+		var bg_style = StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.05, 0.05, 0.08, 0.6)
+		_ration_buffer_bar.add_theme_stylebox_override("background", bg_style)
+		food_bar.get_parent().add_child(_ration_buffer_bar)
+		_ration_buffer_bar.visible = false
+
+	# TEMP VERIFICATION — remove after confirming
+	# GameManager.hope_order_slider = 90.0
+	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
@@ -163,7 +195,17 @@ func _on_population_changed() -> void:
 		else:
 			disease_label.remove_theme_color_override("font_color")
 
+func _zoom_step(direction: int) -> void:
+	var mouse_world_before: Vector2 = _camera.get_global_transform().affine_inverse() \
+									 * get_viewport().get_mouse_position()
+	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	_zoom_target = ZOOM_STEPS[_zoom_index]
+	var mouse_world_after: Vector2 = _camera.get_global_transform().affine_inverse() \
+									* get_viewport().get_mouse_position()
+	_camera.position += mouse_world_before - mouse_world_after
+
 func _process(delta: float) -> void:
+	_update_camera_zoom(delta)
 	_sync_hope_order_visuals()
 	_update_journal_prompt_dots(delta)
 	_refresh_hope_order_visuals()
@@ -195,6 +237,16 @@ func _process(delta: float) -> void:
 		top_sweep_line.offset_right = top_sweep_line.offset_left + beam_width
 		var sweep_alpha: float = 0.26 + 0.46 * (0.5 + 0.5 * sin(hud_fx_t * 5.2))
 		top_sweep_line.color = Color(0.58, 1.0, 1.0, sweep_alpha)
+
+func _update_camera_zoom(delta: float) -> void:
+	if not _camera:
+		return
+	var current: float = _camera.zoom.x
+	if abs(current - _zoom_target) > 0.001:
+		var next_zoom: float = lerpf(current, _zoom_target, ZOOM_LERP_SPEED * delta)
+		_camera.zoom = Vector2(next_zoom, next_zoom)
+	else:
+		_camera.zoom = Vector2(_zoom_target, _zoom_target)
 
 func _update_rates() -> void:
 	if power_rate_lbl:
@@ -266,14 +318,21 @@ func _on_button_settings_pressed() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE:
-			toggle_pause()
-		elif event.keycode == KEY_1:
-			set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
-		elif event.keycode == KEY_2:
-			set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
-		elif event.keycode == KEY_J and colony_journal:
-			colony_journal.toggle()
+		match event.keycode:
+			KEY_SPACE: toggle_pause()
+			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
+			KEY_J:	   colony_journal.toggle()
+			
+			# Keyboard zoom shortcuts 
+			KEY_EQUAL, KEY_KP_ADD:      _zoom_step(+1)   # '+'  key zooms in
+			KEY_MINUS, KEY_KP_SUBTRACT: _zoom_step(-1)   # '-'  key zooms out
+
+	# ── mouse-wheel zoom ──
+	if event is InputEventMouseButton and event.pressed:
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_UP:   _zoom_step(+1)
+			MOUSE_BUTTON_WHEEL_DOWN: _zoom_step(-1)
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
@@ -399,6 +458,29 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 		_update_hope_order_visuals()
 
 	_update_rates()
+
+	# Update Ration Store buffer bar
+	if _ration_buffer_bar:
+		var buf: float     = GameManager.resource_food.ration_store_buffer
+		var buf_max: float = GameManager.resource_food.ration_store_max
+		var bar_visible: bool = buf_max > 0.0
+
+		_ration_buffer_bar.visible = bar_visible
+
+		if bar_visible:
+			_ration_buffer_bar.value = clamp((buf / buf_max) * 100.0, 0.0, 100.0)
+
+			var fb_rect: Rect2 = food_bar.get_rect()
+			_ration_buffer_bar.position = Vector2(
+				food_bar.position.x + fb_rect.size.x + 3,
+				food_bar.position.y
+			)
+			_ration_buffer_bar.custom_minimum_size = Vector2(40, fb_rect.size.y if fb_rect.size.y > 0 else 12.0)
+
+			if GameManager.resource_food.auto_rationing_active:
+				_ration_buffer_bar.modulate = Color(1.0, 0.7, 0.2, 1.0)
+			else:
+				_ration_buffer_bar.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
 func _on_hope_order_changed(new_value: float) -> void:
 	_last_hope_order_value = new_value
