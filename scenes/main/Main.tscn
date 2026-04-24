@@ -7,10 +7,11 @@
 [ext_resource type="PackedScene" uid="uid://becv6gbklxpt5" path="res://scenes/buildings/HydroponicBay.tscn" id="3_1rhdn"]
 [ext_resource type="PackedScene" uid="uid://cjbokmfqvdqfy" path="res://scenes/UI/BuildingInspector.tscn" id="3_ostsq"]
 [ext_resource type="PackedScene" uid="uid://c4ttffvcgfdw" path="res://scenes/buildings/ShelterBlock.tscn" id="4_sjxhf"]
-[ext_resource type="Texture2D" uid="uid://iejjxic1l3mr" path="res://assets/environment/floor_tile.png" id="5_floor_tile"]
 [ext_resource type="Script" uid="uid://ccfrj1sg68ekk" path="res://scripts/systems/BuildingSystem.gd" id="6_1rhdn"]
 [ext_resource type="Texture2D" uid="uid://blrgj6k5l8oud" path="res://assets/ui/hud/icons/settings_button.png" id="6_roob6"]
+[ext_resource type="Texture2D" uid="uid://cqsia5kuppua4" path="res://assets/ui/hud/icons/journal_icon.png" id="7_n12rl"]
 [ext_resource type="Texture2D" uid="uid://bu1p3ai2qv2nf" path="res://assets/ui/hud/icons/tool_white.png" id="7_tool_icon"]
+[ext_resource type="SpriteFrames" uid="uid://yiuy3kj65fx0" path="res://assets/ui/hud/gifs/writing_gif.gif" id="8_0cxqb"]
 [ext_resource type="PackedScene" uid="uid://8u8xvfxote8f" path="res://scenes/buildings/GeothermalTap.tscn" id="8_tck0d"]
 [ext_resource type="Texture2D" uid="uid://dfmqpxnrf0i71" path="res://assets/ui/hud/icons/user_white.png" id="8_user_icon"]
 [ext_resource type="Texture2D" uid="uid://btdxucbr8e6mv" path="res://assets/ui/hud/icons/helmet_white.png" id="9_helmet_icon"]
@@ -24,6 +25,8 @@
 [ext_resource type="PackedScene" uid="uid://60mva0p0dle5" path="res://scenes/buildings/ArchiveHall.tscn" id="12_vc03v"]
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
+[ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -111,6 +114,18 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_journal_badge"]
+bg_color = Color(0.92, 0.12, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.28)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_resource_bg"]
 bg_color = Color(0.101961, 0.129412, 0.176471, 0.95)
 border_width_left = 1
@@ -173,18 +188,86 @@ corner_radius_bottom_left = 8
 shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 6
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dialogue_portrait"]
+bg_color = Color(0.03, 0.1, 0.16, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.9, 1, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="Shader" id="Shader_dialogue_portrait_hologram"]
+code = "shader_type canvas_item;
+
+uniform vec4 baseColor : source_color = vec4(0.24, 0.83, 0.97, 1.0);
+uniform float speed = 4.0;
+uniform vec4 linesColor : source_color = vec4(0.42, 0.95, 1.0, 1.0);
+uniform float linesColorIntensity = 1.0;
+uniform float lineDensity = 32.0;
+uniform float lineWidth = 0.2;
+uniform float lineEdgeSoftness = 0.08;
+uniform float tintStrength = 0.55;
+uniform float lineStrength = 0.1;
+uniform float effectStrength = 0.62;
+uniform float flickerSpeed = 0.6;
+uniform float flickerAmount = 0.02;
+uniform float sweepSpeed = 2.0;
+uniform float sweepAmount = 0.16;
+uniform float sweepWidth = 0.24;
+
+void fragment() {
+	vec4 src = texture(TEXTURE, UV);
+	float scan = fract((UV.y + TIME * speed * 0.01) * lineDensity);
+	float line_dist = abs(scan - 0.5);
+	float line_mask = 1.0 - smoothstep(lineWidth, lineWidth + lineEdgeSoftness, line_dist);
+
+	float flicker = 1.0 - flickerAmount + flickerAmount * (0.5 + 0.5 * sin(TIME * flickerSpeed));
+	float sweep_center = fract(1.0 - TIME * sweepSpeed * 0.1);
+	float sweep = 1.0 + sweepAmount * smoothstep(sweepWidth, 0.0, abs(UV.y - sweep_center));
+
+	vec3 base_tinted = mix(src.rgb, src.rgb * baseColor.rgb, tintStrength);
+	vec3 line_tinted = linesColor.rgb * line_mask * lineStrength * linesColorIntensity;
+	vec3 hologram = clamp((base_tinted + line_tinted) * flicker * sweep, 0.0, 1.0);
+
+	COLOR.rgb = mix(src.rgb, hologram, effectStrength);
+	COLOR.a = src.a;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dialogue_portrait_hologram"]
+shader = SubResource("Shader_dialogue_portrait_hologram")
+shader_parameter/baseColor = Color(0.3058, 0.835, 0.960, 1.)
+shader_parameter/speed = 7.0
+shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1.)
+shader_parameter/linesColorIntensity = 1.5
+shader_parameter/lineDensity = 25.0
+shader_parameter/lineWidth = 0.25
+shader_parameter/lineEdgeSoftness = 0.08
+shader_parameter/tintStrength = 0.55
+shader_parameter/lineStrength = 0.25
+shader_parameter/effectStrength = 0.62
+shader_parameter/flickerSpeed = 0.6
+shader_parameter/flickerAmount = 0.02
+shader_parameter/sweepSpeed = 0.3
+shader_parameter/sweepAmount = 0.16
+shader_parameter/sweepWidth = 0.24
+
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ko0rf"]
-texture = ExtResource("5_floor_tile")
-texture_region_size = Vector2i(64, 64)
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n12rl"]
+texture = ExtResource("22_j0f7u")
+texture_region_size = Vector2i(64, 32)
 0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_dc040"]
 tile_shape = 1
-tile_size = Vector2i(64, 64)
-sources/0 = SubResource("TileSetAtlasSource_ko0rf")
+tile_layout = 5
+tile_size = Vector2i(64, 32)
+sources/1 = SubResource("TileSetAtlasSource_n12rl")
 
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
@@ -280,7 +363,7 @@ z_index = -1
 offset_left = 438.0
 offset_top = 692.0
 offset_right = 824.0
-offset_bottom = 706.0
+offset_bottom = 702.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_slider_track_border")
 
 [node name="HopeOrderTrackFill" type="ColorRect" parent="UILayer/HUD" unique_id=2039724866]
@@ -408,6 +491,66 @@ icon = ExtResource("6_roob6")
 icon_alignment = 1
 expand_icon = true
 script = ExtResource("2_nha0i")
+
+[node name="ButtonJournal" type="Button" parent="UILayer/HUD" unique_id=1904703090]
+offset_left = 1243.0
+offset_top = 89.0
+offset_right = 1273.0
+offset_bottom = 119.0
+theme_override_colors/font_color = Color(0.84, 0.95, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+icon = ExtResource("7_n12rl")
+expand_icon = true
+script = ExtResource("2_nha0i")
+
+[node name="JournalUnreadBadge" type="Panel" parent="UILayer/HUD/ButtonJournal" unique_id=2065614801]
+visible = false
+layout_mode = 0
+offset_left = 18.0
+offset_top = -8.0
+offset_right = 38.0
+offset_bottom = 12.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_journal_badge")
+
+[node name="BadgeText" type="Label" parent="UILayer/HUD/ButtonJournal/JournalUnreadBadge" unique_id=1932125977]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 18.0
+offset_bottom = 19.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="JournalWritePrompt" type="Control" parent="UILayer/HUD" unique_id=1291123465]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1000.0
+offset_top = 92.0
+offset_right = 1234.0
+offset_bottom = 126.0
+mouse_filter = 2
+
+[node name="PromptWritingGif" type="AnimatedSprite2D" parent="UILayer/HUD/JournalWritePrompt" unique_id=160468532]
+position = Vector2(204, 578.50006)
+scale = Vector2(0.22000012, 0.22000012)
+sprite_frames = ExtResource("8_0cxqb")
+animation = &"gif"
+
+[node name="PromptText" type="Label" parent="UILayer/HUD/JournalWritePrompt" unique_id=1251098322]
+layout_mode = 0
+offset_left = 123.0
+offset_top = 606.0
+offset_right = 314.0
+offset_bottom = 624.0
+theme_override_colors/font_color = Color(0.92, 0.95, 0.98, 0.96)
+theme_override_font_sizes/font_size = 13
+text = "The pages feel heavier..."
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 549.0
@@ -630,6 +773,27 @@ offset_right = 1068.0
 offset_bottom = 584.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_card")
 
+[node name="DialoguePortraitFrame" type="Panel" parent="UILayer/DialogueBox" unique_id=713390174]
+visible = false
+layout_mode = 0
+offset_left = 236.0
+offset_top = 194.0
+offset_right = 420.0
+offset_bottom = 378.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_portrait")
+
+[node name="DialoguePortraitImage" type="TextureRect" parent="UILayer/DialogueBox/DialoguePortraitFrame" unique_id=214639620]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 176.0
+offset_bottom = 176.0
+material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="DialogueText" type="Label" parent="UILayer/DialogueBox" unique_id=938481883]
 layout_mode = 0
 offset_left = 255.0
@@ -649,7 +813,7 @@ offset_right = 1033.0
 offset_bottom = 554.0
 theme_override_constants/separation = 12
 
-[node name="Journal" type="Node" parent="UILayer" unique_id=915716484]
+[node name="ColonyJournal" parent="UILayer" unique_id=1651560904 instance=ExtResource("14_colony_journal")]
 
 [node name="ColorGrade" type="CanvasLayer" parent="." unique_id=807741779]
 layer = 5
@@ -690,7 +854,7 @@ visible = false
 [node name="HoverCursor" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=1537611551]
 visible = false
 modulate = Color(1, 0.84313726, 0, 0.5019608)
-texture = ExtResource("5_floor_tile")
+texture = ExtResource("22_j0f7u")
 
 [node name="BuildingContainer" type="Node2D" parent="GameWorld" unique_id=1188905614]
 y_sort_enabled = true

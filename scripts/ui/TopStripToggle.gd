@@ -25,6 +25,7 @@ extends Node
 @onready var workers_icon = $"../WorkersIcon"
 @onready var workers_label = $"../WorkersLabel"
 @onready var settings_button = $"../ButtonSettings"
+@onready var journal_button = $"../ButtonJournal"
 @onready var resource_divider_a = $"../ResourceDividerA"
 @onready var resource_divider_b = $"../ResourceDividerB"
 @onready var resource_divider_c = $"../ResourceDividerC"
@@ -119,6 +120,9 @@ func _ready() -> void:
 	if settings_button:
 		settings_button.mouse_entered.connect(Callable(self, "_on_icon_mouse_entered").bind("Settings", settings_button))
 		settings_button.mouse_exited.connect(Callable(self, "_on_icon_mouse_exited").bind(settings_button))
+	if journal_button:
+		journal_button.mouse_entered.connect(Callable(self, "_on_icon_mouse_entered").bind("Journal", journal_button))
+		journal_button.mouse_exited.connect(Callable(self, "_on_icon_mouse_exited").bind(journal_button))
 
 func _on_hide_ui_pressed() -> void:
 	_animate_hide_resources_panel()

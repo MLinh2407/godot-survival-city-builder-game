@@ -8,6 +8,8 @@ signal building_state_changed(grid_pos: Vector2i)
 # signal building_damaged
 
 var active_buildings: Dictionary = {}
+var _prev_powered_states: Dictionary = {}
+var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
 
@@ -45,10 +47,16 @@ const T2_SPRITES = {
 	BuildingData.BuildingType.ARCHIVE_HALL: preload("res://assets/buildings/T2_Buildings/Archive_Hall_T2.png")
 }
 
+const JournalEntryData = preload("res://scripts/data/JournalEntry.gd")
+
 # We need to listen to the GridManager's signals
 @export var grid_manager: Node2D 
 
 var floating_text_scene = preload("res://scenes/UI/FloatingText.tscn")
+
+func _process(delta: float) -> void:
+	if _power_sfx_cooldown > 0.0:
+		_power_sfx_cooldown -= delta
 
 func _ready() -> void:
 	if grid_manager:
@@ -64,6 +72,9 @@ func _ready() -> void:
 	ResourceManager.register_building_system(self)
 	PopulationManager.register_building_system(self)
 	TimeManager.day_changed.connect(_on_day_changed)
+	
+	if GameManager:
+		GameManager.named_character_died.connect(_on_named_character_died)
 
 	# React to resource changes so power dimming updates instantly
 	if ResourceManager:
@@ -133,7 +144,12 @@ func _on_day_changed(_day: int) -> void:
 
 				# Apply damage
 				set_building_damaged(grid_pos, true)
+				AudioManager.play_build_sfx("damage")
 				print("BuildingSystem: [%s] has become damaged from neglect." % b.building_name)
+				var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+				var entry_text := b.building_name + " has fallen into disrepair. " + "No one has been assigned there in days."
+				if journal_node and journal_node.has_method("add_entry"):
+					journal_node.add_entry(GameManager.current_day, entry_text, JournalEntryData.EntryType.NARRATIVE)
 
 				# Recalculate resources so post-damage values are accurate for logs
 				if ResourceManager:
@@ -177,6 +193,19 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	var new_data: BuildingData = BuildingData.new()
 	new_data.grid_position = grid_pos
 	
+	# Memorial Wall can only be placed after at least one named character has died
+	if b_type == "memorial":
+		var any_dead: bool = (not GameManager.yuna_alive) or \
+							 (not GameManager.rook_alive) or \
+							 (not GameManager.vasquez_alive) or \
+							 (not GameManager.meridian_alive)
+		if not any_dead:
+			# Undo the GridManager placement immediately
+			if grid_manager:
+				grid_manager.remove_building(grid_pos)
+			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
+			return
+	
 	match b_type:
 		"coal":
 			new_data.building_type          = BuildingData.BuildingType.COAL_GENERATOR
@@ -184,18 +213,21 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.worker_capacity        = GameConstants.COAL_GENERATOR_SLOTS
 			new_data.base_production_power  = GameConstants.COAL_POWER_T1
 			new_data.power_draw             = 0.0
+
 		"hydro":
 			new_data.building_type          = BuildingData.BuildingType.HYDROPONIC_BAY
 			new_data.building_name          = "Hydroponic Bay"
 			new_data.worker_capacity        = GameConstants.HYDROPONIC_BAY_SLOTS
 			new_data.base_production_food   = GameConstants.BASE_FOOD_RATE
 			new_data.power_draw             = GameConstants.HYDROPONIC_POWER_DRAW
+
 		"shelter":
 			new_data.building_type          = BuildingData.BuildingType.SHELTER_BLOCK
 			new_data.building_name          = "Shelter Block"
 			new_data.worker_capacity        = GameConstants.SHELTER_BLOCK_SLOTS
 			new_data.base_morale_bonus      = 0.0   # Shelter morale is capacity-dependent, handled in ResourceManager
 			new_data.power_draw             = GameConstants.SHELTER_POWER_DRAW
+			
 		"geothermal":
 			new_data.building_type         = BuildingData.BuildingType.GEOTHERMAL_TAP
 			new_data.building_name         = "Geothermal Tap"
@@ -217,6 +249,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.category        = BuildingData.BuildingCategory.SURVIVAL
 			new_data.worker_capacity = GameConstants.RATION_STORE_SLOTS  # 0
 			new_data.power_draw      = GameConstants.RATION_STORE_POWER_DRAW
+			ResourceManager.on_ration_store_built(false) 
 
 		"water":
 			new_data.building_type   = BuildingData.BuildingType.WATER_RECYCLER
@@ -231,7 +264,10 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.category          = BuildingData.BuildingCategory.SURVIVAL
 			new_data.worker_capacity   = GameConstants.MED_CLINIC_SLOTS
 			new_data.power_draw        = GameConstants.MED_CLINIC_POWER_DRAW
-			new_data.base_morale_bonus = GameConstants.MED_CLINIC_MORALE_PASSIVE
+			if GameManager.yuna_alive:
+				new_data.base_morale_bonus = GameConstants.MED_CLINIC_MORALE_PASSIVE
+			else:
+				new_data.base_morale_bonus = 0.0
 			GameManager.med_clinic_built = true  # Narrative flag — Yuna death check needs this
 
 		"archive":
@@ -251,8 +287,10 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.worker_capacity       = 0
 			new_data.power_draw            = 0.0
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
+			AudioManager.play_build_sfx("memorial_place")
 			
 	active_buildings[grid_pos] = new_data
+	new_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
 	# Connect staffing_changed for this instance so visuals update on worker assignment
 	new_data.staffing_changed.connect(Callable(self, "_on_staffing_changed").bind(grid_pos))
 	print("BuildingSystem: Registered [%s] at %s | Slots: %d | Base power: %.1f | Base food: %.1f" \
@@ -263,12 +301,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 
 	# Recalculate power so `is_powered` flags are up-to-date and visuals reflect power state
 	if ResourceManager:
-		if ResourceManager.has_method("_recalculate_power"):
-			# Use internal recalculation function if available to avoid extra emits
-			ResourceManager._recalculate_power()
-		else:
-			if ResourceManager.has_method("calculate_power"):
-				ResourceManager.calculate_power()
+		ResourceManager.calculate_power()
 
 	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
 		var placed_node = grid_manager.occupied_cells[grid_pos]
@@ -287,6 +320,9 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			elif placed_node.has_method("set_building_state"):
 				placed_node.set_building_state("tier1")
 
+	if b_type != "memorial":
+		AudioManager.play_build_sfx("place")
+
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
@@ -300,6 +336,8 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		print("BuildingSystem: Returned %d workers from demolished [%s]" \
 			% [b_data.workers_assigned, b_data.building_name])
 			
+	AudioManager.play_build_sfx("remove")
+	AudioManager.remove_ambient(grid_pos)
 	active_buildings.erase(grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
@@ -326,6 +364,7 @@ func assign_worker() -> void:
 		
 	b_data.workers_assigned                        += 1
 	spawn_floating_text(current_selected_grid_pos, "+1 Worker", Color.GREEN)
+	AudioManager.play_build_sfx("worker_assign")
 	GameManager.available_workers                  -= 1
 	GameManager.population_state.available_workers -= 1
 	
@@ -348,6 +387,7 @@ func remove_worker(grid_pos: Vector2i) -> void:
 	
 	b_data.workers_assigned                        -= 1
 	spawn_floating_text(grid_pos, "-1 Worker", Color.RED)
+	AudioManager.play_build_sfx("worker_remove")
 	GameManager.available_workers                  += 1
 	GameManager.population_state.available_workers += 1
 	
@@ -398,6 +438,21 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	emit_signal("building_state_changed", grid_pos)
 
 	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+	
+func set_building_damaged_randomly() -> void:
+	if active_buildings.is_empty(): return
+	var keys = active_buildings.keys()
+	# Fisher-Yates or simple random choice, we can just grab an array since Dictionary keys is an array in GDScript 4
+	var target_pos = keys[randi() % keys.size()]
+	set_building_damaged(target_pos, true)
+
+func get_med_clinic_count() -> int:
+	var count: int = 0
+	for pos in active_buildings:
+		if active_buildings[pos].building_type == BuildingData.BuildingType.MED_CLINIC:
+			count += 1
+	return count
+
 # ══════════════════════════════════════════════════════════════════════════════
 # OUTPUT QUERY 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -481,13 +536,71 @@ func update_building_visual(grid_pos: Vector2i) -> void:
 		power_color.a + (staff_color.a - power_color.a) * t
 	)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# UPGRADE VISUAL: dual-path sync guaranteeing T2 sprite appears
+# ══════════════════════════════════════════════════════════════════════════════
+func apply_upgrade_visual(grid_pos: Vector2i) -> void:
+	if not active_buildings.has(grid_pos):
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+	if not b.is_upgraded:
+		return
+
+	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
+		var node: Node2D = grid_manager.occupied_cells.get(grid_pos, null)
+		if node and node.has_method("set_building_state"):
+			node.set_building_state("tier2")
+		var sprite: Sprite2D = node.get_node_or_null("Sprite2D") if node else null
+		if sprite and T2_SPRITES.has(b.building_type):
+			sprite.texture = T2_SPRITES[b.building_type]
+
+	update_building_visual(grid_pos)
+
+	print("BuildingSystem: apply_upgrade_visual complete at %s | building: %s" \
+		% [str(grid_pos), b.building_name])
+
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
-	# Refresh visuals for all buildings
 	for pos in active_buildings.keys():
+		var b: BuildingData = active_buildings[pos]
+		var power_ok: bool = b.is_powered or b.base_production_power > 0.0
+
+		# Detect power state flip and play SFX once per change cycle
+		if _prev_powered_states.has(pos) and _power_sfx_cooldown <= 0.0:
+			var was_powered: bool = _prev_powered_states[pos]
+			if power_ok and not was_powered:
+				AudioManager.play_build_sfx("power_online")
+				_power_sfx_cooldown = 0.5
+			elif not power_ok and was_powered:
+				AudioManager.play_build_sfx("power_offline")
+				_power_sfx_cooldown = 0.5
+
+		_prev_powered_states[pos] = power_ok
+
+		AudioManager.update_ambient(pos, b.building_type, _should_ambient_play(b))
+
 		update_building_visual(pos)
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
+	if not active_buildings.has(grid_pos):
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+	AudioManager.update_ambient(grid_pos, b.building_type, _should_ambient_play(b))
 	update_building_visual(grid_pos)
+
+func _on_named_character_died(char_name: String) -> void:
+	if char_name == "yuna":
+		var changed = false
+		for pos in active_buildings.keys():
+			var b = active_buildings[pos]
+			if b.building_type == BuildingData.BuildingType.MED_CLINIC:
+				b.base_morale_bonus = 0.0
+				changed = true
+		if changed and ResourceManager:
+			if ResourceManager.has_method("_recalculate_power"):
+				ResourceManager._recalculate_power()
+			elif ResourceManager.has_method("calculate_power"):
+				ResourceManager.calculate_power()
+			ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # QUERY HELPERS — called by ResourceManager and PopulationManager
@@ -539,6 +652,31 @@ func is_water_recycler_staffed() -> bool:
 				return true
 	return false
 
+# Returns true if this building's ambient loop should currently be playing.
+func _should_ambient_play(b: BuildingData) -> bool:
+	match b.building_type:
+		BuildingData.BuildingType.COAL_GENERATOR:
+			# Needs both power and at least one worker
+			return b.is_powered and b.workers_assigned > 0
+		BuildingData.BuildingType.GEOTHERMAL_TAP:
+			# Passive — only needs power
+			return b.is_powered
+		BuildingData.BuildingType.WATER_RECYCLER:
+			# Ambient represents active filtration — needs staff
+			return b.workers_assigned > 0
+		BuildingData.BuildingType.MED_CLINIC:
+			# Ambient represents active clinic — needs staff
+			return b.workers_assigned > 0
+		BuildingData.BuildingType.ARCHIVE_HALL:
+			# Ambient represents humming servers — needs power
+			return b.is_powered
+		BuildingData.BuildingType.SHELTER_BLOCK:
+			# Ambient represents occupied housing — needs power
+			return b.is_powered
+		_:
+			# Relay Hub, Ration Store, Memorial Wall — no ambient loop
+			return false
+
 # ══════════════════════════════════════════════════════════════════════════════
 # VISUAL EFFECTS (FCT)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -550,6 +688,56 @@ func spawn_floating_text(grid_pos: Vector2i, text: String, color: Color) -> void
 	grid_manager.add_child(fct)
 	fct.position = grid_manager.base_grid.map_to_local(grid_pos)
 	fct.setup(text, color)
+
+func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.BuildingType) -> void:
+	if not grid_manager:
+		return
+
+	# Choose particle colour to match the building's neon palette 
+	var particle_color: Color
+	match building_type:
+		BuildingData.BuildingType.COAL_GENERATOR, \
+		BuildingData.BuildingType.GEOTHERMAL_TAP:
+			particle_color = Color(1.0, 0.58, 0.0, 0.9)   # amber — power buildings
+		BuildingData.BuildingType.ARCHIVE_HALL, \
+		BuildingData.BuildingType.MEMORIAL_WALL:
+			particle_color = Color(0.61, 0.35, 1.0, 0.9)  # purple — social buildings
+		_:
+			particle_color = Color(0.0, 0.96, 1.0, 0.9)   # cyan — default
+
+	# Build the particle material programmatically
+	var material := ParticleProcessMaterial.new()
+	material.direction            = Vector3(0.0, -1.0, 0.0)
+	material.spread               = 50.0
+	material.initial_velocity_min = 35.0
+	material.initial_velocity_max = 75.0
+	material.gravity              = Vector3(0.0, 30.0, 0.0)
+	material.scale_min            = 3.0
+	material.scale_max            = 6.0
+	material.color                = particle_color
+
+	# Build the GPUParticles2D node
+	var particles := GPUParticles2D.new()
+	particles.process_material  = material
+	particles.amount            = 40
+	particles.lifetime          = 1.0
+	particles.one_shot          = true
+	particles.explosiveness     = 0.85   # burst all at once
+	particles.z_index           = 200    # above buildings, below HUD
+
+	# Place it at the building's world position and emit
+	grid_manager.add_child(particles)
+	particles.position = grid_manager.base_grid.map_to_local(grid_pos)
+	particles.emitting = true
+
+	# Auto-cleanup after the full particle duration from GameConstants
+	var cleanup_timer := particles.get_tree().create_timer(
+		GameConstants.BUILDING_UPGRADE_PARTICLE_DURATION + 0.5
+	)
+	cleanup_timer.timeout.connect(particles.queue_free)
+
+	print("BuildingSystem: Upgrade particles spawned at %s | color: %s" \
+		% [str(grid_pos), str(particle_color)])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

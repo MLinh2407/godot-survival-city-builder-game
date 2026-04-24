@@ -1,6 +1,7 @@
 extends Node
 
 signal hope_order_changed(new_value: float)
+signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
@@ -38,11 +39,14 @@ var meridian_alive: bool = true
 # ══════════════════════════════════════════════════════════════════════════════
 
 var med_clinic_built: bool = false # Set TRUE by BuildingSystem on placement
+var med_clinic_upgraded_to_tier_2: bool = false # Set TRUE by BuildingInspector on upgrade
 var rook_militia_stopped: bool = false # Set TRUE by CrisisEventSystem Day 24 Option B
 var rook_militia_sanctioned: bool = false # Set TRUE by CrisisEventSystem Day 24 Option A
 var rook_reconciliation_taken: bool = false # Set TRUE by CrisisEventSystem reconciliation dialogue
 var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 11 Option A
 var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
+var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
+var deserters_lockdown_taken: bool = false
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -68,6 +72,7 @@ var colonist_meridian: ColonistData
 func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
+	TimeManager.day_changed.connect(_on_day_changed)
 	
 	print("--- GameManager Initialized ---")
 	print("Current Population: ", current_population)
@@ -139,6 +144,41 @@ func _initialize_data_classes() -> void:
 
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
+
+func set_character_alive(identifier: String, is_alive: bool) -> void:
+	if current_day > 33:
+		return # Locks permanently after Day 33
+	
+	var changed = false
+	var lower_id = identifier.to_lower()
+	match lower_id:
+		"yuna":
+			if yuna_alive != is_alive:
+				yuna_alive = is_alive
+				colonist_yuna.is_alive = is_alive
+				changed = true
+		"rook":
+			if rook_alive != is_alive:
+				rook_alive = is_alive
+				colonist_rook.is_alive = is_alive
+				changed = true
+		"vasquez":
+			if vasquez_alive != is_alive:
+				vasquez_alive = is_alive
+				colonist_vasquez.is_alive = is_alive
+				changed = true
+		"meridian":
+			if meridian_alive != is_alive:
+				meridian_alive = is_alive
+				colonist_meridian.is_alive = is_alive
+				changed = true
+
+	if changed and not is_alive:
+		named_character_died.emit(lower_id)
+
+func _on_day_changed(new_day: int) -> void:
+	current_day = new_day
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SAVE / LOAD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -166,7 +206,6 @@ func save_game(filename: String) -> void:
 				"is_shielded": b_data.is_shielded
 			})
 	
-	# Try to safely find TimeManager and ResourceManager (they are Autoloads, so this is safe)
 	var day = TimeManager.current_day if TimeManager else current_day
 	var elapsed = TimeManager.time_elapsed if TimeManager else 0.0
 	var speed = TimeManager.current_speed if TimeManager else 1
@@ -178,6 +217,10 @@ func save_game(filename: String) -> void:
 	var d_s = ResourceManager.days_starving if ResourceManager else 0
 	var mat = ResourceManager.materials if ResourceManager else materials
 	var mor = ResourceManager.morale if ResourceManager else 100.0
+	var journal_entries_data: Variant = []
+	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	if journal_node and journal_node.has_method("serialise"):
+		journal_entries_data = journal_node.serialise()
 
 	var data = {
 		"game_manager": {
@@ -192,9 +235,14 @@ func save_game(filename: String) -> void:
 			"vasquez_alive": vasquez_alive,
 			"meridian_alive": meridian_alive,
 			"med_clinic_built": med_clinic_built,
+			"med_clinic_upgraded_to_tier_2": med_clinic_upgraded_to_tier_2,
 			"rook_militia_stopped": rook_militia_stopped,
 			"rook_reconciliation_taken": rook_reconciliation_taken,
-			"vasquez_trade_accepted": vasquez_trade_accepted
+			"vasquez_trade_accepted": vasquez_trade_accepted,
+			"vasquez_intel_shared": vasquez_intel_shared,
+			"deserters_lockdown_taken": deserters_lockdown_taken,
+			"meridian_trusted": meridian_trusted,
+			"rook_militia_sanctioned": rook_militia_sanctioned
 		},
 		"time_manager": {
 			"current_day": day,
@@ -211,7 +259,8 @@ func save_game(filename: String) -> void:
 			"materials": mat,
 			"morale": mor
 		},
-		"buildings": serialized_buildings
+		"buildings": serialized_buildings,
+		"journal_entries": journal_entries_data
 	}
 	
 	var file_path = SAVES_DIR + filename
@@ -255,9 +304,14 @@ func load_game(filepath: String) -> void:
 	vasquez_alive = gm_data.get("vasquez_alive", vasquez_alive)
 	meridian_alive = gm_data.get("meridian_alive", meridian_alive)
 	med_clinic_built = gm_data.get("med_clinic_built", med_clinic_built)
+	med_clinic_upgraded_to_tier_2 = gm_data.get("med_clinic_upgraded_to_tier_2", med_clinic_upgraded_to_tier_2)
 	rook_militia_stopped = gm_data.get("rook_militia_stopped", rook_militia_stopped)
 	rook_reconciliation_taken = gm_data.get("rook_reconciliation_taken", rook_reconciliation_taken)
 	vasquez_trade_accepted = gm_data.get("vasquez_trade_accepted", vasquez_trade_accepted)
+	vasquez_intel_shared = gm_data.get("vasquez_intel_shared", vasquez_intel_shared)
+	deserters_lockdown_taken = gm_data.get("deserters_lockdown_taken", false)
+	meridian_trusted = gm_data.get("meridian_trusted", false)
+	rook_militia_sanctioned = gm_data.get("rook_militia_sanctioned", false)
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})
@@ -296,13 +350,22 @@ func load_game(filepath: String) -> void:
 			var ty = b.get("type", 0)
 			
 			# Map integer BuildingType to string key if required by spawn function
-			var b_type_str = ""
-			if ty == BuildingData.BuildingType.COAL_GENERATOR: b_type_str = "coal"
-			elif ty == BuildingData.BuildingType.HYDROPONIC_BAY: b_type_str = "hydro"
-			elif ty == BuildingData.BuildingType.SHELTER_BLOCK: b_type_str = "shelter"
-			else:
-				# Future mapping fallback
-				b_type_str = "coal"
+			var type_map: Dictionary = {
+				BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+				BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+				BuildingData.BuildingType.RELAY_HUB:       "relay",
+				BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+				BuildingData.BuildingType.RATION_STORE:    "ration",
+				BuildingData.BuildingType.WATER_RECYCLER:  "water",
+				BuildingData.BuildingType.MED_CLINIC:      "med",
+				BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+				BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+				BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+			}
+			var b_type_str: String = type_map.get(ty, "")
+			if b_type_str == "":
+				push_warning("GameManager.load_game: unknown building type %d, skipping" % ty)
+				continue
 
 			# Safely spawn it physically and then rewrite the visual configuration.
 			grid_manager.spawn_building_from_save(b_type_str, pos)
@@ -318,5 +381,11 @@ func load_game(filepath: String) -> void:
 					building_sys.set_building_damaged(pos, true)
 				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
+
+	# Restore journal entries after world state is fully restored
+	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	var journal_data: Variant = data.get("journal_entries", [])
+	if journal_node and journal_node.has_method("deserialise"):
+		journal_node.deserialise(journal_data)
 	
 	print("Game loaded successfully from: ", filepath)
