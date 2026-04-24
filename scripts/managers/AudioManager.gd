@@ -141,6 +141,33 @@ func play_music(stream: AudioStream) -> void:
 		music_player_b.play()
 		music_player_b.volume_db = 0.0
 
+func silence_music(fade_duration: float = 0.35) -> void:
+	fade_duration = maxf(fade_duration, 0.0)
+	if fade_duration <= 0.0:
+		_stop_and_reset_music_player(music_player_a)
+		_stop_and_reset_music_player(music_player_b)
+		return
+
+	_fade_out_and_stop_player(music_player_a, fade_duration)
+	_fade_out_and_stop_player(music_player_b, fade_duration)
+
+func _fade_out_and_stop_player(player: AudioStreamPlayer, fade_duration: float) -> void:
+	if player == null:
+		return
+	if not player.playing:
+		_stop_and_reset_music_player(player)
+		return
+
+	var tween = create_tween()
+	tween.tween_property(player, "volume_db", -40.0, fade_duration)
+	tween.tween_callback(Callable(self, "_stop_and_reset_music_player").bind(player))
+
+func _stop_and_reset_music_player(player: AudioStreamPlayer) -> void:
+	if player == null:
+		return
+	player.stop()
+	player.volume_db = 0.0
+
 func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
 	var tween = create_tween()
 	

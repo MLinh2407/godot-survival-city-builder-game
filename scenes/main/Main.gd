@@ -38,6 +38,8 @@ extends Node
 @onready var top_sweep_line: ColorRect = $UILayer/HUD/TopSweepLine
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
+@onready var ui_layer: CanvasLayer = $UILayer
+@onready var game_world: Node2D = $GameWorld
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
@@ -57,7 +59,7 @@ var _has_started_gameplay: bool = false
 var _was_time_frozen_by_menu: bool = false
 var _speed_before_menu: int = TimeManager.GameSpeed.NORMAL
 var _cached_intro_stream: VideoStream
-const INTRO_VIDEO_PATH: String = "res://assets/ui/live_background/snow-train-station.ogv"
+const INTRO_VIDEO_PATH: String = "res://assets/ui/main_menu/intro_video.ogv"
 var _journal_prompt_serial: int = 0
 var _last_journal_prompt_msec: int = -10000
 var _journal_badge_tween: Tween
@@ -171,7 +173,8 @@ func _ready() -> void:
 		_prepare_new_game_state()
 		call_deferred("_preload_intro_stream")
 		if _consume_tree_bool_meta("play_intro_on_new_game"):
-			_start_intro_sequence()
+			_ensure_intro_layer_ready()
+			_play_intro_sequence()
 		else:
 			_begin_gameplay()
 		return
@@ -193,9 +196,11 @@ func _ready() -> void:
 	call_deferred("_preload_intro_stream")
 
 func _on_menu_start_new_game() -> void:
-	_dismiss_main_menu()
 	_prepare_new_game_state()
-	_start_intro_sequence()
+	_set_gameplay_visible(false)
+	_ensure_intro_layer_ready()
+	_dismiss_main_menu()
+	_play_intro_sequence()
 
 func _on_intro_finished() -> void:
 	if intro_layer and is_instance_valid(intro_layer):
@@ -269,27 +274,71 @@ func _show_main_menu_overlay() -> void:
 	main_menu.connect("open_settings", Callable(self, "_on_menu_open_settings"))
 	main_menu.connect("exit_game", Callable(self, "_on_menu_exit"))
 
-func _start_intro_sequence() -> void:
-	if ResourceLoader.exists("res://scenes/main/Intro.tscn"):
-		intro_layer = CanvasLayer.new()
-		intro_layer.name = "IntroLayer"
-		intro_layer.layer = 250
-		add_child(intro_layer)
+func _play_intro_sequence() -> void:
+	if AudioManager and AudioManager.has_method("silence_music"):
+		AudioManager.silence_music(0.45)
 
-		var intro = IntroScene.instantiate()
-		intro_layer.add_child(intro)
-		if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
-			intro.set_preloaded_stream(_cached_intro_stream)
-		if intro.has_signal("intro_finished"):
-			intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
-		print("Main: start_new_game signal received, intro shown")
-	else:
+	if intro_layer == null or not is_instance_valid(intro_layer):
 		_on_intro_finished()
+		return
+
+	if intro_layer.has_meta("intro_node"):
+		var intro: Node = intro_layer.get_meta("intro_node")
+		if intro and is_instance_valid(intro):
+			if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+				intro.set_preloaded_stream(_cached_intro_stream)
+			if intro.has_signal("intro_finished") and not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+				intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+			if intro.has_method("start_intro"):
+				intro.start_intro()
+			print("Main: start_new_game signal received, intro shown")
+			return
+
+	_on_intro_finished()
+
+func _ensure_intro_layer_ready() -> void:
+	if intro_layer and is_instance_valid(intro_layer):
+		return
+	if not ResourceLoader.exists("res://scenes/main/Intro.tscn"):
+		return
+
+	intro_layer = CanvasLayer.new()
+	intro_layer.name = "IntroLayer"
+	intro_layer.layer = 190
+	add_child(intro_layer)
+
+	var intro = IntroScene.instantiate()
+	intro_layer.add_child(intro)
+	if intro is Control:
+		intro.modulate.a = 1.0
+	if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+		intro.set_preloaded_stream(_cached_intro_stream)
+	if intro.has_signal("intro_finished"):
+		if not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+			intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+	intro_layer.set_meta("intro_node", intro)
+
+func _fade_out_main_menu(duration: float) -> void:
+	if duration <= 0.0:
+		return
+	if not menu_layer or not is_instance_valid(menu_layer):
+		return
+
+	if main_menu and is_instance_valid(main_menu):
+		main_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var tween := create_tween()
+	if main_menu and is_instance_valid(main_menu):
+		tween.tween_property(main_menu, "modulate:a", 0.0, duration)
+	else:
+		tween.tween_interval(duration)
+	await tween.finished
 
 func _begin_gameplay() -> void:
 	if _has_started_gameplay:
 		return
 	_has_started_gameplay = true
+	_set_gameplay_visible(true)
 	_unfreeze_time_after_menu()
 	get_tree().paused = false
 	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
@@ -343,6 +392,12 @@ func _unfreeze_time_after_menu() -> void:
 			_speed_before_menu = TimeManager.GameSpeed.NORMAL
 		TimeManager.set_game_speed(_speed_before_menu)
 	_was_time_frozen_by_menu = false
+
+func _set_gameplay_visible(is_visible: bool) -> void:
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = is_visible
+	if game_world and is_instance_valid(game_world):
+		game_world.visible = is_visible
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state

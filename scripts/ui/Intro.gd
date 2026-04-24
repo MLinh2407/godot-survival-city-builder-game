@@ -2,7 +2,8 @@ extends Control
 
 signal intro_finished
 
-@export var video_path: String = "res://assets/ui/live_background/snow-train-station.ogv"
+@export var video_path: String = "res://assets/ui/main_menu/intro_video.ogv"
+@export var video_start_delay_sec: float = 0.2
 @onready var vp: VideoStreamPlayer = $VideoPlayer
 @onready var continue_prompt: Label = $ContinuePrompt
 var _preloaded_stream: VideoStream
@@ -18,6 +19,11 @@ func _ready() -> void:
         get_viewport().size_changed.connect(_fit_fullscreen)
     set_process(true)
 
+func start_intro() -> void:
+    await get_tree().create_timer(maxf(video_start_delay_sec, 0.0)).timeout
+    _play_video()
+
+func _play_video() -> void:
     var stream: VideoStream = _preloaded_stream
     if stream == null and ResourceLoader.exists(video_path):
         stream = ResourceLoader.load(video_path) as VideoStream
