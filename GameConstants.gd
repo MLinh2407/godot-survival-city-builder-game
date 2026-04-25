@@ -177,6 +177,8 @@ const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia san
 const UPGRADE_COST_BASE: int                    = 25  # base materials cost for T1→T2 upgrade
 const UPGRADE_COST_HIGH: int                    = 40  # For critical buildings like Water Recycler/Med Clinic
 const REPAIR_COST_BASE: int                     = 10  # base materials cost to repair a damaged building
+const STORM_SHIELD_COST: int                    = 15   # materials to begin shielding a building
+const STORM_SHIELD_WORKER_DAYS: int             = 2    # worker-days required to complete shielding
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -203,7 +203,9 @@ func save_game(filename: String) -> void:
 				"workers": b_data.workers_assigned,
 				"is_upgraded": b_data.is_upgraded,
 				"is_damaged": b_data.is_damaged,
-				"is_shielded": b_data.is_shielded
+				"is_shielded": b_data.is_shielded,
+				"is_shielding": b_data.is_shielding,              
+				"shield_days_accumulated": b_data.shield_days_accumulated 
 			})
 	
 	var day = TimeManager.current_day if TimeManager else current_day
@@ -376,6 +378,8 @@ func load_game(filepath: String) -> void:
 				b_data.is_upgraded = b.get("is_upgraded", false)
 				b_data.is_damaged = b.get("is_damaged", false)
 				b_data.is_shielded = b.get("is_shielded", false)
+				b_data.is_shielding = b.get("is_shielding", false)                       
+				b_data.shield_days_accumulated = b.get("shield_days_accumulated", 0)      
 				
 				if b_data.is_damaged:
 					building_sys.set_building_damaged(pos, true)

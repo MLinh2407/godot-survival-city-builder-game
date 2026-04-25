@@ -166,6 +166,25 @@ func _on_day_changed(_day: int) -> void:
 			# Reset counters when staffed
 			b.days_unstaffed = 0
 			b.days_unstaffed_for_disease = 0
+		
+		# ── Storm shielding progress tick ─────────────────────────────────────
+		# Only runs during the preparation window (Days 26–34)
+		var current_day: int = TimeManager.current_day if TimeManager else 0
+		if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
+			for shield_pos in active_buildings:
+				var sb: BuildingData = active_buildings[shield_pos]
+				if not sb.is_shielding:
+					continue
+				# Only accumulate if the building has at least one worker assigned
+				if sb.workers_assigned > 0:
+					sb.shield_days_accumulated += 1
+					print("BuildingSystem: [%s] shielding progress %d/%d worker-days" \
+						% [sb.building_name, sb.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS])
+					if sb.shield_days_accumulated >= GameConstants.STORM_SHIELD_WORKER_DAYS:
+						sb.is_shielding = false
+						sb.is_shielded = true
+						print("BuildingSystem: ✅ [%s] is now fully shielded." % sb.building_name)
+						building_state_changed.emit(shield_pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SELECTION
@@ -738,6 +757,33 @@ func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.Bui
 
 	print("BuildingSystem: Upgrade particles spawned at %s | color: %s" \
 		% [str(grid_pos), str(particle_color)])
+
+func begin_shield(grid_pos: Vector2i) -> bool:
+	if not active_buildings.has(grid_pos):
+		return false
+	
+	var b: BuildingData = active_buildings[grid_pos]
+	
+	# Already shielded or shielding in progress
+	if b.is_shielded or b.is_shielding:
+		print("BuildingSystem: [%s] is already shielded or shielding in progress." % b.building_name)
+		return false
+	
+	# Check materials
+	if not ResourceManager.consume_materials(GameConstants.STORM_SHIELD_COST):
+		print("BuildingSystem: Not enough materials to shield [%s]." % b.building_name)
+		return false
+	
+	b.is_shielding = true
+	b.shield_days_accumulated = 0
+	
+	AudioManager.play_build_sfx("shield_apply")
+	
+	print("BuildingSystem: Shielding started on [%s] | Cost: %d materials" \
+		% [b.building_name, GameConstants.STORM_SHIELD_COST])
+	
+	building_state_changed.emit(grid_pos)
+	return true
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

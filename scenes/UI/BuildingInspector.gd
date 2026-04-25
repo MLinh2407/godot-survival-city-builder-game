@@ -8,6 +8,7 @@ extends PanelContainer
 @onready var output_label: Label = $VBoxContainer/OutputLabel
 @onready var repair_button: Button = $VBoxContainer/RepairButton
 @onready var upgrade_button: Button = $VBoxContainer/UpgradeButton
+@onready var shield_button: Button = $VBoxContainer/ShieldButton
 
 @export var building_system: Node 
 
@@ -50,13 +51,17 @@ func _ready() -> void:
 	else:
 		pass
 
+	if shield_button:
+		shield_button.pressed.connect(_on_shield_pressed)
+		shield_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
 func _find_building_system() -> Node:
 	var root = get_tree().get_root()
 	return _search_for_building_system(root)
 
 
 func _search_for_building_system(node: Node) -> Node:
-	if node is BuildingSystem:
+	if node != null and node.has_signal("building_selected_data") and node.has_method("get_effective_output"):
 		return node
 	for child in node.get_children():
 		if child is Node:
@@ -143,6 +148,28 @@ func _refresh_ui_text() -> void:
 			upgrade_button.disabled = GameManager.materials < u_cost
 		else:
 			upgrade_button.visible = false
+
+	# Shield button: show only during storm prep window and when not yet shielded
+	if shield_button:
+		var current_day: int = TimeManager.current_day if TimeManager else 0
+		var in_storm_window: bool = current_day >= GameConstants.STORM_START_DAY \
+			and current_day < GameConstants.STORM_HIT_DAY
+		
+		if in_storm_window and not current_building.is_shielded and not current_building.is_shielding:
+			shield_button.visible = true
+			shield_button.text = "Shield Building (%d mat)" % GameConstants.STORM_SHIELD_COST
+			shield_button.disabled = GameManager.materials < GameConstants.STORM_SHIELD_COST
+		elif in_storm_window and current_building.is_shielding:
+			shield_button.visible = true
+			shield_button.text = "Shielding... (%d/%d days)" \
+				% [current_building.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS]
+			shield_button.disabled = true
+		elif in_storm_window and current_building.is_shielded:
+			shield_button.visible = true
+			shield_button.text = "✓ Shielded"
+			shield_button.disabled = true
+		else:
+			shield_button.visible = false
 
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears
@@ -345,3 +372,21 @@ func _on_upgrade_pressed() -> void:
 
 	_refresh_ui_text()
 	print("BuildingInspector: Upgrade applied to", target_building)
+
+func _on_shield_pressed() -> void:
+	var target_building: BuildingData = current_building
+	var gm = building_system
+	
+	if target_building == null and gm != null and has_last_selected_grid_pos:
+		if gm.active_buildings.has(last_selected_grid_pos):
+			target_building = gm.active_buildings[last_selected_grid_pos]
+	
+	if target_building == null or not gm:
+		push_warning("BuildingInspector: No building available to shield")
+		return
+	
+	var ok: bool = gm.begin_shield(target_building.grid_position)
+	if ok:
+		_refresh_ui_text()
+	else:
+		push_warning("BuildingInspector: Shield failed — check materials or building state")

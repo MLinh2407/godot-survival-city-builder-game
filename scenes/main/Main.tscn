@@ -239,9 +239,9 @@ void fragment() {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dialogue_portrait_hologram"]
 shader = SubResource("Shader_dialogue_portrait_hologram")
-shader_parameter/baseColor = Color(0.3058, 0.835, 0.960, 1.)
+shader_parameter/baseColor = Color(0.3058, 0.835, 0.96, 1)
 shader_parameter/speed = 7.0
-shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1.)
+shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1)
 shader_parameter/linesColorIntensity = 1.5
 shader_parameter/lineDensity = 25.0
 shader_parameter/lineWidth = 0.25
@@ -746,6 +746,13 @@ offset_bottom = 78.0
 texture = ExtResource("11_enl7a")
 expand_mode = 1
 
+[node name="StormCountdownLabel" type="Label" parent="UILayer/HUD" unique_id=380197150]
+visible = false
+offset_left = 223.0
+offset_top = 5.0
+offset_right = 263.0
+offset_bottom = 28.0
+
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
 visible = false
 z_index = 5
@@ -784,12 +791,12 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_portrait")
 
 [node name="DialoguePortraitImage" type="TextureRect" parent="UILayer/DialogueBox/DialoguePortraitFrame" unique_id=214639620]
+material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 176.0
 offset_bottom = 176.0
-material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5

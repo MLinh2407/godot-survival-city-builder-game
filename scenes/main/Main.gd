@@ -28,6 +28,7 @@ extends Node
 @onready var power_rate_lbl: Label = $UILayer/HUD/PowerRateLabel
 @onready var food_rate_lbl: Label = $UILayer/HUD/FoodRateLabel
 @onready var morale_rate_lbl: Label = $UILayer/HUD/MoraleRateLabel
+@onready var storm_countdown_label: Label = $UILayer/HUD/StormCountdownLabel
 @onready var hope_slider: HSlider = $UILayer/HUD/HopeOrderSlider
 @onready var hope_label: Label = $UILayer/HUD/HopeLabel
 @onready var order_label: Label = $UILayer/HUD/OrderLabel
@@ -337,6 +338,22 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
 		day_label.text = "DAY " + str(new_day)
+	_update_storm_countdown(new_day)
+
+func _update_storm_countdown(current_day: int) -> void:
+	if not storm_countdown_label:
+		return
+	if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
+		var days_remaining: int = GameConstants.STORM_HIT_DAY - current_day
+		storm_countdown_label.text = "⚡ STORM IN " + str(days_remaining) + " DAYS"
+		storm_countdown_label.visible = true
+		# Pulse red as deadline approaches
+		if days_remaining <= 3:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+		else:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+	else:
+		storm_countdown_label.visible = false
 
 func _on_time_changed(time_string: String) -> void:
 	if time_label:

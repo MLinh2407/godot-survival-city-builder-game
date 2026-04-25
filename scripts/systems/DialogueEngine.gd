@@ -281,6 +281,7 @@ func _build_card(event_data: Dictionary) -> void:
 	_set_card_visible(true)
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()
+	AudioManager.play_event_sfx("crisis_fire")
 	_play_event_specific_sfx(_active_event_id)
 
 func _set_portrait_for_event(event_data: Dictionary) -> void:
