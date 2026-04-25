@@ -15,6 +15,7 @@ extends PanelContainer
 var current_building: BuildingData = null
 var last_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_last_selected_grid_pos: bool = false
+var memorial_panel: Panel
 
 func _ready() -> void:
 	# Hide the panel by default
@@ -49,11 +50,15 @@ func _ready() -> void:
 		upgrade_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
 		pass
+	
+	# Memorial panel
+	memorial_panel = get_tree().root.get_node_or_null("Main/UILayer/MemorialPanel")
+	if not memorial_panel:
+		memorial_panel = get_tree().root.find_child("MemorialPanel", true, false) as Panel
 
 func _find_building_system() -> Node:
 	var root = get_tree().get_root()
 	return _search_for_building_system(root)
-
 
 func _search_for_building_system(node: Node) -> Node:
 	if node is BuildingSystem:
@@ -70,7 +75,7 @@ func _search_for_building_system(node: Node) -> Node:
 # ══════════════════════════════════════════════════════════════════════════════
 func _on_building_selected(b_data: BuildingData) -> void:
 	print("BuildingInspector: _on_building_selected called with", b_data)
-	# 1. Disconnect from the old building if we were looking at one
+	# Disconnect from the old building
 	if current_building != null and current_building.staffing_changed.is_connected(_on_staffing_changed):
 		current_building.staffing_changed.disconnect(_on_staffing_changed)
 		
@@ -80,15 +85,26 @@ func _on_building_selected(b_data: BuildingData) -> void:
 		last_selected_grid_pos = current_building.grid_position
 		has_last_selected_grid_pos = true
 	
-	# 2. If we clicked the dirt (deselected), hide the UI
+	# If click the deselected, hide the UI
 	if current_building == null:
 		_hide_panel()
 		return
+	
+	# Open the memorial panel 
+	if current_building.building_type == BuildingData.BuildingType.MEMORIAL_WALL:
+		if not memorial_panel:
+			memorial_panel = get_tree().root.get_node_or_null("Main/UILayer/MemorialPanel")
+			if not memorial_panel:
+				memorial_panel = get_tree().root.find_child("MemorialPanel", true, false) as Panel
+		if memorial_panel and memorial_panel.has_method("open_memorial"):
+			memorial_panel.open_memorial()
+		_hide_panel()
+		return
 		
-	# 3. We clicked a real building! Connect to its specific data signal
+	# Connect to its specific data signal
 	current_building.staffing_changed.connect(_on_staffing_changed)
 	
-	# 4. Update the text and show the panel
+	# Update the text and show the panel
 	_refresh_ui_text()
 	_show_panel()
 

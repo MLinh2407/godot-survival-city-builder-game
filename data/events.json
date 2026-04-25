@@ -211,8 +211,8 @@
             {
               "type": "disease",
               "sick_count_range": [
-                15,
-                25
+                10,
+                20
               ],
               "sick_count_modifier": "multiply by 0.70 if water_recycler_upgraded == true",
               "treatment_rate_per_day": 5,
@@ -229,8 +229,8 @@
             {
               "type": "disease",
               "sick_count_range": [
-                15,
-                25
+                10,
+                20
               ],
               "sick_count_modifier": "multiply by 0.70 if water_recycler_upgraded == true",
               "treatment_rate_per_day": 0,

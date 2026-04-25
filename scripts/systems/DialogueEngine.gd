@@ -45,8 +45,8 @@ const _PORTRAIT_NAMES_BY_KEY: Dictionary = {
 	"meridian": "MERIDIAN"
 }
 const _PORTRAIT_ROLES_BY_KEY: Dictionary = {
-	"kael": "Director",
-	"yuna": "Doctor",
+	"kael": "Grid-7 Director",
+	"yuna": "Head Medic",
 	"rook": "Scout",
 	"vasquez": "Grid-9 Director",
 	"meridian": "AI"
@@ -478,3 +478,20 @@ func _play_event_specific_sfx(event_id: String) -> void:
 			AudioManager.play_event_sfx("meridian_contact")
 		_:
 			return
+
+func show_death_card(portrait_key: String, char_name: String, char_role: String, prompt_text: String) -> void:
+	var event_data: Dictionary = {
+		"setup_text": prompt_text,
+		"character_portrait": portrait_key,
+		"character_name": char_name,
+		"character_role": char_role,
+		"choices": [
+			{"id": "acknowledge", "text": "Acknowledge", "outcomes": []}
+		]
+	}
+	
+	# Use a special ID for death cards
+	_active_event_id = "death_card_" + portrait_key
+	
+	# Build and show the card
+	_build_card(event_data)

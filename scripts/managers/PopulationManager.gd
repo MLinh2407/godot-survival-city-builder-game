@@ -200,10 +200,8 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 		var no_clinic = not GameManager.med_clinic_built or not GameManager.med_clinic_upgraded_to_tier_2
 		
 		if pop_too_low and no_clinic:
-			GameManager.colonist_yuna.is_alive = false
-			GameManager.yuna_alive = false 
+			GameManager.record_named_death("yuna")
 			character_died.emit("Yuna")
-			GameManager.named_character_died.emit("yuna")  # For BuildingSystem morale bonus removal
 			AudioManager.play_event_sfx("death_named")
 			
 	# VASQUEZ'S DEATH CHECK
@@ -211,19 +209,15 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 		if GameManager.vasquez_trade_accepted:
 			var survival_rate = float(pop_data.total_population) / float(GameConstants.STARTING_POPULATION)
 			if survival_rate < GameConstants.VASQUEZ_DEATH_SURVIVAL_THRESHOLD:
-				GameManager.colonist_vasquez.is_alive = false
-				GameManager.vasquez_alive = false
+				GameManager.record_named_death("vasquez")
 				character_died.emit("Vasquez")
-				GameManager.named_character_died.emit("vasquez")  # Reserved for future BuildingSystem effects
 				AudioManager.play_event_sfx("death_named")
 			
 	# ROOK'S DEATH CHECK
 	if day == GameConstants.ROOK_RECONCILIATION_DEADLINE and GameManager.colonist_rook.is_alive:
 		if GameManager.rook_militia_stopped and not GameManager.rook_reconciliation_taken:
-			GameManager.colonist_rook.is_alive = false
-			GameManager.rook_alive = false
+			GameManager.record_named_death("rook")
 			character_died.emit("Rook")
-			GameManager.named_character_died.emit("rook")  # Reserved for future BuildingSystem effects
 			AudioManager.play_event_sfx("death_named")
 
 # ══════════════════════════════════════════════════════════════════════════════

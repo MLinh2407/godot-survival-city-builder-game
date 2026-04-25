@@ -26,6 +26,8 @@
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="PackedScene" uid="uid://b8d8g49lc8m06" path="res://scenes/UI/MemorialPanel.tscn" id="15_memorial_panel"]
+[ext_resource type="Script" uid="uid://bk8d8g49lc8m06" path="res://scripts/systems/MemorialWallSystem.gd" id="16_memorial_system"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
@@ -239,9 +241,9 @@ void fragment() {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dialogue_portrait_hologram"]
 shader = SubResource("Shader_dialogue_portrait_hologram")
-shader_parameter/baseColor = Color(0.3058, 0.835, 0.960, 1.)
+shader_parameter/baseColor = Color(0.3058, 0.835, 0.96, 1)
 shader_parameter/speed = 7.0
-shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1.)
+shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1)
 shader_parameter/linesColorIntensity = 1.5
 shader_parameter/lineDensity = 25.0
 shader_parameter/lineWidth = 0.25
@@ -784,12 +786,12 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_portrait")
 
 [node name="DialoguePortraitImage" type="TextureRect" parent="UILayer/DialogueBox/DialoguePortraitFrame" unique_id=214639620]
+material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 176.0
 offset_bottom = 176.0
-material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
@@ -814,6 +816,8 @@ offset_bottom = 554.0
 theme_override_constants/separation = 12
 
 [node name="ColonyJournal" parent="UILayer" unique_id=1651560904 instance=ExtResource("14_colony_journal")]
+
+[node name="MemorialPanel" parent="UILayer" unique_id=1651560905 instance=ExtResource("15_memorial_panel")]
 
 [node name="ColorGrade" type="CanvasLayer" parent="." unique_id=807741779]
 layer = 5
@@ -866,6 +870,9 @@ zoom = Vector2(2, 2)
 
 [node name="DialogueEngine" type="Node" parent="Events" unique_id=1601134898]
 script = ExtResource("13_dialogue_engine")
+
+[node name="MemorialWallSystem" type="Node" parent="Events" unique_id=1601134899]
+script = ExtResource("16_memorial_system")
 
 [node name="BuildingSystem" type="Node" parent="." unique_id=749927356 node_paths=PackedStringArray("grid_manager")]
 script = ExtResource("6_1rhdn")

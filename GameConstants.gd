@@ -109,7 +109,7 @@ const SHELTER_CAPACITY_T2: int                  = 280
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DISEASE_SICK_MIN: int                     = 10
-const DISEASE_SICK_MAX: int                     = 25
+const DISEASE_SICK_MAX: int                     = 20
 const DISEASE_DEATH_RATE_MIN: int               = 1    # sick die per day if untreated
 const DISEASE_DEATH_RATE_MAX: int               = 3
 const DISEASE_TREATMENT_RATE: int               = 5    # sick cured per day by staffed Med Clinic

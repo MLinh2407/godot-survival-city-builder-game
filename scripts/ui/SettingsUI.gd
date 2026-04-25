@@ -31,7 +31,10 @@ func _ready() -> void:
     add_child(file_dialog)
 
 func _input(event: InputEvent) -> void:
+    if not visible:
+        return
     if event.is_action_pressed("ui_cancel"):
+        get_viewport().set_input_as_handled()
         toggle_menu()
 
 func toggle_menu() -> void:

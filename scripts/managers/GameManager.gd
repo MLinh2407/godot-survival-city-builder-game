@@ -4,6 +4,17 @@ signal hope_order_changed(new_value: float)
 signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CHARACTER METADATA 
+# ══════════════════════════════════════════════════════════════════════════════
+const CHARACTER_METADATA: Dictionary = {
+	"yuna": {"name": "Yuna Tran", "role": "Head Medic", "portrait": "res://assets/characters/Yuna.png"},
+	"rook": {"name": "Rook", "role": "Scout", "portrait": "res://assets/characters/Rook.png"},
+	"vasquez": {"name": "Harlan Vasquez", "role": "Grid-9 Director", "portrait": "res://assets/characters/Vasquez.png"},
+	"meridian": {"name": "MERIDIAN", "role": "AI", "portrait": "res://assets/characters/MERDIAN.png"},
+	"kael": {"name": "Kael", "role": "Grid-7 Director", "portrait": "res://assets/characters/Kael.png"}
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -47,6 +58,14 @@ var vasquez_trade_accepted: bool = false # Set TRUE by CrisisEventSystem on Day 
 var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option A
 var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
 var deserters_lockdown_taken: bool = false
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MEMORIAL WALL STATE
+# ══════════════════════════════════════════════════════════════════════════════
+
+var memorial_wall_built: bool = false # Set TRUE by BuildingSystem when wall placed
+var memorial_prompt_consumed: bool = false # Set TRUE after first death prompt shown and wall built
+var named_death_days: Dictionary = {} # Maps character id to day of death
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
@@ -176,6 +195,38 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if changed and not is_alive:
 		named_character_died.emit(lower_id)
 
+func record_named_death(identifier: String) -> void:
+	if current_day > 33:
+		return 
+	
+	var lower_id = identifier.to_lower()
+	
+	# Record death day if not already recorded
+	if not named_death_days.has(lower_id):
+		named_death_days[lower_id] = current_day
+	
+	# Set alive flag to false
+	set_character_alive(lower_id, false)
+
+func get_memorial_entries() -> Array:
+	var entries: Array = []
+	
+	# Return entries for all dead characters, sorted by day
+	for char_id in named_death_days.keys():
+		var day = named_death_days[char_id]
+		if day > 0:
+			var char_info = CHARACTER_METADATA.get(char_id, {"name": char_id.capitalize(), "role": ""})
+			entries.append({
+				"id": char_id,
+				"name": char_info.get("name", ""),
+				"role": char_info.get("role", ""),
+				"day": day
+			})
+	
+	# Sort by day ascending
+	entries.sort_custom(func(a, b): return a.day < b.day)
+	return entries
+
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
 
@@ -242,7 +293,10 @@ func save_game(filename: String) -> void:
 			"vasquez_intel_shared": vasquez_intel_shared,
 			"deserters_lockdown_taken": deserters_lockdown_taken,
 			"meridian_trusted": meridian_trusted,
-			"rook_militia_sanctioned": rook_militia_sanctioned
+			"rook_militia_sanctioned": rook_militia_sanctioned,
+			"memorial_wall_built": memorial_wall_built,
+			"memorial_prompt_consumed": memorial_prompt_consumed,
+			"named_death_days": named_death_days
 		},
 		"time_manager": {
 			"current_day": day,
@@ -312,6 +366,9 @@ func load_game(filepath: String) -> void:
 	deserters_lockdown_taken = gm_data.get("deserters_lockdown_taken", false)
 	meridian_trusted = gm_data.get("meridian_trusted", false)
 	rook_militia_sanctioned = gm_data.get("rook_militia_sanctioned", false)
+	memorial_wall_built = gm_data.get("memorial_wall_built", false)
+	memorial_prompt_consumed = gm_data.get("memorial_prompt_consumed", false)
+	named_death_days = gm_data.get("named_death_days", {})
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})

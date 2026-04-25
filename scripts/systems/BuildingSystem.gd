@@ -195,6 +195,12 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	
 	# Memorial Wall can only be placed after at least one named character has died
 	if b_type == "memorial":
+		if GameManager.memorial_wall_built:
+			if grid_manager:
+				grid_manager.remove_building(grid_pos)
+			print("BuildingSystem: Memorial Wall is unique and already built.")
+			return
+
 		var any_dead: bool = (not GameManager.yuna_alive) or \
 							 (not GameManager.rook_alive) or \
 							 (not GameManager.vasquez_alive) or \
@@ -288,6 +294,9 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.power_draw            = 0.0
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
 			AudioManager.play_build_sfx("memorial_place")
+			GameManager.memorial_wall_built = true  # Mark wall as built for death prompt gating
+			if grid_manager and grid_manager.has_method("exit_build_mode"):
+				grid_manager.exit_build_mode()
 			
 	active_buildings[grid_pos] = new_data
 	new_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
