@@ -200,6 +200,17 @@ const ROOK_RECONCILIATION_DEADLINE: int         = 32
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# NPC SETTINGS
+# ══════════════════════════════════════════════════════════════════════════════
+
+const NPC_MAX_AMOUNT: int               = 15      # Target amount of visual NPCs to spawn
+const NPC_BEHAVIOR_CHANGE_TIME: float   = 10.0    # Seconds before changing state
+const NPC_SCALE_SIZE: Vector2           = Vector2(0.07, 0.08) # Base size scale
+const NPC_WANDER_RADIUS: float          = 150.0   # How far they can pick a random spot
+const NPC_WALK_SPEED: float             = 25.0    # Movement speed
+const NPC_SPAWN_COOLDOWN: float         = 5.0     # Seconds between each NPC spawn
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SPRITE / ASSET SIZES
 # ══════════════════════════════════════════════════════════════════════════════
 

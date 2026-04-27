@@ -1,0 +1,70 @@
+[gd_scene format=3 uid="uid://coi1lx2t736jp"]
+
+[ext_resource type="Script" path="res://scenes/npc/Npc.gd" id="1_npc_script"]
+[ext_resource type="Texture2D" uid="uid://x2u8oqdu344r" path="res://assets/npc/Human1-Sheet.png" id="1_w314i"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_m1khv"]
+radius = 4.1231055
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vs4dm"]
+atlas = ExtResource("1_w314i")
+region = Rect2(0, 0, 200, 120)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gwlw1"]
+atlas = ExtResource("1_w314i")
+region = Rect2(0, 0, 180, 120)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vennj"]
+atlas = ExtResource("1_w314i")
+region = Rect2(180, 0, 180, 120)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dl125"]
+atlas = ExtResource("1_w314i")
+region = Rect2(360, 0, 180, 120)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qcd1j"]
+atlas = ExtResource("1_w314i")
+region = Rect2(540, 0, 180, 120)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_12hjt"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vs4dm")
+}],
+"loop": true,
+"name": &"Human1_idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gwlw1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vennj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dl125")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qcd1j")
+}],
+"loop": true,
+"name": &"new_animation",
+"speed": 5.0
+}]
+
+[node name="Human1" type="CharacterBody2D" unique_id=1884332169]
+script = ExtResource("1_npc_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1118138655]
+position = Vector2(-19.527779, 28)
+shape = SubResource("CircleShape2D_m1khv")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=366081813]
+position = Vector2(-20.000006, 28)
+scale = Vector2(0.06944445, 0.08125002)
+sprite_frames = SubResource("SpriteFrames_12hjt")
+animation = &"Human1_idle"
+autoplay = "Human1_idle"
+frame_progress = 0.89306706

@@ -27,6 +27,11 @@
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
+[ext_resource type="PackedScene" uid="uid://coi1lx2t736jp" path="res://scenes/npc/human_1.tscn" id="28_8dhb5"]
+[ext_resource type="PackedScene" uid="uid://da3j5jpth6v1" path="res://scenes/npc/human_2.tscn" id="29_ew7m7"]
+[ext_resource type="PackedScene" uid="uid://cyvn3pshvjuny" path="res://scenes/npc/human_3.tscn" id="30_fg4ko"]
+[ext_resource type="PackedScene" uid="uid://dpevyybil3odx" path="res://scenes/npc/human_4.tscn" id="31_m1khv"]
+[ext_resource type="PackedScene" uid="uid://bxftbmag6j1ro" path="res://scenes/npc/human_5.tscn" id="32_vs4dm"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -239,9 +244,9 @@ void fragment() {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dialogue_portrait_hologram"]
 shader = SubResource("Shader_dialogue_portrait_hologram")
-shader_parameter/baseColor = Color(0.3058, 0.835, 0.960, 1.)
+shader_parameter/baseColor = Color(0.3058, 0.835, 0.96, 1)
 shader_parameter/speed = 7.0
-shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1.)
+shader_parameter/linesColor = Color(0.633232, 0.910156, 0.555693, 1)
 shader_parameter/linesColorIntensity = 1.5
 shader_parameter/lineDensity = 25.0
 shader_parameter/lineWidth = 0.25
@@ -784,12 +789,12 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_dialogue_portrait")
 
 [node name="DialoguePortraitImage" type="TextureRect" parent="UILayer/DialogueBox/DialoguePortraitFrame" unique_id=214639620]
+material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 176.0
 offset_bottom = 176.0
-material = SubResource("ShaderMaterial_dialogue_portrait_hologram")
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
@@ -870,3 +875,15 @@ script = ExtResource("13_dialogue_engine")
 [node name="BuildingSystem" type="Node" parent="." unique_id=749927356 node_paths=PackedStringArray("grid_manager")]
 script = ExtResource("6_1rhdn")
 grid_manager = NodePath("../GameWorld/GridSystem")
+
+[node name="NPC" type="Node" parent="." unique_id=2014251887]
+
+[node name="Human1" parent="NPC" unique_id=1884332169 instance=ExtResource("28_8dhb5")]
+
+[node name="Human2" parent="NPC" unique_id=1067823675 instance=ExtResource("29_ew7m7")]
+
+[node name="Human3" parent="NPC" unique_id=693811282 instance=ExtResource("30_fg4ko")]
+
+[node name="Human4" parent="NPC" unique_id=140118097 instance=ExtResource("31_m1khv")]
+
+[node name="Human5" parent="NPC" unique_id=315405148 instance=ExtResource("32_vs4dm")]

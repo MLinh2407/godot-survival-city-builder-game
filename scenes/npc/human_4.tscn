@@ -1,0 +1,69 @@
+[gd_scene format=3 uid="uid://dpevyybil3odx"]
+
+[ext_resource type="Script" path="res://scenes/npc/Npc.gd" id="1_npc_script"]
+[ext_resource type="Texture2D" uid="uid://bywubwuttd0gm" path="res://assets/npc/Human4-Sheet.png" id="1_gg8b0"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_m1khv"]
+radius = 4.1231055
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e8pg6"]
+atlas = ExtResource("1_gg8b0")
+region = Rect2(0, 0, 200, 150)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_h05k6"]
+atlas = ExtResource("1_gg8b0")
+region = Rect2(0, 0, 200, 150)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ex0yv"]
+atlas = ExtResource("1_gg8b0")
+region = Rect2(200, 0, 200, 150)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s3bvh"]
+atlas = ExtResource("1_gg8b0")
+region = Rect2(400, 0, 200, 150)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hlhe2"]
+atlas = ExtResource("1_gg8b0")
+region = Rect2(600, 0, 200, 150)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_afy01"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e8pg6")
+}],
+"loop": true,
+"name": &"Human4_idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_h05k6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ex0yv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_s3bvh")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hlhe2")
+}],
+"loop": true,
+"name": &"Human4_moving",
+"speed": 5.0
+}]
+
+[node name="Human4" type="CharacterBody2D" unique_id=140118097]
+script = ExtResource("1_npc_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1488517232]
+position = Vector2(-19.527779, 28)
+shape = SubResource("CircleShape2D_m1khv")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1695762684]
+position = Vector2(-20, 28)
+scale = Vector2(0.06944445, 0.065)
+sprite_frames = SubResource("SpriteFrames_afy01")
+animation = &"Human4_idle"
+autoplay = "Human4_idle"
