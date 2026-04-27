@@ -59,10 +59,27 @@ func _ready() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_storm_hit() -> void:
-	if _ending_fired:
-		return
-	_ending_fired = true
-	determine_ending()
+    if _ending_fired:
+        return
+    _ending_fired = true
+    
+    # Step 1 — Shut down all unshielded buildings
+    var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+    if building_sys and building_sys.has_method("shutdown_unshielded_buildings"):
+        building_sys.shutdown_unshielded_buildings()
+    
+    # Step 2 — Freeze time permanently
+    if TimeManager:
+        TimeManager.game_ended = true
+        TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+    if get_tree():
+        get_tree().paused = false   # Un-pause the tree so UI still works
+    
+    # Step 3 — Brief delay so the storm SFX and visual shutdown are visible
+    await get_tree().create_timer(2.0).timeout
+    
+    # Step 4 — Determine and fire the ending
+    determine_ending()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ENDING DETERMINATION
@@ -139,6 +156,16 @@ func _play_ending(key: String, rook_modifier: bool) -> void:
 
 	# Log ending final line to journal
 	var ending_text: String = ending_data.get("final_line", "")
+    
+    if ending_text != "":
+        var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+        if journal and journal.has_method("add_entry"):
+            journal.add_entry(
+                TimeManager.current_day,
+                ending_text,
+                preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE,
+                "Final Entry"
+            )
 
 	# Play ending music
 	if AudioManager:

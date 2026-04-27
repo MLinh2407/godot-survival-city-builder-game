@@ -785,6 +785,24 @@ func begin_shield(grid_pos: Vector2i) -> bool:
 	building_state_changed.emit(grid_pos)
 	return true
 
+func shutdown_unshielded_buildings() -> void:
+    print("BuildingSystem: Storm hit — shutting down unshielded buildings.")
+    for grid_pos in active_buildings:
+        var b: BuildingData = active_buildings[grid_pos]
+        if not b.is_shielded:
+            b.is_powered = false
+            print("BuildingSystem: [%s] went offline — unshielded." % b.building_name)
+            update_building_visual(grid_pos)
+            AudioManager.stop_ambient(grid_pos)
+    # Recalculate so HUD reflects the new power state
+    if ResourceManager:
+        ResourceManager.resources_changed.emit(
+            ResourceManager.net_power,
+            ResourceManager.food,
+            ResourceManager.morale,
+            ResourceManager.materials
+        )
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready
 # ══════════════════════════════════════════════════════════════════════════════
