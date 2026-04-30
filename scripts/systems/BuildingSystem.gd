@@ -225,6 +225,15 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
 			return
 	
+	# ── Materials cost check ──────────────────────────────────────────────────
+	var build_cost: int = _get_build_cost(b_type)
+	if build_cost > 0 and not ResourceManager.consume_materials(build_cost):
+		if grid_manager:
+			grid_manager.remove_building(grid_pos)
+		spawn_floating_text(grid_pos, "Not enough materials!", Color(1.0, 0.45, 0.2))
+		print("BuildingSystem: Cannot place [%s] — need %d materials." % [b_type, build_cost])
+		return
+	
 	match b_type:
 		"coal":
 			new_data.building_type          = BuildingData.BuildingType.COAL_GENERATOR
@@ -786,22 +795,37 @@ func begin_shield(grid_pos: Vector2i) -> bool:
 	return true
 
 func shutdown_unshielded_buildings() -> void:
-    print("BuildingSystem: Storm hit — shutting down unshielded buildings.")
-    for grid_pos in active_buildings:
-        var b: BuildingData = active_buildings[grid_pos]
-        if not b.is_shielded:
-            b.is_powered = false
-            print("BuildingSystem: [%s] went offline — unshielded." % b.building_name)
-            update_building_visual(grid_pos)
-            AudioManager.stop_ambient(grid_pos)
-    # Recalculate so HUD reflects the new power state
-    if ResourceManager:
-        ResourceManager.resources_changed.emit(
-            ResourceManager.net_power,
-            ResourceManager.food,
-            ResourceManager.morale,
-            ResourceManager.materials
-        )
+	print("BuildingSystem: Storm hit — shutting down unshielded buildings.")
+	for grid_pos in active_buildings:
+		var b: BuildingData = active_buildings[grid_pos]
+		if not b.is_shielded:
+			b.is_powered = false
+			print("BuildingSystem: [%s] went offline — unshielded." % b.building_name)
+			update_building_visual(grid_pos)
+			AudioManager.stop_ambient(grid_pos)
+	# Recalculate so HUD reflects the new power state
+	if ResourceManager:
+		ResourceManager.resources_changed.emit(
+			ResourceManager.net_power,
+			ResourceManager.food,
+			ResourceManager.morale,
+			ResourceManager.materials
+		)
+
+# ── Build cost lookup ─────────────────────────────────────────────────────────
+func _get_build_cost(b_type: String) -> int:
+	match b_type:
+		"coal":       return GameConstants.BUILD_COST_COAL_GENERATOR
+		"geothermal": return GameConstants.BUILD_COST_GEOTHERMAL_TAP
+		"relay":      return GameConstants.BUILD_COST_RELAY_HUB
+		"hydro":      return GameConstants.BUILD_COST_HYDROPONIC_BAY
+		"ration":     return GameConstants.BUILD_COST_RATION_STORE
+		"water":      return GameConstants.BUILD_COST_WATER_RECYCLER
+		"med":        return GameConstants.BUILD_COST_MED_CLINIC
+		"shelter":    return GameConstants.BUILD_COST_SHELTER_BLOCK
+		"archive":    return GameConstants.BUILD_COST_ARCHIVE_HALL
+		"memorial":   return GameConstants.BUILD_COST_MEMORIAL_WALL
+		_:            return 0
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

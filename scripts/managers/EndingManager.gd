@@ -59,27 +59,48 @@ func _ready() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_storm_hit() -> void:
-    if _ending_fired:
-        return
-    _ending_fired = true
-    
-    # Step 1 — Shut down all unshielded buildings
-    var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
-    if building_sys and building_sys.has_method("shutdown_unshielded_buildings"):
-        building_sys.shutdown_unshielded_buildings()
-    
-    # Step 2 — Freeze time permanently
-    if TimeManager:
-        TimeManager.game_ended = true
-        TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
-    if get_tree():
-        get_tree().paused = false   # Un-pause the tree so UI still works
-    
-    # Step 3 — Brief delay so the storm SFX and visual shutdown are visible
-    await get_tree().create_timer(2.0).timeout
-    
-    # Step 4 — Determine and fire the ending
-    determine_ending()
+	if _ending_fired:
+		return
+	_ending_fired = true
+
+	# Step 1 — Shut down all unshielded buildings
+	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if building_sys and building_sys.has_method("shutdown_unshielded_buildings"):
+		building_sys.shutdown_unshielded_buildings()
+
+	# Step 2 — Apply storm-damaged floor tiles to unshielded building footprints
+	var grid_sys = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
+	if grid_sys != null and building_sys != null:
+		var special_layer = grid_sys.get_node_or_null("SpecialFloorLayer")
+		if special_layer and special_layer is TileMapLayer:
+			for grid_pos in building_sys.active_buildings:
+				var b: BuildingData = building_sys.active_buildings[grid_pos]
+				if not b.is_shielded:
+					var b_type_str: String = grid_sys.anchor_to_type.get(grid_pos, "")
+					if b_type_str == "":
+						continue
+					for cell in grid_sys.get_footprint_cells(grid_pos, b_type_str):
+						special_layer.set_cell(
+							cell,
+							TileRegistry.FLOOR_SOURCE_ID,
+							TileRegistry.M5_STORM_DAMAGED
+						)
+			print("EndingManager: Storm-damaged floor tiles applied to unshielded buildings.")
+		else:
+			push_warning("EndingManager: $SpecialFloorLayer not found — M5 tiles skipped.")
+	
+	# Step 3 — Freeze time permanently
+	if TimeManager:
+		TimeManager.game_ended = true
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+	if get_tree():
+		get_tree().paused = false   # Un-pause the tree so UI still works
+
+	# Step 4 — Brief delay so the storm SFX and visual shutdown are visible
+	await get_tree().create_timer(2.0).timeout
+
+	# Step 5 — Determine and fire the ending
+	determine_ending()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ENDING DETERMINATION
@@ -156,16 +177,16 @@ func _play_ending(key: String, rook_modifier: bool) -> void:
 
 	# Log ending final line to journal
 	var ending_text: String = ending_data.get("final_line", "")
-    
-    if ending_text != "":
-        var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
-        if journal and journal.has_method("add_entry"):
-            journal.add_entry(
-                TimeManager.current_day,
-                ending_text,
-                preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE,
-                "Final Entry"
-            )
+
+	if ending_text != "":
+		var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+		if journal and journal.has_method("add_entry"):
+			journal.add_entry(
+				TimeManager.current_day,
+				ending_text,
+				preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE,
+				"Final Entry"
+			)
 
 	# Play ending music
 	if AudioManager:

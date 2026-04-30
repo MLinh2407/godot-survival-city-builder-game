@@ -20,8 +20,8 @@ const BUILDING_FOOTPRINTS: Dictionary = {
     "memorial":   Vector2i(2, 2),   
 }
 
-const GRID_BOUNDS_MIN = Vector2i(-5, -5)
-const GRID_BOUNDS_MAX = Vector2i(5,  5)
+const GRID_BOUNDS_MIN = Vector2i(-40, -40)
+const GRID_BOUNDS_MAX = Vector2i(40,  40)
 
 const BUILDING_GROUND_FACTOR: float = 0.25    
 const BUILDING_PLACE_FACTOR:  float = 0.18  
@@ -31,6 +31,9 @@ var cell_to_anchor:  Dictionary = {}
 var anchor_to_type:  Dictionary = {}   
 
 @onready var base_grid:          TileMapLayer = $BaseGrid
+@onready var void_layer:          TileMapLayer = $VoidLayer
+@onready var special_floor_layer: TileMapLayer = $SpecialFloorLayer
+@onready var decal_layer:         TileMapLayer = $DecalLayer
 @onready var ghost_sprite:       Sprite2D     = $GhostSprite
 @onready var hover_cursor:       Sprite2D     = $HoverCursor
 @export  var building_container: Node2D
@@ -38,6 +41,7 @@ var anchor_to_type:  Dictionary = {}
 
 var current_build_type:  String      = ""
 var current_build_scene: PackedScene = null
+var current_decoration_type: String  = ""   
 
 var _hovered_building_node:  Node2D = null
 var _selected_building_node: Node2D = null
@@ -109,6 +113,25 @@ func _ready() -> void:
     building_selected.connect(_on_selection_changed)
     building_deselected.connect(_on_selection_cleared)
 
+    call_deferred("_prefill_void")
+
+# ── Void pre-fill ─────────────────────────────────────────────────────────────
+func _prefill_void() -> void:
+    if not void_layer:
+        push_warning("GridManager: $VoidLayer not found — skipping void pre-fill.")
+        return
+    var pad: int = 4
+    var min_c: Vector2i = GRID_BOUNDS_MIN - Vector2i(pad, pad)
+    var max_c: Vector2i = GRID_BOUNDS_MAX + Vector2i(pad, pad)
+    for x in range(min_c.x, max_c.x + 1):
+        for y in range(min_c.y, max_c.y + 1):
+            void_layer.set_cell(
+                Vector2i(x, y),
+                TileRegistry.FLOOR_SOURCE_ID,
+                TileRegistry.M8_VOID
+            )
+    print("GridManager: Void pre-fill complete — %d cells." \
+        % ((max_c.x - min_c.x + 1) * (max_c.y - min_c.y + 1)))
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
@@ -235,6 +258,83 @@ func exit_build_mode() -> void:
     _clear_footprint_overlay()
     _clear_blocker_highlight()  
 
+# ── Decoration Mode ────────────────────────────────────────────────────────────
+
+func enter_decoration_mode(dec_type: String) -> void:
+    if not TileRegistry.DECORATION_TILE_MAP.has(dec_type):
+        push_warning("GridManager: Unknown decoration type '%s'" % dec_type)
+        return
+    # Exit build mode if active
+    if current_build_scene != null:
+        exit_build_mode()
+    current_decoration_type = dec_type
+    _last_fp_anchor          = Vector2i(-9999, -9999)
+    ghost_sprite.visible     = false
+    hover_cursor.visible     = false
+    _clear_footprint_overlay()
+    _clear_blocker_highlight()
+
+func exit_decoration_mode() -> void:
+    current_decoration_type = ""
+    _last_fp_anchor          = Vector2i(-9999, -9999)
+    _clear_footprint_overlay()
+    _clear_blocker_highlight()
+
+# Places a decoration tile on DecalLayer. Does not create BuildingData.
+func place_decoration(cell: Vector2i, dec_type: String) -> void:
+    if not decal_layer:
+        push_warning("GridManager: $DecalLayer not found.")
+        return
+    if not TileRegistry.DECORATION_TILE_MAP.has(dec_type):
+        return
+    var atlas_coords: Vector2i = TileRegistry.DECORATION_TILE_MAP[dec_type]
+    decal_layer.set_cell(cell, TileRegistry.FLOOR_SOURCE_ID, atlas_coords)
+    AudioManager.play_build_sfx("place")
+
+# Erases a player-placed decoration tile from DecalLayer.
+# Will NOT erase M15 foundation rings — those are protected.
+func erase_decoration(cell: Vector2i) -> void:
+    if not decal_layer:
+        return
+    var source: int = decal_layer.get_cell_source_id(cell)
+    if source == -1:
+        return   
+    var atlas: Vector2i = decal_layer.get_cell_atlas_coords(cell)
+    # Only erase if the tile at this cell is a known decoration tile
+    for key in TileRegistry.DECORATION_TILE_MAP:
+        if TileRegistry.DECORATION_TILE_MAP[key] == atlas:
+            decal_layer.erase_cell(cell)
+            AudioManager.play_build_sfx("remove")
+            return
+
+# Draws a single-cell cyan diamond highlight for decoration placement cursor.
+func _rebuild_decoration_highlight(cell: Vector2i) -> void:
+    for child in _footprint_node.get_children():
+        child.queue_free()
+    var half_w: float = 32.0
+    var half_h: float = 16.0
+    if base_grid and base_grid.tile_set:
+        half_w = base_grid.tile_set.tile_size.x * 0.5
+        half_h = half_w * 0.5
+    var c: Vector2 = base_grid.map_to_local(cell)
+    var vt := c + Vector2(0.0,    -half_h)
+    var vr := c + Vector2(half_w,  0.0)
+    var vb := c + Vector2(0.0,     half_h)
+    var vl := c + Vector2(-half_w, 0.0)
+
+    var fill := Polygon2D.new()
+    fill.polygon = PackedVector2Array([vt, vr, vb, vl])
+    fill.color   = Color(0.0, 0.85, 1.0, 0.35)
+    _footprint_node.add_child(fill)
+
+    var border := Line2D.new()
+    border.add_point(vt); border.add_point(vr)
+    border.add_point(vb); border.add_point(vl)
+    border.add_point(vt)
+    border.width         = 1.5
+    border.default_color = Color(0.0, 0.95, 1.0, 0.9)
+    _footprint_node.add_child(border)
+
 # ── _process ───────────────────────────────────────────────────────────────────
 func _process(delta: float) -> void:
     # ── Demolish hold timer ──────────────────────────────────────────────────
@@ -279,6 +379,17 @@ func _process(delta: float) -> void:
             _last_fp_valid  = valid
             _rebuild_footprint_overlay(snapped_anchor, current_build_type, valid)
 
+    elif current_decoration_type != "":
+        # ── DECORATION MODE ──────────────────────────────────────────────────
+        ghost_sprite.visible  = false
+        hover_cursor.visible  = false
+        _clear_node(_hover_highlight)
+        _clear_node(_selection_outline_node)
+        _clear_blocker_highlight()
+        if map_pos != _last_fp_anchor:
+            _last_fp_anchor = map_pos
+            _rebuild_decoration_highlight(map_pos)
+    
     else:
         # ── SELECTION MODE ────────────────────────────────────────────────────
         ghost_sprite.visible  = false
@@ -321,6 +432,8 @@ func _input(event: InputEvent) -> void:
                 else:
                     AudioManager.play_build_sfx("invalid")
                     _shake_ghost()
+            elif current_decoration_type != "":
+                place_decoration(map_pos, current_decoration_type)
             else:
                 if cell_to_anchor.has(map_pos):
                     building_selected.emit(cell_to_anchor[map_pos])
@@ -330,6 +443,8 @@ func _input(event: InputEvent) -> void:
         elif event.button_index == MOUSE_BUTTON_RIGHT:
             if current_build_scene != null:
                 exit_build_mode()
+            elif current_decoration_type != "":
+                erase_decoration(map_pos)
             elif event.pressed:
                 # RIGHT PRESS — begin demolish hold if over a building
                 map_pos = base_grid.local_to_map(get_local_mouse_position())
@@ -347,6 +462,8 @@ func _input(event: InputEvent) -> void:
         if event.keycode == KEY_Q:
             if current_build_scene != null:
                 exit_build_mode()
+            elif current_decoration_type != "":
+                exit_decoration_mode()
             return
         var keys = building_scenes.keys()
         if event.keycode == KEY_1 and keys.size() > 0: enter_build_mode(keys[0])
@@ -384,6 +501,25 @@ func place_building(anchor: Vector2i) -> void:
     for cell in get_footprint_cells(anchor, current_build_type):
         cell_to_anchor[cell] = anchor
 
+    # ── Automatic tile placements ─────────────────────────────────────────────
+    # Foundation ring placed on DecalLayer under every building
+    if decal_layer:
+        for cell in get_footprint_cells(anchor, current_build_type):
+            decal_layer.set_cell(
+                cell,
+                TileRegistry.FLOOR_SOURCE_ID,
+                TileRegistry.M15_FOUNDATION
+            )
+
+    # Memorial Ground placed on BaseGrid under the Memorial Wall only
+    if current_build_type == "memorial" and base_grid:
+        for cell in get_footprint_cells(anchor, "memorial"):
+            base_grid.set_cell(
+                cell,
+                TileRegistry.FLOOR_SOURCE_ID,
+                TileRegistry.M7_MEMORIAL_GROUND
+            )
+    
     building_placed.emit(current_build_type, anchor)
     _clear_footprint_overlay()
     _clear_blocker_highlight()
@@ -392,6 +528,9 @@ func place_building(anchor: Vector2i) -> void:
 
 func remove_building(anchor: Vector2i) -> void:
     if not occupied_cells.has(anchor): return
+
+    # Capture building type before dictionaries are erased
+    var removed_type: String = anchor_to_type.get(anchor, "")
 
     # Clean up highlight state for removed building
     var node: Node2D = occupied_cells[anchor]
@@ -411,6 +550,22 @@ func remove_building(anchor: Vector2i) -> void:
             to_erase.append(cell)
     for cell in to_erase:
         cell_to_anchor.erase(cell)
+
+    # ── Tile cleanup on removal ───────────────────────────────────────────────
+    # Remove foundation ring from DecalLayer
+    if decal_layer and removed_type != "":
+        for cell in get_footprint_cells(anchor, removed_type):
+            decal_layer.erase_cell(cell)
+
+    # Restore dry concrete under the Memorial Wall location
+    if removed_type == "memorial" and base_grid:
+        for cell in get_footprint_cells(anchor, "memorial"):
+            base_grid.set_cell(
+                cell,
+                TileRegistry.FLOOR_SOURCE_ID,
+                TileRegistry.M1_DRY_CONCRETE
+            )
+
     building_removed.emit(anchor)
 
 func clear_grid() -> void:

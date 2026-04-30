@@ -39,9 +39,9 @@ func get_current_day_length() -> float:
 
 func _process(delta: float) -> void:
 	if game_ended:          
-        return            
-    if current_speed == GameSpeed.PAUSED:
-        return
+		return            
+	if current_speed == GameSpeed.PAUSED:
+		return
 
 	if current_speed == GameSpeed.PAUSED:
 		return

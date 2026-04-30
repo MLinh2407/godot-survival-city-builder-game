@@ -10,6 +10,8 @@ extends Node
 @onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
 @onready var btn_journal: Button = $UILayer/HUD/ButtonJournal
 @onready var colony_journal: CanvasLayer = $UILayer/ColonyJournal
+@onready var build_menu: CanvasLayer = $BuildMenu
+@onready var btn_build:  Button = $UILayer/HUD/ButtonBuild
 @onready var journal_unread_badge: Panel = $UILayer/HUD/ButtonJournal/JournalUnreadBadge
 @onready var journal_unread_badge_text: Label = $UILayer/HUD/ButtonJournal/JournalUnreadBadge/BadgeText
 @onready var journal_write_prompt: Control = $UILayer/HUD/JournalWritePrompt
@@ -72,12 +74,16 @@ const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
 const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
 
 # ── Zoom configuration ───────────────────────────────────────────────────────
-const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
-const ZOOM_DEFAULT:   int          = 1    
+const ZOOM_STEPS:     Array[float] = [0.2, 0.3, 0.4, 0.55, 0.75, 1.0, 1.5, 2.0, 3.0]
+const ZOOM_DEFAULT:   int          = 4   
 const ZOOM_LERP_SPEED: float       = 10.0  
 
 var _zoom_index:  int   = ZOOM_DEFAULT
 var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
+
+# ── Pan state ────────────────────────────────────────────────────────────────
+var _is_panning:      bool    = false
+var _pan_last_mouse:  Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -91,6 +97,23 @@ func _ready() -> void:
 	ResourceManager.resources_changed.connect(_on_resources_changed)
 	PopulationManager.population_changed.connect(_on_population_changed)
 	GameManager.hope_order_changed.connect(_on_hope_order_changed)
+	
+	# Wire build menu button
+	if btn_build:
+		btn_build.focus_mode = Control.FOCUS_NONE
+		if btn_build.has_signal("gui_input"):
+			btn_build.gui_input.connect(func(ev):
+				if ev is InputEventMouseButton and ev.pressed \
+						and ev.button_index == MOUSE_BUTTON_LEFT:
+					if build_menu:
+						build_menu.toggle()
+			)
+
+	# Refresh Memorial Wall button availability when a character dies
+	if build_menu:
+		GameManager.named_character_died.connect(
+			func(_char_name: String): build_menu.refresh_memorial_button()
+		)
 	
 	if day_label:
 		day_label.text = "DAY " + str(TimeManager.current_day)
@@ -197,13 +220,19 @@ func _on_population_changed() -> void:
 			disease_label.remove_theme_color_override("font_color")
 
 func _zoom_step(direction: int) -> void:
-	var mouse_world_before: Vector2 = _camera.get_global_transform().affine_inverse() \
-									 * get_viewport().get_mouse_position()
+	var old_zoom: float = ZOOM_STEPS[_zoom_index]
 	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
-	_zoom_target = ZOOM_STEPS[_zoom_index]
-	var mouse_world_after: Vector2 = _camera.get_global_transform().affine_inverse() \
-									* get_viewport().get_mouse_position()
-	_camera.position += mouse_world_before - mouse_world_after
+	var new_zoom: float = ZOOM_STEPS[_zoom_index]
+	_zoom_target = new_zoom
+
+	if is_equal_approx(old_zoom, new_zoom):
+		return
+
+	# Keep the world point currently under the cursor at the same screen position.
+	var viewport_size:   Vector2 = get_viewport().get_visible_rect().size
+	var mouse_screen:    Vector2 = get_viewport().get_mouse_position()
+	var cursor_offset:   Vector2 = mouse_screen - viewport_size * 0.5
+	_camera.position += cursor_offset * (1.0 / old_zoom - 1.0 / new_zoom)
 
 func _process(delta: float) -> void:
 	_update_camera_zoom(delta)
@@ -240,6 +269,11 @@ func _process(delta: float) -> void:
 		top_sweep_line.color = Color(0.58, 1.0, 1.0, sweep_alpha)
 
 func _update_camera_zoom(delta: float) -> void:
+	# Safety: if middle mouse was released outside the window, clear pan state
+	if _is_panning and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		_is_panning = false
+		Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+
 	if not _camera:
 		return
 	var current: float = _camera.zoom.x
@@ -318,22 +352,45 @@ func _on_button_settings_pressed() -> void:
 		settings_ui.toggle_menu()
 
 func _unhandled_input(event: InputEvent) -> void:
+	# ── Keyboard shortcuts ────────────────────────────────────────────────────
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE: toggle_pause()
 			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
-			KEY_J:	   colony_journal.toggle()
-			
-			# Keyboard zoom shortcuts 
-			KEY_EQUAL, KEY_KP_ADD:      _zoom_step(+1)   # '+'  key zooms in
-			KEY_MINUS, KEY_KP_SUBTRACT: _zoom_step(-1)   # '-'  key zooms out
+			KEY_J:     colony_journal.toggle()
+			KEY_B:
+				if build_menu:
+					build_menu.toggle()
+			KEY_EQUAL,    KEY_KP_ADD:      _zoom_step(+1)
+			KEY_MINUS,    KEY_KP_SUBTRACT: _zoom_step(-1)
 
-	# ── mouse-wheel zoom ──
-	if event is InputEventMouseButton and event.pressed:
+	# ── Mouse wheel zoom ──────────────────────────────────────────────────────
+	if event is InputEventMouseButton:
 		match event.button_index:
-			MOUSE_BUTTON_WHEEL_UP:   _zoom_step(+1)
-			MOUSE_BUTTON_WHEEL_DOWN: _zoom_step(-1)
+			MOUSE_BUTTON_WHEEL_UP:
+				_zoom_step(+1)
+				get_viewport().set_input_as_handled()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_step(-1)
+				get_viewport().set_input_as_handled()
+			# ── Middle mouse pan — press to start, release to stop ────────────
+			MOUSE_BUTTON_MIDDLE:
+				if event.pressed:
+					_is_panning     = true
+					_pan_last_mouse = event.position
+					Input.set_default_cursor_shape(Input.CURSOR_DRAG)
+				else:
+					_is_panning = false
+					Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				get_viewport().set_input_as_handled()
+
+	# ── Mouse motion: pan when middle button is held ──────────────────────────
+	if event is InputEventMouseMotion and _is_panning:
+		var delta: Vector2 = event.position - _pan_last_mouse
+		_pan_last_mouse    = event.position
+		_camera.position  -= delta / _camera.zoom.x
+		get_viewport().set_input_as_handled()
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:

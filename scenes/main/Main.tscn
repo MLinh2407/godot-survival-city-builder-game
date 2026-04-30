@@ -26,7 +26,9 @@
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="Script" uid="uid://dmyrj11qrcfnj" path="res://scripts/ui/BuildMenu.gd" id="15_ilqpp"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
+[ext_resource type="TileSet" uid="uid://bago6eevk5c46" path="res://floor_tileset.tres" id="25_u7tt4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -258,17 +260,6 @@ shader_parameter/sweepWidth = 0.24
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n12rl"]
-texture = ExtResource("22_j0f7u")
-texture_region_size = Vector2i(64, 32)
-0:0/0 = 0
-
-[sub_resource type="TileSet" id="TileSet_dc040"]
-tile_shape = 1
-tile_layout = 5
-tile_size = Vector2i(64, 32)
-sources/1 = SubResource("TileSetAtlasSource_n12rl")
-
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
 
@@ -477,6 +468,14 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "2x"
+
+[node name="ButtonBuild" type="Button" parent="UILayer/HUD" unique_id=478753633]
+offset_left = 1201.0
+offset_top = 132.0
+offset_right = 1274.0
+offset_bottom = 163.0
+focus_mode = 0
+text = "[B] Build"
 
 [node name="ButtonSettings" type="Button" parent="UILayer/HUD" unique_id=987654332]
 offset_left = 1243.0
@@ -832,6 +831,10 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 color = Color(0.03876, 0.09320182, 0.15594886, 1)
 
+[node name="BuildMenu" type="CanvasLayer" parent="." unique_id=2089314646]
+layer = 90
+script = ExtResource("15_ilqpp")
+
 [node name="GameWorld" type="Node2D" parent="." unique_id=1890764090]
 
 [node name="CaveBackground" type="Node2D" parent="GameWorld" unique_id=1010122964]
@@ -852,8 +855,22 @@ building_scenes = {
 "water": ExtResource("10_hjnkw")
 }
 
+[node name="VoidLayer" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=844910631]
+z_index = -2
+texture_filter = 1
+tile_set = ExtResource("25_u7tt4")
+
 [node name="BaseGrid" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=2142693261]
-tile_set = SubResource("TileSet_dc040")
+texture_filter = 1
+tile_set = ExtResource("25_u7tt4")
+
+[node name="SpecialFloorLayer" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=1436802922]
+z_index = 1
+tile_set = ExtResource("25_u7tt4")
+
+[node name="DecalLayer" type="TileMapLayer" parent="GameWorld/GridSystem" unique_id=536098478]
+z_index = 2
+tile_set = ExtResource("25_u7tt4")
 
 [node name="GhostSprite" type="Sprite2D" parent="GameWorld/GridSystem" unique_id=114344367]
 visible = false
