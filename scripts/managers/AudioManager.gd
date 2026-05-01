@@ -347,6 +347,17 @@ func _on_startup_music_timer_timeout() -> void:
 		return
 	play_music(track_1)
 
+func fade_out_music(duration: float = 1.5) -> void:
+	if not _is_any_music_playing():
+		return
+	var tween = create_tween()
+	if music_player_a and music_player_a.playing:
+		tween.tween_property(music_player_a, "volume_db", -80.0, duration)
+		tween.tween_callback(music_player_a.stop)
+	if music_player_b and music_player_b.playing:
+		tween.parallel().tween_property(music_player_b, "volume_db", -80.0, duration)
+		tween.parallel().tween_callback(music_player_b.stop)
+
 func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
 	var tween = create_tween()
 	

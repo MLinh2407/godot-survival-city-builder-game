@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://dm3b4ntev3nd"]
+
+[ext_resource type="Script" uid="uid://dax8va0hnduas" path="res://scripts/ui/EndingScreen.gd" id="1_ending_screen_script"]
+
+[node name="EndingScreen" type="Control" unique_id=699497666]
+z_index = 100
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_ending_screen_script")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=305904585]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="EndingVideo" type="VideoStreamPlayer" parent="." unique_id=511390350]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SkipPrompt" type="Label" parent="." unique_id=88739135]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 344.0
+offset_top = -37.0
+offset_right = 684.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_font_sizes/font_size = 22
+text = "PRESS [SPACE] TO SKIP"
+horizontal_alignment = 1
+
+[node name="EndCard" type="Control" parent="." unique_id=1978394222]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="EndCardBackdrop" type="ColorRect" parent="EndCard" unique_id=110115812]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.92)
+
+[node name="EndCardText" type="Label" parent="EndCard" unique_id=640775708]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -24.0
+offset_right = 460.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.97, 0.97, 0.97, 1)
+theme_override_font_sizes/font_size = 26
+text = "You have unlocked Ending 1 out of 7 endings"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -34,6 +34,8 @@
       "note": "If taken before Day 33: rook_alive stays TRUE. If not taken before Day 33: rook_alive = FALSE permanently on Day 33.",
       "setup_text": "You find Rook alone in the mess hall. It's been a few days since you shut down his scavenging operation. The anger is mostly gone now, replaced by a quiet distance. You have a narrow window to say something.",
       "character_portrait": "rook",
+      "character_name": "Rook",
+      "character_role": "Scout",
       "choices": [
         {
           "id": "option_a",

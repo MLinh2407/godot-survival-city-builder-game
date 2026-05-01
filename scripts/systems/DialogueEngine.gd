@@ -35,7 +35,10 @@ const _SPEAKER_ROLE_TOP: float = 376.0
 const _SPEAKER_ROLE_BOTTOM: float = 396.0
 const _PORTRAIT_TEXTURES_BY_KEY: Dictionary = {
 	"kael": "res://assets/characters/Kael.png",
-	"yuna": "res://assets/characters/Yuna.png"
+	"yuna": "res://assets/characters/Yuna.png",
+	"rook": "res://assets/characters/Rook.png",
+	"vasquez": "res://assets/characters/Vasquez.png",
+	"meridian": "res://assets/characters/MERDIAN.png"
 }
 const _PORTRAIT_NAMES_BY_KEY: Dictionary = {
 	"kael": "Kael",

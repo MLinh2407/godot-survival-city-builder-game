@@ -16,6 +16,18 @@ const ENDING_THE_QUIET         := "the_quiet"
 
 var _ending_fired: bool = false
 
+func _get_building_system() -> Node:
+	var main = get_tree().root.get_node_or_null("Main")
+	if main:
+		return main.get_node_or_null("BuildingSystem")
+	return null
+
+func _has_archive_hall() -> bool:
+	var bs = _get_building_system()
+	if not bs or not bs.has_method("has_building"):
+		return false
+	return bs.has_building(BuildingData.BuildingType.ARCHIVE_HALL)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -26,33 +38,6 @@ func _ready() -> void:
 	if TimeManager:
 		TimeManager.storm_hit.connect(_on_storm_hit)
 	print("EndingManager ready — listening for storm_hit signal.")
-
-# 	# TEMP — ending gate verification, remove after confirming
-# 	call_deferred("_test_ending_gates")
-
-# func _test_ending_gates() -> void:
-# 	print("=== ENDING GATE TESTS ===")
-	
-# 	# Test 1: survival 70%, slider 30 → should be The Torch
-# 	GameManager.current_population = int(847 * 0.70)
-# 	GameManager.hope_order_slider = 30.0
-# 	GameManager.yuna_alive = false  # prevent The Signal
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	# Test 2: survival 70%, slider 70 → should be The Necessary Evil
-# 	GameManager.current_population = int(847 * 0.70)
-# 	GameManager.hope_order_slider = 70.0
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	# Test 3: survival 50%, any slider → should be The Quiet
-# 	GameManager.current_population = int(847 * 0.50)
-# 	GameManager.hope_order_slider = 30.0
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	print("=== END GATE TESTS ===")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # STORM HIT — Day 35 trigger
@@ -76,6 +61,8 @@ func determine_ending() -> void:
 	var vasquez_alive: bool   = GameManager.vasquez_alive
 	var meridian_alive: bool  = GameManager.meridian_alive
 	var all_alive: bool       = rook_alive and yuna_alive and vasquez_alive and meridian_alive
+	var meridian_trusted: bool = GameManager.meridian_trusted
+	var archive_hall_built: bool = _has_archive_hall()
 
 	print("══════════════════════════════════════════════════════")
 	print(" ENDING DETERMINATION — Day 35")
@@ -86,13 +73,15 @@ func determine_ending() -> void:
 	print(" Rook alive    : %s" % str(rook_alive))
 	print(" Vasquez alive : %s" % str(vasquez_alive))
 	print(" MERIDIAN alive: %s" % str(meridian_alive))
+	print(" MERIDIAN trusted: %s" % str(meridian_trusted))
+	print(" Archive Hall built: %s" % str(archive_hall_built))
 	print(" All alive     : %s" % str(all_alive))
 	print("──────────────────────────────────────────────────────")
 
 	var ending_key: String
 
 	# Step 0 — Secret ending check (highest priority)
-	if all_alive and survival_rate >= GameConstants.ENDING_SIGNAL_RATE:
+	if all_alive and survival_rate >= GameConstants.ENDING_SIGNAL_RATE and meridian_trusted and archive_hall_built:
 		ending_key = ENDING_THE_SIGNAL
 		print(" STEP 0: The Signal conditions met → firing secret ending")
 		_play_ending(ending_key, rook_alive)
@@ -137,13 +126,6 @@ func _play_ending(key: String, rook_modifier: bool) -> void:
 	# Emit signal — EndingScreen UI listens and displays
 	ending_determined.emit(key, rook_modifier)
 
-	# Log ending final line to journal
-	var ending_text: String = ending_data.get("final_line", "")
-
-	# Play ending music
-	if AudioManager:
-		AudioManager.crossfade_to(AudioManager.track_3, 2.0)
-
 func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
 	var file = FileAccess.open("res://data/endings.json", FileAccess.READ)
 	if not file:
@@ -184,13 +166,3 @@ func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
 		return variants[0]
 
 	return {}
-
-# ══════════════════════════════════════════════════════════════════════════════
-# DEBUG — force-fire a specific ending for testing without playing 35 days
-# Call from the Godot debugger: EndingManager.debug_force_ending("the_torch", true)
-# ══════════════════════════════════════════════════════════════════════════════
-
-func debug_force_ending(key: String, rook_alive: bool) -> void:
-	print("EndingManager: DEBUG — force firing ending '%s' rook_alive=%s" % [key, str(rook_alive)])
-	_ending_fired = false   # Reset so it can fire again
-	_play_ending(key, rook_alive)

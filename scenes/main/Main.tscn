@@ -27,6 +27,7 @@
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
 [ext_resource type="PackedScene" uid="uid://b8d8g49lc8m06" path="res://scenes/UI/MemorialPanel.tscn" id="15_memorial_panel"]
+[ext_resource type="PackedScene" uid="uid://d71xv6k2x3ye4" path="res://scenes/UI/EndingScreen.tscn" id="17_ending_screen"]
 [ext_resource type="Script" uid="uid://bk8d8g49lc8m06" path="res://scripts/systems/MemorialWallSystem.gd" id="16_memorial_system"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
 
@@ -818,6 +819,8 @@ theme_override_constants/separation = 12
 [node name="ColonyJournal" parent="UILayer" unique_id=1651560904 instance=ExtResource("14_colony_journal")]
 
 [node name="MemorialPanel" parent="UILayer" unique_id=1651560905 instance=ExtResource("15_memorial_panel")]
+
+[node name="EndingScreen" parent="UILayer" unique_id=1651560906 instance=ExtResource("17_ending_screen")]
 
 [node name="ColorGrade" type="CanvasLayer" parent="." unique_id=807741779]
 layer = 5
