@@ -14,6 +14,8 @@ const DEFAULT_VIDEO_SIZE: Vector2 = Vector2(1934.0, 1080.0)
 @onready var skip_prompt: Label = $SkipPrompt
 @onready var end_card: Control = $EndCard
 @onready var end_card_text: Label = $EndCard/EndCardText
+@onready var continue_button: Button = $EndCard/ContinueButton
+@onready var credits_roll: Control = $CreditsRoll
 
 var _elapsed: float = 0.0
 var _skip_enabled: bool = false
@@ -22,6 +24,7 @@ var _rook_alive: bool = false
 var _was_paused: bool = false
 var _previous_speed: int = TimeManager.GameSpeed.NORMAL
 var _skip_tween: Tween
+var _continue_hover_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -29,6 +32,16 @@ func _ready() -> void:
 	visible = false
 	end_card.visible = false
 	skip_prompt.visible = false
+	if credits_roll:
+		credits_roll.visible = false
+	if continue_button:
+		continue_button.visible = false
+		if not continue_button.pressed.is_connected(_on_continue_pressed):
+			continue_button.pressed.connect(_on_continue_pressed)
+		if not continue_button.mouse_entered.is_connected(_on_continue_mouse_entered):
+			continue_button.mouse_entered.connect(_on_continue_mouse_entered)
+		if not continue_button.mouse_exited.is_connected(_on_continue_mouse_exited):
+			continue_button.mouse_exited.connect(_on_continue_mouse_exited)
 
 	if EndingManager and not EndingManager.ending_determined.is_connected(_on_ending_determined):
 		EndingManager.ending_determined.connect(_on_ending_determined)
@@ -40,7 +53,7 @@ func _ready() -> void:
 		get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 func _process(delta: float) -> void:
-	if not visible or end_card.visible:
+	if not visible or end_card.visible or (credits_roll and credits_roll.visible):
 		return
 	_elapsed += delta
 	if not _skip_enabled and _elapsed >= SKIP_DELAY_SEC:
@@ -49,7 +62,7 @@ func _process(delta: float) -> void:
 		_start_skip_prompt_fx()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or end_card.visible:
+	if not visible or end_card.visible or (credits_roll and credits_roll.visible):
 		return
 	if not _skip_enabled:
 		return
@@ -66,6 +79,10 @@ func _start_ending() -> void:
 	visible = true
 	end_card.visible = false
 	skip_prompt.visible = false
+	if credits_roll:
+		credits_roll.visible = false
+	if continue_button:
+		continue_button.visible = false
 	_elapsed = 0.0
 	_skip_enabled = false
 	_stop_skip_prompt_fx()
@@ -103,10 +120,26 @@ func _show_end_card() -> void:
 	skip_prompt.visible = false
 	_stop_skip_prompt_fx()
 	_set_end_card_text()
+	if continue_button:
+		continue_button.visible = true
+		_start_continue_idle_fx()
 
 func _set_end_card_text() -> void:
 	var ending_number := _get_ending_number(_ending_key, _rook_alive)
 	end_card_text.text = "You have unlocked Ending %d out of 7 endings" % ending_number
+
+func _on_continue_pressed() -> void:
+	if not end_card.visible:
+		return
+	end_card.visible = false
+	if continue_button:
+		continue_button.visible = false
+		_stop_continue_idle_fx()
+	if credits_roll and credits_roll.has_method("start_roll"):
+		credits_roll.visible = true
+		credits_roll.call("start_roll")
+	if AudioManager and AudioManager.track_3:
+		AudioManager.play_music(AudioManager.track_3)
 
 func _get_video_path(ending_key: String, rook_alive: bool) -> String:
 	var prefix: String = ENDING_VIDEO_PREFIX.get(ending_key, "")
@@ -169,3 +202,28 @@ func _stop_skip_prompt_fx() -> void:
 		_skip_tween = null
 	if skip_prompt:
 		skip_prompt.modulate.a = 1.0
+
+func _on_continue_mouse_entered() -> void:
+	_stop_continue_idle_fx()
+	if continue_button:
+		continue_button.modulate.a = 1.0
+
+func _on_continue_mouse_exited() -> void:
+	_start_continue_idle_fx()
+
+func _start_continue_idle_fx() -> void:
+	if not continue_button:
+		return
+	_stop_continue_idle_fx()
+	continue_button.modulate.a = 0.7
+	_continue_hover_tween = create_tween()
+	_continue_hover_tween.set_loops(-1)
+	_continue_hover_tween.tween_property(continue_button, "modulate:a", 1.0, 0.6)
+	_continue_hover_tween.tween_property(continue_button, "modulate:a", 0.7, 0.6)
+
+func _stop_continue_idle_fx() -> void:
+	if _continue_hover_tween:
+		_continue_hover_tween.kill()
+		_continue_hover_tween = null
+	if continue_button:
+		continue_button.modulate.a = 1.0

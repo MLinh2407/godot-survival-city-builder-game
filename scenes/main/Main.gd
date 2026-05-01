@@ -317,6 +317,9 @@ func _on_button_settings_pressed() -> void:
 		settings_ui.toggle_menu()
 
 func _unhandled_input(event: InputEvent) -> void:
+	var ending_screen := get_node_or_null("UILayer/EndingScreen")
+	if ending_screen and ending_screen.visible:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE: toggle_pause()
