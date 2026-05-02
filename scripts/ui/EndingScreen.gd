@@ -9,6 +9,7 @@ const ENDING_VIDEO_PREFIX := {
 
 const SKIP_DELAY_SEC: float = 5.0
 const DEFAULT_VIDEO_SIZE: Vector2 = Vector2(1934.0, 1080.0)
+const MENU_FADE_DURATION_SEC: float = 0.6
 
 @onready var video_player: VideoStreamPlayer = $EndingVideo
 @onready var skip_prompt: Label = $SkipPrompt
@@ -16,6 +17,7 @@ const DEFAULT_VIDEO_SIZE: Vector2 = Vector2(1934.0, 1080.0)
 @onready var end_card_text: Label = $EndCard/EndCardText
 @onready var continue_button: Button = $EndCard/ContinueButton
 @onready var credits_roll: Control = $CreditsRoll
+@onready var _fade_layer: ColorRect = null
 
 var _elapsed: float = 0.0
 var _skip_enabled: bool = false
@@ -25,6 +27,7 @@ var _was_paused: bool = false
 var _previous_speed: int = TimeManager.GameSpeed.NORMAL
 var _skip_tween: Tween
 var _continue_hover_tween: Tween
+var _fade_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -34,6 +37,9 @@ func _ready() -> void:
 	skip_prompt.visible = false
 	if credits_roll:
 		credits_roll.visible = false
+		if credits_roll.has_signal("roll_finished") and not credits_roll.is_connected("roll_finished", Callable(self, "_on_credits_finished")):
+			credits_roll.connect("roll_finished", Callable(self, "_on_credits_finished"))
+	_ensure_fade_layer()
 	if continue_button:
 		continue_button.visible = false
 		if not continue_button.pressed.is_connected(_on_continue_pressed):
@@ -79,6 +85,8 @@ func _start_ending() -> void:
 	visible = true
 	end_card.visible = false
 	skip_prompt.visible = false
+	if video_player:
+		video_player.visible = true
 	if credits_roll:
 		credits_roll.visible = false
 	if continue_button:
@@ -116,6 +124,8 @@ func _show_end_card() -> void:
 		return
 	if video_player and video_player.is_playing():
 		video_player.stop()
+	if video_player:
+		video_player.visible = false
 	end_card.visible = true
 	skip_prompt.visible = false
 	_stop_skip_prompt_fx()
@@ -135,11 +145,69 @@ func _on_continue_pressed() -> void:
 	if continue_button:
 		continue_button.visible = false
 		_stop_continue_idle_fx()
+	if video_player:
+		video_player.visible = false
 	if credits_roll and credits_roll.has_method("start_roll"):
 		credits_roll.visible = true
 		credits_roll.call("start_roll")
 	if AudioManager and AudioManager.track_3:
 		AudioManager.play_music(AudioManager.track_3)
+
+func _on_credits_finished() -> void:
+	await _fade_to_menu()
+
+func _return_to_main_menu() -> void:
+	visible = false
+	if credits_roll:
+		credits_roll.visible = false
+	if end_card:
+		end_card.visible = false
+	if continue_button:
+		continue_button.visible = false
+	_stop_continue_idle_fx()
+	_stop_skip_prompt_fx()
+
+	if get_tree():
+		get_tree().paused = false
+	if TimeManager:
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+
+	var main := get_tree().root.get_node_or_null("Main")
+	if not main:
+		main = get_tree().root.find_child("Main", true, false)
+	if main and main.has_method("show_main_menu_from_ending"):
+		main.call("show_main_menu_from_ending")
+	else:
+		push_warning("EndingScreen: Main not found for returning to menu")
+
+func _ensure_fade_layer() -> void:
+	if _fade_layer and is_instance_valid(_fade_layer):
+		return
+	_fade_layer = ColorRect.new()
+	_fade_layer.name = "EndingMenuFade"
+	_fade_layer.visible = false
+	_fade_layer.color = Color(0.0, 0.0, 0.0, 1.0)
+	_fade_layer.modulate.a = 0.0
+	_fade_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_fade_layer)
+	move_child(_fade_layer, get_child_count() - 1)
+
+func _fade_to_menu() -> void:
+	_ensure_fade_layer()
+	if _fade_tween:
+		_fade_tween.kill()
+		_fade_tween = null
+	_fade_layer.visible = true
+	_fade_layer.modulate.a = 0.0
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_fade_layer, "modulate:a", 1.0, MENU_FADE_DURATION_SEC)
+	await _fade_tween.finished
+	_return_to_main_menu()
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_fade_layer, "modulate:a", 0.0, MENU_FADE_DURATION_SEC)
+	await _fade_tween.finished
+	_fade_layer.visible = false
 
 func _get_video_path(ending_key: String, rook_alive: bool) -> String:
 	var prefix: String = ENDING_VIDEO_PREFIX.get(ending_key, "")

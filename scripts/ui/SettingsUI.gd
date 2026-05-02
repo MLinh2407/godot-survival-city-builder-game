@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+signal load_file_selected(path: String)
+
 @onready var master_slider = %MasterSlider
 @onready var music_slider = %MusicSlider
 @onready var sfx_slider = %SFXSlider
@@ -54,6 +56,7 @@ func _check_save_dir() -> void:
 func _on_file_selected(path: String) -> void:
     if GameManager:
         GameManager.load_game(path)
+    emit_signal("load_file_selected", path)
     toggle_menu() # hide menu after load
 
 func _on_save_button_pressed() -> void:

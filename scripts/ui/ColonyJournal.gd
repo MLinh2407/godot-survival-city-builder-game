@@ -165,6 +165,27 @@ func close() -> void:
 	_play_close_animation()
 	journal_closed.emit()
 
+func close_silent() -> void:
+	is_open = false
+	visible = false
+	book_root.scale = Vector2(1.0, 1.0)
+	book_root.modulate.a = 1.0
+	journal_closed.emit()
+
+func reset_for_new_game() -> void:
+	entries.clear()
+	close_silent()
+	has_unread = false
+	_latest_viewed_entry_index = -1
+	_current_spread = 0
+	_is_flipping = false
+	_nudge_1_fired = false
+	_nudge_2_fired = false
+	_nudge_3_fired = false
+	first_unpause_happened = false
+	_rebuild_display()
+	_set_unread_state(false)
+
 func _on_prev_pressed() -> void:
 	if _current_spread <= 0 or _is_flipping:
 		return

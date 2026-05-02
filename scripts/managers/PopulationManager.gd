@@ -30,6 +30,22 @@ func _ready() -> void:
 	await get_tree().process_frame
 	TimeManager.day_changed.connect(process_daily_population_tick)
 
+func reset_for_new_game() -> void:
+	consecutive_days_starving = 0
+	consecutive_days_water_unstaffed = 0
+	var pop_data = GameManager.population_state
+	if pop_data:
+		pop_data.total_population = GameConstants.STARTING_POPULATION
+		pop_data.available_workers = GameConstants.STARTING_WORKERS
+		pop_data.sick_count = 0
+		pop_data.max_workers = GameConstants.MAX_WORKERS_LATE_GAME
+		pop_data.outbreak_active = false
+		pop_data.disease_resistance_active = false
+	GameManager.current_population = GameConstants.STARTING_POPULATION
+	GameManager.available_workers = GameConstants.STARTING_WORKERS
+	GameManager.sick_count = 0
+	population_changed.emit()
+
 # Called by BuildingSystem registration 
 var building_system = null
 func register_building_system(bs) -> void:

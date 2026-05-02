@@ -104,6 +104,7 @@ Version Control: GitHub
 
 Music Generation: Suno
 Sound Effects: Pixabay
+Voiceover Generation: ElevenLabs
 Live Background (Main Menu): Wallpaper Engine
 
 Art & Asset Creation: Gemini, Aseprite

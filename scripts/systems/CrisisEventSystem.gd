@@ -29,6 +29,12 @@ func _ready() -> void:
 	if TimeManager and TimeManager.current_day == 1:
 		_on_day_changed(1)
 
+func reset_for_new_game() -> void:
+	active_food_delta = 0.0
+	active_morale_decay_mult = 1.0
+	_temporary_effects.clear()
+	_fired_events.clear()
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════

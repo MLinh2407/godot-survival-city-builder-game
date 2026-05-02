@@ -235,6 +235,7 @@ func show_event(event_id: String) -> void:
 	_build_card(_events_by_id[event_id])
 
 func _build_card(event_data: Dictionary) -> void:
+	_pause_game()
 	var setup_text = str(event_data.get("setup_text", ""))
 	_text_label.text = setup_text
 	_set_portrait_for_event(event_data)
@@ -280,7 +281,6 @@ func _build_card(event_data: Dictionary) -> void:
 		# Keep a minimum size so the card doesn't collapse too small
 		var min_bottom = _card_panel.offset_top + 240.0
 		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
-	_pause_game()
 	_set_card_visible(true)
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()
@@ -401,6 +401,7 @@ func _recursive_find(node: Node, target_name: String):
 	return null
 
 func _dismiss_card() -> void:
+	var should_force_unpause := _active_event_id.begins_with("intro_")
 	_set_portrait_for_event({})
 	_set_card_visible(false)
 	_clear_choices()
@@ -408,6 +409,9 @@ func _dismiss_card() -> void:
 	card_dismissed.emit()
 	await get_tree().process_frame
 	_resume_game()
+	if should_force_unpause:
+		get_tree().paused = false
+		TimeManager.set_game_speed(TimeManager.GameSpeed.NORMAL)
 	if _dialogue_root and _dialogue_root.visible:
 		return
 	AudioManager.on_crisis_card_dismissed()
@@ -422,7 +426,7 @@ func _pause_game() -> void:
 	if _dialogue_pause_depth == 0:
 		_was_tree_paused = get_tree().paused
 		_previous_speed = TimeManager.current_speed
-	_dialogue_pause_depth += 1
+		_dialogue_pause_depth = 1
 	get_tree().paused = true
 	TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 

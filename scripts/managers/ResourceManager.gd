@@ -48,16 +48,43 @@ func _ready() -> void:
 	_sync_to_game_manager()
 	resources_changed.emit(net_power, food, morale, materials)
 
+func reset_for_new_game() -> void:
+	power_capacity = 0.0
+	power_draw = 0.0
+	net_power = 0.0
+
+	food = GameConstants.STARTING_FOOD
+	max_food = GameConstants.STARTING_FOOD
+	morale = GameConstants.STARTING_MORALE
+	materials = GameConstants.STARTING_MATERIALS
+	days_starving = 0
+
+	ration_buffer = 0.0
+	ration_buffer_max = 0.0
+	auto_rationing_active = false
+	ration_store_exists = false
+
+	_sync_to_game_manager()
+	resources_changed.emit(net_power, food, morale, materials)
+
 func register_building_system(bs) -> void:
 	building_system = bs
 	print("ResourceManager: BuildingSystem registered.")
+
+func _has_building_system() -> bool:
+	if building_system == null:
+		return false
+	if not is_instance_valid(building_system):
+		building_system = null
+		return false
+	return true
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DAILY TICK
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_day_changed(new_day: int) -> void:
-	if building_system == null:
+	if not _has_building_system():
 		# No buildings yet — still emit so HUD stays updated
 		resources_changed.emit(net_power, food, morale, materials)
 		return
@@ -98,6 +125,12 @@ func _on_day_changed(new_day: int) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _recalculate_power() -> void:
+	if not _has_building_system():
+		power_capacity = 0.0
+		power_draw = 0.0
+		net_power = 0.0
+		return
+
 	power_capacity = 0.0
 	power_draw     = 0.0
 	var all_buildings = building_system.active_buildings
@@ -142,6 +175,9 @@ func _recalculate_power() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _process_food_tick() -> void:
+	if not _has_building_system():
+		return
+
 	var food_production: float = 0.0
 	for grid_pos in building_system.active_buildings:
 		var output = building_system.get_effective_output(grid_pos)
@@ -197,6 +233,9 @@ func _process_food_tick() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _process_morale_tick() -> void:
+	if not _has_building_system():
+		return
+
 	var morale_gain: float = 0.0
 
 	for grid_pos in building_system.active_buildings:
@@ -261,6 +300,9 @@ func _process_morale_tick() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _count_buildings(type: BuildingData.BuildingType) -> int:
+	if not _has_building_system():
+		return 0
+
 	var count: int = 0
 	for grid_pos in building_system.active_buildings:
 		var b: BuildingData = building_system.active_buildings[grid_pos]
@@ -332,7 +374,7 @@ func on_ration_store_built(is_upgraded: bool) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func calculate_power() -> void:
-	if building_system:
+	if _has_building_system():
 		_recalculate_power()
 	resources_changed.emit(net_power, food, morale, materials)
 
@@ -360,7 +402,7 @@ func consume_materials(amount: int) -> bool:
 	return false
 
 func _on_slider_changed(_new_value: float) -> void:
-	if building_system == null:
+	if not _has_building_system():
 		return
 	_recalculate_power()
 	_process_food_tick()

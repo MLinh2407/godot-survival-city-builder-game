@@ -102,6 +102,69 @@ func _ready() -> void:
 	print("Current Day: ", current_day)
 	print("-------------------------------")
 
+func reset_for_new_game() -> void:
+	current_population = GameConstants.STARTING_POPULATION
+	available_workers = GameConstants.STARTING_WORKERS
+	sick_count = 0
+	current_day = 1
+	materials = GameConstants.STARTING_MATERIALS
+
+	yuna_alive = true
+	rook_alive = true
+	vasquez_alive = true
+	meridian_alive = true
+
+	med_clinic_built = false
+	med_clinic_upgraded_to_tier_2 = false
+	rook_militia_stopped = false
+	rook_militia_sanctioned = false
+	rook_reconciliation_taken = false
+	vasquez_trade_accepted = false
+	meridian_trusted = false
+	vasquez_intel_shared = false
+	deserters_lockdown_taken = false
+
+	memorial_wall_built = false
+	memorial_prompt_consumed = false
+	named_death_days.clear()
+
+	_initialize_data_classes()
+	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
+
+	if population_state:
+		population_state.total_population = current_population
+		population_state.available_workers = available_workers
+		population_state.sick_count = 0
+		population_state.max_workers = GameConstants.MAX_WORKERS_LATE_GAME
+		population_state.outbreak_active = false
+		population_state.disease_resistance_active = false
+
+	if colonist_kael:
+		colonist_kael.is_alive = true
+		colonist_kael.death_day = -1
+		colonist_kael.death_cause = ""
+		colonist_kael.memorial_text = ""
+	if colonist_yuna:
+		colonist_yuna.is_alive = true
+		colonist_yuna.death_day = -1
+		colonist_yuna.death_cause = ""
+		colonist_yuna.memorial_text = ""
+	if colonist_rook:
+		colonist_rook.is_alive = true
+		colonist_rook.death_day = -1
+		colonist_rook.death_cause = ""
+		colonist_rook.memorial_text = ""
+	if colonist_vasquez:
+		colonist_vasquez.is_alive = true
+		colonist_vasquez.death_day = -1
+		colonist_vasquez.death_cause = ""
+		colonist_vasquez.memorial_text = ""
+	if colonist_meridian:
+		colonist_meridian.is_alive = true
+		colonist_meridian.death_day = -1
+		colonist_meridian.death_cause = ""
+		colonist_meridian.memorial_text = ""
+
 func _initialize_data_classes() -> void:
 	# 1. Population State
 	population_state = PopulationStateData.new()

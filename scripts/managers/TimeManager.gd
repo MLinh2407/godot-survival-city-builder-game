@@ -17,6 +17,14 @@ var _last_time_str: String = ""
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+func reset_for_new_game() -> void:
+	current_day = 1
+	time_elapsed = 0.0
+	_last_time_str = ""
+	current_speed = GameSpeed.PAUSED
+	day_changed.emit(current_day)
+	time_changed.emit("00:00")
+
 func set_game_speed(speed: GameSpeed) -> void:
 	if current_speed == speed:
 		return

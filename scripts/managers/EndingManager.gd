@@ -39,6 +39,9 @@ func _ready() -> void:
 		TimeManager.storm_hit.connect(_on_storm_hit)
 	print("EndingManager ready — listening for storm_hit signal.")
 
+func reset_for_new_game() -> void:
+	_ending_fired = false
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STORM HIT — Day 35 trigger
 # ══════════════════════════════════════════════════════════════════════════════

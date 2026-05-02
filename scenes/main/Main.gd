@@ -42,6 +42,8 @@ extends Node
 
 @export var use_journal_unread_count: bool = true
 @export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
+@onready var ui_layer: CanvasLayer = $UILayer
+@onready var game_world: Node2D = $GameWorld
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
@@ -53,6 +55,17 @@ const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 
 var _ration_buffer_bar: ProgressBar = null
 var settings_ui: CanvasLayer
+var menu_layer: CanvasLayer
+var intro_layer: CanvasLayer
+var main_menu: Control
+var _has_started_gameplay: bool = false
+var _was_time_frozen_by_menu: bool = false
+var _speed_before_menu: int = TimeManager.GameSpeed.NORMAL
+var _cached_intro_stream: VideoStream
+var _returning_to_menu_from_ending: bool = false
+var _menu_accept_enabled_at_msec: int = 0
+const INTRO_VIDEO_PATH: String = "res://assets/ui/main_menu/intro_video.ogv"
+const MENU_RETURN_INPUT_LOCK_SEC: float = 0.6
 var _journal_prompt_serial: int = 0
 var _last_journal_prompt_msec: int = -10000
 var _journal_badge_tween: Tween
@@ -62,6 +75,8 @@ var _power_bar_tween: Tween
 var _food_bar_tween: Tween
 var _morale_bar_tween: Tween
 var _hope_slider_tween: Tween
+
+var IntroScene := preload("res://scenes/main/Intro.tscn")
 
 const UI_BAR_TWEEN_DURATION: float = 0.6
 const UI_SLIDER_TWEEN_DURATION: float = 0.45
@@ -83,6 +98,8 @@ func _ready() -> void:
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
+	if settings_ui and settings_ui.has_signal("load_file_selected"):
+		settings_ui.load_file_selected.connect(_on_settings_load_file_selected)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -96,9 +113,15 @@ func _ready() -> void:
 	_update_hope_order_visuals()
 	
 	# Connect buttons
-	if btn_pause: btn_pause.pressed.connect(toggle_pause)
-	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
-	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
+	if btn_pause:
+		btn_pause.focus_mode = Control.FOCUS_NONE
+		btn_pause.pressed.connect(toggle_pause)
+	if btn_1x:
+		btn_1x.focus_mode = Control.FOCUS_NONE
+		btn_1x.pressed.connect(_on_button_1x_pressed)
+	if btn_2x:
+		btn_2x.focus_mode = Control.FOCUS_NONE
+		btn_2x.pressed.connect(_on_button_2x_pressed)
 	if btn_settings:
 		btn_settings.focus_mode = Control.FOCUS_NONE
 		if btn_settings.has_signal("gui_input"):
@@ -180,6 +203,292 @@ func _ready() -> void:
 	# TEMP VERIFICATION — remove after confirming
 	# GameManager.hope_order_slider = 90.0
 	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
+
+	if _consume_tree_bool_meta("launch_new_game_flow"):
+		_prepare_new_game_state()
+		call_deferred("_preload_intro_stream")
+		if _consume_tree_bool_meta("play_intro_on_new_game"):
+			_ensure_intro_layer_ready()
+			_play_intro_sequence()
+		else:
+			_begin_gameplay()
+		return
+
+	if _consume_tree_bool_meta("launch_load_game_flow"):
+		_open_load_game_dialog()
+		return
+
+	var launch_load_path := _consume_tree_string_meta("launch_load_game_path")
+	if launch_load_path != "":
+		_begin_gameplay()
+		if GameManager and GameManager.has_method("load_game"):
+			GameManager.load_game(launch_load_path)
+		else:
+			push_warning("Main: GameManager.load_game is unavailable")
+		return
+
+	_show_main_menu_overlay()
+	call_deferred("_preload_intro_stream")
+
+func _on_menu_start_new_game() -> void:
+	if _menu_accept_enabled_at_msec > 0 and Time.get_ticks_msec() < _menu_accept_enabled_at_msec:
+		return
+	_menu_accept_enabled_at_msec = 0
+	if colony_journal and colony_journal.has_method("close_silent"):
+		colony_journal.close_silent()
+	_prepare_new_game_state()
+	_set_gameplay_visible(false)
+	_ensure_intro_layer_ready()
+	_dismiss_main_menu()
+	_play_intro_sequence()
+
+func _on_intro_finished() -> void:
+	if intro_layer and is_instance_valid(intro_layer):
+		intro_layer.queue_free()
+		intro_layer = null
+	_begin_gameplay()
+
+func _on_menu_load_game() -> void:
+	_open_load_game_dialog()
+
+func _on_menu_open_settings() -> void:
+	if settings_ui and settings_ui.has_method("toggle_menu"):
+		settings_ui.layer = 300
+		settings_ui.toggle_menu()
+	else:
+		var s = preload("res://scenes/main/SettingsUI.tscn").instantiate()
+		s.layer = 300
+		add_child(s)
+
+func _on_menu_exit() -> void:
+	get_tree().quit()
+
+func _open_load_game_dialog() -> void:
+	if settings_ui and settings_ui.has_method("load_settings"):
+		settings_ui.layer = 300
+		settings_ui.visible = true
+		get_tree().paused = true
+		settings_ui.load_settings()
+	else:
+		push_warning("Load game requested but SettingsUI.load_settings() is unavailable")
+
+func _on_settings_load_file_selected(_path: String) -> void:
+	_dismiss_main_menu()
+	_begin_gameplay()
+
+func _dismiss_main_menu() -> void:
+	if main_menu and is_instance_valid(main_menu):
+		main_menu.queue_free()
+		main_menu = null
+	if menu_layer and is_instance_valid(menu_layer):
+		menu_layer.queue_free()
+		menu_layer = null
+	if colony_journal:
+		colony_journal.visible = true
+
+func show_main_menu_from_ending() -> void:
+	_dismiss_main_menu()
+	_set_gameplay_visible(false)
+	_clear_launch_meta_flags()
+	_returning_to_menu_from_ending = true
+	_has_started_gameplay = false
+	_menu_accept_enabled_at_msec = Time.get_ticks_msec() + int(MENU_RETURN_INPUT_LOCK_SEC * 1000.0)
+	_show_main_menu_overlay()
+
+func _show_main_menu_overlay() -> void:
+	if not ResourceLoader.exists("res://scenes/UI/MainMenu.tscn"):
+		_begin_gameplay()
+		return
+	var menu_scene := ResourceLoader.load("res://scenes/UI/MainMenu.tscn") as PackedScene
+	if menu_scene == null:
+		push_warning("Main: MainMenu packed scene failed to load")
+		return
+
+	_freeze_time_for_menu()
+
+	menu_layer = CanvasLayer.new()
+	menu_layer.name = "MainMenuLayer"
+	menu_layer.layer = 200
+	add_child(menu_layer)
+
+	main_menu = menu_scene.instantiate()
+	if not main_menu:
+		push_warning("Main: MainMenu scene failed to instantiate")
+		return
+	if _returning_to_menu_from_ending:
+		main_menu.set("initial_input_lock_sec", MENU_RETURN_INPUT_LOCK_SEC)
+	menu_layer.add_child(main_menu)
+	if _returning_to_menu_from_ending:
+		_returning_to_menu_from_ending = false
+
+	if colony_journal:
+		if colony_journal.has_method("close_silent"):
+			colony_journal.close_silent()
+		colony_journal.visible = false
+
+	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
+		AudioManager.set_menu_music_locked(true)
+	if AudioManager and AudioManager.has_method("play_music") and AudioManager.track_4:
+		AudioManager.play_music(AudioManager.track_4)
+
+	main_menu.connect("start_new_game", Callable(self, "_on_menu_start_new_game"))
+	main_menu.connect("load_game", Callable(self, "_on_menu_load_game"))
+	main_menu.connect("open_settings", Callable(self, "_on_menu_open_settings"))
+	main_menu.connect("exit_game", Callable(self, "_on_menu_exit"))
+
+func _play_intro_sequence() -> void:
+	if AudioManager and AudioManager.has_method("silence_music"):
+		AudioManager.silence_music(0.45)
+
+	if intro_layer == null or not is_instance_valid(intro_layer):
+		_on_intro_finished()
+		return
+
+	if intro_layer.has_meta("intro_node"):
+		var intro: Node = intro_layer.get_meta("intro_node")
+		if intro and is_instance_valid(intro):
+			if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+				intro.set_preloaded_stream(_cached_intro_stream)
+			if intro.has_signal("intro_finished") and not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+				intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+			if intro.has_method("start_intro"):
+				intro.start_intro()
+			print("Main: start_new_game signal received, intro shown")
+			return
+
+	_on_intro_finished()
+
+func _ensure_intro_layer_ready() -> void:
+	if intro_layer and is_instance_valid(intro_layer):
+		return
+	if not ResourceLoader.exists("res://scenes/main/Intro.tscn"):
+		return
+
+	intro_layer = CanvasLayer.new()
+	intro_layer.name = "IntroLayer"
+	intro_layer.layer = 190
+	add_child(intro_layer)
+
+	var intro = IntroScene.instantiate()
+	intro_layer.add_child(intro)
+	if intro is Control:
+		intro.modulate.a = 1.0
+	if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+		intro.set_preloaded_stream(_cached_intro_stream)
+	if intro.has_signal("intro_finished"):
+		if not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+			intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+	intro_layer.set_meta("intro_node", intro)
+
+func _fade_out_main_menu(duration: float) -> void:
+	if duration <= 0.0:
+		return
+	if not menu_layer or not is_instance_valid(menu_layer):
+		return
+
+	if main_menu and is_instance_valid(main_menu):
+		main_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var tween := create_tween()
+	if main_menu and is_instance_valid(main_menu):
+		tween.tween_property(main_menu, "modulate:a", 0.0, duration)
+	else:
+		tween.tween_interval(duration)
+	await tween.finished
+
+func _begin_gameplay() -> void:
+	if _has_started_gameplay:
+		return
+	_has_started_gameplay = true
+	_set_gameplay_visible(true)
+	if colony_journal and colony_journal.has_method("close_silent"):
+		colony_journal.close_silent()
+	_unfreeze_time_after_menu()
+	get_tree().paused = false
+	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
+		AudioManager.set_menu_music_locked(false)
+	if AudioManager and AudioManager.has_method("crossfade_to") and AudioManager.track_1:
+		AudioManager.crossfade_to(AudioManager.track_1, 0.6)
+	elif AudioManager and AudioManager.has_method("play_music") and AudioManager.track_1:
+		AudioManager.play_music(AudioManager.track_1)
+	if dialogue_engine:
+		dialogue_engine.call_deferred("show_event", "cold_night")
+
+func _consume_tree_bool_meta(key: StringName) -> bool:
+	if not get_tree().has_meta(key):
+		return false
+	var value: Variant = get_tree().get_meta(key)
+	get_tree().remove_meta(key)
+	return bool(value)
+
+func _consume_tree_string_meta(key: StringName) -> String:
+	if not get_tree().has_meta(key):
+		return ""
+	var value: Variant = get_tree().get_meta(key)
+	get_tree().remove_meta(key)
+	if value == null:
+		return ""
+	return str(value)
+
+func _clear_launch_meta_flags() -> void:
+	if not get_tree():
+		return
+	var keys := [
+		"launch_new_game_flow",
+		"play_intro_on_new_game",
+		"launch_load_game_flow",
+		"launch_load_game_path"
+	]
+	for key in keys:
+		if get_tree().has_meta(key):
+			get_tree().remove_meta(key)
+
+func _preload_intro_stream() -> void:
+	if _cached_intro_stream:
+		return
+	if not ResourceLoader.exists(INTRO_VIDEO_PATH):
+		return
+	_cached_intro_stream = ResourceLoader.load(INTRO_VIDEO_PATH) as VideoStream
+
+func _prepare_new_game_state() -> void:
+	if GameManager and GameManager.has_method("reset_for_new_game"):
+		GameManager.reset_for_new_game()
+	if ResourceManager and ResourceManager.has_method("reset_for_new_game"):
+		ResourceManager.reset_for_new_game()
+	if PopulationManager and PopulationManager.has_method("reset_for_new_game"):
+		PopulationManager.reset_for_new_game()
+	if CrisisEventSystem and CrisisEventSystem.has_method("reset_for_new_game"):
+		CrisisEventSystem.reset_for_new_game()
+	if EndingManager and EndingManager.has_method("reset_for_new_game"):
+		EndingManager.reset_for_new_game()
+	if colony_journal and colony_journal.has_method("reset_for_new_game"):
+		colony_journal.reset_for_new_game()
+	if TimeManager and TimeManager.has_method("reset_for_new_game"):
+		TimeManager.reset_for_new_game()
+
+func _freeze_time_for_menu() -> void:
+	if _was_time_frozen_by_menu:
+		return
+	if TimeManager:
+		_speed_before_menu = TimeManager.current_speed
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+		_was_time_frozen_by_menu = true
+
+func _unfreeze_time_after_menu() -> void:
+	if not _was_time_frozen_by_menu:
+		return
+	if TimeManager:
+		if _speed_before_menu == TimeManager.GameSpeed.PAUSED:
+			_speed_before_menu = TimeManager.GameSpeed.NORMAL
+		TimeManager.set_game_speed(_speed_before_menu)
+	_was_time_frozen_by_menu = false
+
+func _set_gameplay_visible(is_visible: bool) -> void:
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = is_visible
+	if game_world and is_instance_valid(game_world):
+		game_world.visible = is_visible
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
