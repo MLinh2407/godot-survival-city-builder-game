@@ -362,8 +362,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_B:
 				if build_menu:
 					build_menu.toggle()
-			KEY_EQUAL,    KEY_KP_ADD:      _zoom_step(+1)
-			KEY_MINUS,    KEY_KP_SUBTRACT: _zoom_step(-1)
+			KEY_EQUAL, KEY_KP_ADD:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.assign_worker()
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.remove_worker(bs.current_selected_grid_pos)
 
 	# ── Mouse wheel zoom ──────────────────────────────────────────────────────
 	if event is InputEventMouseButton:

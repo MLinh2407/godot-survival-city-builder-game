@@ -17,6 +17,15 @@ var current_building: BuildingData = null
 var last_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_last_selected_grid_pos: bool = false
 
+# Worker assignment UI 
+var _worker_minus_btn:  Button = null
+var _worker_count_lbl:  Label  = null
+var _worker_plus_btn:   Button = null
+# Remove button and dialog
+var _remove_btn:        Button              = null
+var _remove_hint_lbl:   Label               = null
+var _confirm_dialog:    ConfirmationDialog  = null
+
 func _ready() -> void:
 	# Hide the panel by default
 	visible = false
@@ -44,6 +53,9 @@ func _ready() -> void:
 	else:
 		push_error("BuildingInspector: BuildingSystem is not assigned in the Inspector!")
 
+	_setup_worker_ui()
+	_setup_remove_button()
+
 	# Upgrade button handler
 	if upgrade_button:
 		upgrade_button.pressed.connect(_on_upgrade_pressed)
@@ -54,6 +66,170 @@ func _ready() -> void:
 	if shield_button:
 		shield_button.pressed.connect(_on_shield_pressed)
 		shield_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+func _setup_worker_ui() -> void:
+	var vbox = $VBoxContainer
+
+	if worker_label:
+		worker_label.visible = false
+
+	# Worker assignment row
+	var row := HBoxContainer.new()
+	row.name = "WorkerAssignRow"
+	row.add_theme_constant_override("separation", 6)
+	vbox.add_child(row)
+	vbox.move_child(row, worker_label.get_index() + 1)
+
+	var assign_lbl := Label.new()
+	assign_lbl.text = "Workers"
+	assign_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	assign_lbl.add_theme_color_override("font_color", Color(0.72, 0.82, 0.88, 1.0))
+	assign_lbl.add_theme_font_size_override("font_size", 12)
+	assign_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(assign_lbl)
+
+	_worker_minus_btn = _make_worker_btn("−")
+	_worker_minus_btn.pressed.connect(_on_worker_minus_pressed)
+	row.add_child(_worker_minus_btn)
+
+	_worker_count_lbl = Label.new()
+	_worker_count_lbl.custom_minimum_size = Vector2(52, 0)
+	_worker_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_worker_count_lbl.add_theme_color_override("font_color", Color(0.88, 0.93, 0.96, 1.0))
+	_worker_count_lbl.add_theme_font_size_override("font_size", 13)
+	_worker_count_lbl.text = "—"
+	row.add_child(_worker_count_lbl)
+
+	_worker_plus_btn = _make_worker_btn("+")
+	_worker_plus_btn.pressed.connect(_on_worker_plus_pressed)
+	row.add_child(_worker_plus_btn)
+
+func _make_worker_btn(txt: String) -> Button:
+	var btn := Button.new()
+	btn.text = txt
+	btn.custom_minimum_size = Vector2(34, 34)
+	btn.focus_mode = Control.FOCUS_NONE
+	var n := StyleBoxFlat.new()
+	n.bg_color    = Color(0.07, 0.12, 0.18, 1.0)
+	n.border_color = Color(0.0, 0.75, 0.85, 0.55)
+	n.set_border_width_all(1)
+	n.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", n)
+	var h := StyleBoxFlat.new()
+	h.bg_color     = Color(0.10, 0.22, 0.30, 1.0)
+	h.border_color = Color(0.0, 0.96, 1.0, 0.9)
+	h.set_border_width_all(1)
+	h.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("hover", h)
+	btn.add_theme_color_override("font_color", Color(0.0, 0.96, 1.0, 1.0))
+	btn.add_theme_font_size_override("font_size", 17)
+	btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
+	return btn
+
+func _on_worker_plus_pressed() -> void:
+	if not building_system or not current_building: return
+	building_system.assign_worker()
+	_animate_btn(_worker_plus_btn)
+	_refresh_ui_text()
+
+func _on_worker_minus_pressed() -> void:
+	if not building_system or not current_building: return
+	building_system.remove_worker(current_building.grid_position)
+	_animate_btn(_worker_minus_btn)
+	_refresh_ui_text()
+
+func _animate_btn(btn: Button) -> void:
+	if not btn: return
+	var t := btn.create_tween()
+	t.tween_property(btn, "scale", Vector2(1.30, 1.30), 0.07) \
+	 .set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12) \
+	 .set_trans(Tween.TRANS_SINE)
+
+func _setup_remove_button() -> void:
+	var vbox = $VBoxContainer
+
+	# Spacer
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 6)
+	vbox.add_child(spacer)
+
+	# Instruction label
+	_remove_hint_lbl = Label.new()
+	_remove_hint_lbl.text = "⟵ Hold Right-Click on building to remove"
+	_remove_hint_lbl.add_theme_color_override("font_color", Color(0.42, 0.42, 0.48, 0.65))
+	_remove_hint_lbl.add_theme_font_size_override("font_size", 9)
+	_remove_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_remove_hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_remove_hint_lbl.visible = false
+	vbox.add_child(_remove_hint_lbl)
+
+	# Remove button
+	_remove_btn = Button.new()
+	_remove_btn.text = "⚠  Remove Building"
+	_remove_btn.focus_mode = Control.FOCUS_NONE
+	_remove_btn.custom_minimum_size = Vector2(0, 36)
+	_remove_btn.visible = false
+	var dn := StyleBoxFlat.new()
+	dn.bg_color    = Color(0.18, 0.04, 0.04, 0.90)
+	dn.border_color = Color(0.75, 0.12, 0.12, 0.70)
+	dn.set_border_width_all(1)
+	dn.set_corner_radius_all(3)
+	_remove_btn.add_theme_stylebox_override("normal", dn)
+	var dh := StyleBoxFlat.new()
+	dh.bg_color    = Color(0.30, 0.05, 0.05, 0.90)
+	dh.border_color = Color(0.92, 0.18, 0.18, 1.0)
+	dh.set_border_width_all(1)
+	dh.set_corner_radius_all(3)
+	_remove_btn.add_theme_stylebox_override("hover", dh)
+	_remove_btn.add_theme_color_override("font_color", Color(1.0, 0.55, 0.55, 1.0))
+	_remove_btn.add_theme_font_size_override("font_size", 12)
+	_remove_btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
+	_remove_btn.pressed.connect(_on_remove_pressed)
+	vbox.add_child(_remove_btn)
+
+	# Confirmation dialog
+	_confirm_dialog = ConfirmationDialog.new()
+	_confirm_dialog.title = "Remove Building"
+	_confirm_dialog.ok_button_text     = "Yes, Remove It"
+	_confirm_dialog.cancel_button_text = "Cancel"
+	_confirm_dialog.confirmed.connect(_on_removal_confirmed)
+	add_child(_confirm_dialog)
+
+func _on_remove_pressed() -> void:
+	if not current_building: return
+	_confirm_dialog.dialog_text = (
+		"Remove %s?\n\n" % current_building.building_name +
+		"• Assigned workers will be returned to the pool\n" +
+		"• Materials spent are NOT refunded\n" +
+		"• This action cannot be undone\n\n" +
+		"Are you sure you want to remove this building?"
+	)
+	_confirm_dialog.popup_centered()
+
+func _on_removal_confirmed() -> void:
+	if not current_building: return
+	var gm = building_system.grid_manager if building_system else null
+	if not gm or not gm.has_method("arm_demolish"):
+		push_warning("BuildingInspector: Cannot find arm_demolish on GridManager")
+		return
+
+	var pos := current_building.grid_position
+	gm.arm_demolish(pos)
+
+	# Change the remove button to show the instruction
+	if _remove_btn:
+		_remove_btn.text     = "Hold right-click on building to confirm"
+		_remove_btn.disabled = true
+
+	# Reset button after 12 seconds if the player doesn't follow through
+	var t := create_tween()
+	t.tween_interval(12.0)
+	t.tween_callback(func():
+		if _remove_btn:
+			_remove_btn.text     = "⚠  Remove Building"
+			_remove_btn.disabled = false
+	)
 
 func _find_building_system() -> Node:
 	var root = get_tree().get_root()
@@ -170,6 +346,30 @@ func _refresh_ui_text() -> void:
 			shield_button.disabled = true
 		else:
 			shield_button.visible = false
+
+	# ── Worker assignment buttons ──────────────────────────────────────────────
+	if _worker_count_lbl and current_building:
+		if current_building.worker_capacity > 0:
+			_worker_count_lbl.text = "%d / %d" % [
+				current_building.workers_assigned,
+				current_building.worker_capacity
+			]
+			if _worker_plus_btn:
+				_worker_plus_btn.disabled = (
+					current_building.workers_assigned >= current_building.worker_capacity
+					or GameManager.available_workers <= 0
+				)
+			if _worker_minus_btn:
+				_worker_minus_btn.disabled = (current_building.workers_assigned <= 0)
+		else:
+			_worker_count_lbl.text = "Passive"
+			if _worker_plus_btn:  _worker_plus_btn.disabled  = true
+			if _worker_minus_btn: _worker_minus_btn.disabled = true
+
+	# ── Remove button visibility ───────────────────────────────────────────────
+	var show_remove := current_building != null
+	if _remove_btn:       _remove_btn.visible      = show_remove
+	if _remove_hint_lbl:  _remove_hint_lbl.visible = show_remove
 
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears

@@ -3,332 +3,389 @@ extends CanvasLayer
 signal build_menu_opened
 signal build_menu_closed
 
-# ─────────────────────────────────────────────────────────────────────────────
-# COLOURS 
-# ─────────────────────────────────────────────────────────────────────────────
-const COL_BG:         Color = Color(0.04, 0.04, 0.10, 0.97)
-const COL_BORDER:     Color = Color(0.0,  0.96, 1.0,  0.65)
-const COL_HEADER:     Color = Color(0.0,  0.96, 1.0,  1.0)
-const COL_TIER_LABEL: Color = Color(0.35, 0.72, 0.78, 0.85)
-const COL_BTN_NORMAL: Color = Color(0.06, 0.08, 0.14, 1.0)
-const COL_BTN_HOVER:  Color = Color(0.08, 0.18, 0.24, 1.0)
-const COL_BTN_ACTIVE: Color = Color(0.02, 0.34, 0.40, 1.0)
-const COL_BTN_GREY:   Color = Color(0.06, 0.06, 0.09, 0.55)
-const COL_NAME:       Color = Color(0.88, 0.93, 0.96, 1.0)
-const COL_COST:       Color = Color(0.50, 0.82, 1.0,  0.9)
-const COL_FREE:       Color = Color(0.42, 0.68, 0.48, 0.85)
-const COL_WORKERS:    Color = Color(0.60, 0.82, 0.65, 0.85)
-const COL_PASSIVE:    Color = Color(0.46, 0.58, 0.62, 0.75)
-const COL_SEPARATOR:  Color = Color(0.0,  0.96, 1.0,  0.18)
+# ── Palette ───────────────────────────────────────────────────────────────────
+const C_BG      := Color(0.03, 0.04, 0.10, 0.97)
+const C_BORDER  := Color(0.00, 0.96, 1.00, 0.65)
+const C_HEADER  := Color(0.00, 0.96, 1.00, 1.00)
+const C_TIER    := Color(0.28, 0.60, 0.68, 1.00)
+const C_CARD_N  := Color(0.07, 0.09, 0.17, 1.00)
+const C_CARD_H  := Color(0.10, 0.20, 0.28, 1.00)
+const C_CARD_A  := Color(0.02, 0.26, 0.38, 1.00)
+const C_CARD_L  := Color(0.04, 0.04, 0.08, 0.50)
+const C_NAME    := Color(0.88, 0.93, 0.96, 1.00)
+const C_COST    := Color(0.45, 0.78, 1.00, 0.90)
+const C_FREE    := Color(0.40, 0.68, 0.45, 1.00)
+const C_WRK     := Color(0.55, 0.78, 0.62, 0.85)
+const C_PSV     := Color(0.40, 0.50, 0.55, 0.75)
+const C_HINT    := Color(0.40, 0.52, 0.65, 0.80)
+const C_WARN    := Color(1.00, 0.72, 0.28, 1.00)
+const C_SEP     := Color(0.00, 0.96, 1.00, 0.18)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BUILDING DEFINITIONS
-# ─────────────────────────────────────────────────────────────────────────────
-var _building_defs: Array = []
+# ── Sizing ────────────────────────────────────────────────────────────────────
+const BAR_FRAC : float = 0.36   # fraction of viewport height the bar occupies
+const CARD_W   : float = 88.0
+const CARD_H   : float = 98.0
+const IMG_H    : float = 50.0
+const TIER_W   : float = 46.0
+const HEAD_H   : float = 26.0
 
-func _init_building_defs() -> void:
-	_building_defs = [
-		# ── Build These First ──────────────────────────────────────────────
-		["Coal Generator",   "coal",       6,  GameConstants.BUILD_COST_COAL_GENERATOR,  "first",      false],
-		["Water Recycler",   "water",      12, GameConstants.BUILD_COST_WATER_RECYCLER,  "first",      false],
-		["Hydroponic Bay",   "hydro",      10, GameConstants.BUILD_COST_HYDROPONIC_BAY,  "first",      false],
-		["Shelter Block",    "shelter",    0,  GameConstants.BUILD_COST_SHELTER_BLOCK,   "first",      false],
-		# ── Build When Stable ──────────────────────────────────────────────
-		["Med Clinic",       "med",        14, GameConstants.BUILD_COST_MED_CLINIC,      "stable",     false],
-		["Ration Store",     "ration",     0,  GameConstants.BUILD_COST_RATION_STORE,    "stable",     false],
-		["Relay Hub",        "relay",      8,  GameConstants.BUILD_COST_RELAY_HUB,       "stable",     false],
-		["Geothermal Tap",   "geothermal", 0,  GameConstants.BUILD_COST_GEOTHERMAL_TAP,  "stable",     false],
-		# ── Build When Ready ───────────────────────────────────────────────
-		["Archive Hall",     "archive",    12, GameConstants.BUILD_COST_ARCHIVE_HALL,    "ready",      false],
-		["Memorial Wall",    "memorial",   0,  GameConstants.BUILD_COST_MEMORIAL_WALL,   "ready",      false],
-		# ── Decoration ─────────────────────────────────────────────────────
-		["Neon Inlay (H)",   "neon_h",     0,  0,                                         "decoration", true],
-		["Neon Inlay (D)",   "neon_d",     0,  0,                                         "decoration", true],
-		["Cable Run (H)",    "cable_h",    0,  0,                                         "decoration", true],
-		["Cable Run (D)",    "cable_d",    0,  0,                                         "decoration", true],
-	]
-
-const TIER_HEADERS: Dictionary = {
-	"first":      "▸  BUILD THESE FIRST",
-	"stable":     "▸  BUILD WHEN STABLE",
-	"ready":      "▸  BUILD WHEN READY",
-	"decoration": "▸  DECORATION",
+# ── Sprite paths (T1 images shown in menu) ───────────────────────────────────
+const SPRITE_PATHS : Dictionary = {
+	"coal"      : "res://assets/buildings/T1_Buildings/Coal_Generator_T1.png",
+	"water"     : "res://assets/buildings/T1_Buildings/Water_Recycler_T1.png",
+	"hydro"     : "res://assets/buildings/T1_Buildings/Hydroponic_Bay_T1.png",
+	"shelter"   : "res://assets/buildings/T1_Buildings/Shelter_Block_T1.png",
+	"med"       : "res://assets/buildings/T1_Buildings/Med_Clinic_T1.png",
+	"ration"    : "res://assets/buildings/T1_Buildings/Ration_Store_T1.png",
+	"relay"     : "res://assets/buildings/T1_Buildings/Relay_Hub_T1.png",
+	"geothermal": "res://assets/buildings/T1_Buildings/Geothermal_Tap_T1.png",
+	"archive"   : "res://assets/buildings/T1_Buildings/Archive_Hall_T1.png",
+	"memorial"  : "res://assets/buildings/T1_Buildings/Memorial_Wall.png",
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STATE
-# ─────────────────────────────────────────────────────────────────────────────
-var is_open: bool = false
-var _active_type: String = ""
-var _buttons: Dictionary = {}          # b_type → Button
-var _root_panel: Panel = null
-var _grid_manager: Node = null
+const TIER_LABEL : Dictionary = {
+	"first"      : "BUILD\nFIRST",
+	"stable"     : "BUILD\nSTABLE",
+	"ready"      : "BUILD\nREADY",
+	"decoration" : "DECO\nRATION",
+}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INIT
-# ─────────────────────────────────────────────────────────────────────────────
+# ── State ─────────────────────────────────────────────────────────────────────
+var _defs         : Array  = []
+var is_open       : bool   = false
+var _active_type  : String = ""
+var _cards        : Dictionary = {}   # b_type → Control (the card panel)
+var _root         : Control          = null
+var _scroll       : ScrollContainer  = null
+var _hint_lbl     : Label            = null
+var _grid_manager : Node             = null
+
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer        = 90    
-
-	_init_building_defs()
+	layer = 90
+	_init_defs()
 	_build_ui()
 	visible = false
+	call_deferred("_connect_gm")
 
-	call_deferred("_connect_grid_manager")
+func _init_defs() -> void:
+	_defs = [
+		["Coal Generator", "coal",       6,  GameConstants.BUILD_COST_COAL_GENERATOR,  "first",      false],
+		["Water Recycler", "water",      12, GameConstants.BUILD_COST_WATER_RECYCLER,  "first",      false],
+		["Hydroponic Bay", "hydro",      10, GameConstants.BUILD_COST_HYDROPONIC_BAY,  "first",      false],
+		["Shelter Block",  "shelter",    0,  GameConstants.BUILD_COST_SHELTER_BLOCK,   "first",      false],
+		["Med Clinic",     "med",        14, GameConstants.BUILD_COST_MED_CLINIC,      "stable",     false],
+		["Ration Store",   "ration",     0,  GameConstants.BUILD_COST_RATION_STORE,    "stable",     false],
+		["Relay Hub",      "relay",      8,  GameConstants.BUILD_COST_RELAY_HUB,       "stable",     false],
+		["Geothermal Tap", "geothermal", 0,  GameConstants.BUILD_COST_GEOTHERMAL_TAP,  "stable",     false],
+		["Archive Hall",   "archive",    12, GameConstants.BUILD_COST_ARCHIVE_HALL,    "ready",      false],
+		["Memorial Wall",  "memorial",   0,  GameConstants.BUILD_COST_MEMORIAL_WALL,   "ready",      false],
+		["Neon Inlay H",   "neon_h",     0,  0,                                        "decoration", true],
+		["Neon Inlay D",   "neon_d",     0,  0,                                        "decoration", true],
+		["Cable Run H",    "cable_h",    0,  0,                                        "decoration", true],
+		["Cable Run D",    "cable_d",    0,  0,                                        "decoration", true],
+	]
 
-func _connect_grid_manager() -> void:
+func _connect_gm() -> void:
 	_grid_manager = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
 	if not _grid_manager:
-		push_warning("BuildMenu: GridManager not found at Main/GameWorld/GridSystem.")
+		push_warning("BuildMenu: GridManager not found at Main/GameWorld/GridSystem")
 		return
 	if _grid_manager.has_signal("building_placed"):
 		_grid_manager.building_placed.connect(
-			func(_type: String, _pos: Vector2i): _on_building_placed_externally()
-		)
-	print("BuildMenu: Connected to GridManager.")
+			func(_t: String, _p: Vector2i): _on_placed_externally())
 
-# ─────────────────────────────────────────────────────────────────────────────
-# UI CONSTRUCTION  
-# ─────────────────────────────────────────────────────────────────────────────
+# ── UI construction ───────────────────────────────────────────────────────────
 func _build_ui() -> void:
-	# ── Root panel — anchored to the right edge of the screen ────────────────
-	_root_panel = Panel.new()
-	_root_panel.name = "BuildMenuPanel"
+	_root = Control.new()
+	_root.name = "BuildMenuRoot"
+	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = COL_BG
-	bg.border_color = COL_BORDER
-	bg.set_border_width_all(1)
-	bg.set_corner_radius_all(4)
-	bg.content_margin_left   = 10.0
-	bg.content_margin_right  = 10.0
-	bg.content_margin_top    = 8.0
-	bg.content_margin_bottom = 8.0
-	_root_panel.add_theme_stylebox_override("panel", bg)
+	_root.anchor_left   = 0.0
+	_root.anchor_right  = 1.0
+	_root.anchor_top    = 1.0 - BAR_FRAC
+	_root.anchor_bottom = 1.0
+	_root.offset_left   = 0.0
+	_root.offset_right  = 0.0
+	_root.offset_top    = 0.0
+	_root.offset_bottom = 0.0
+	add_child(_root)
 
-	# Position: right side, below the HUD strip (offset_top = 70)
-	_root_panel.set_anchor_and_offset(SIDE_LEFT,   1.0, -252.0)
-	_root_panel.set_anchor_and_offset(SIDE_RIGHT,  1.0,   -8.0)
-	_root_panel.set_anchor_and_offset(SIDE_TOP,    0.0,   70.0)
-	_root_panel.set_anchor_and_offset(SIDE_BOTTOM, 1.0,   -8.0)
-	add_child(_root_panel)
+	# Dark background
+	var bg := ColorRect.new()
+	bg.color         = C_BG
+	bg.anchor_right  = 1.0
+	bg.anchor_bottom = 1.0
+	bg.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(bg)
 
-	# ── Outer VBox ────────────────────────────────────────────────────────────
-	var outer := VBoxContainer.new()
-	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT,
-		Control.PRESET_MODE_MINSIZE, 0)
-	outer.add_theme_constant_override("separation", 4)
-	_root_panel.add_child(outer)
+	# Cyan top border line
+	var top_line := ColorRect.new()
+	top_line.color        = C_BORDER
+	top_line.anchor_right = 1.0
+	top_line.offset_bottom = 1.0
+	top_line.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(top_line)
+
+	# Outer VBoxContainer 
+	var vbox := VBoxContainer.new()
+	vbox.anchor_right   = 1.0
+	vbox.anchor_bottom  = 1.0
+	vbox.offset_left    = 8.0
+	vbox.offset_right   = -8.0
+	vbox.offset_top     = 5.0
+	vbox.offset_bottom  = -4.0
+	vbox.add_theme_constant_override("separation", 4)
+	vbox.mouse_filter   = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(vbox)
 
 	# ── Header row ────────────────────────────────────────────────────────────
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
-	outer.add_child(header)
+	header.custom_minimum_size = Vector2(0.0, HEAD_H)
+	header.add_theme_constant_override("separation", 10)
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(header)
 
 	var title := Label.new()
-	title.text = "CONSTRUCT"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_color_override("font_color", COL_HEADER)
-	title.add_theme_font_size_override("font_size", 15)
+	title.text = "⚙  CONSTRUCT"
+	title.add_theme_color_override("font_color", C_HEADER)
+	title.add_theme_font_size_override("font_size", 13)
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 	header.add_child(title)
 
-	var hint := Label.new()
-	hint.text = "[B]"
-	hint.add_theme_color_override("font_color", Color(0.4, 0.55, 0.6, 0.7))
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_child(hint)
+	_hint_lbl = Label.new()
+	_hint_lbl.text = "Select a building to place"
+	_hint_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint_lbl.add_theme_color_override("font_color", C_HINT)
+	_hint_lbl.add_theme_font_size_override("font_size", 10)
+	_hint_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_hint_lbl.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+	header.add_child(_hint_lbl)
+
+	var key_hint := Label.new()
+	key_hint.text = "[B] Toggle   [Q] Cancel"
+	key_hint.add_theme_color_override("font_color", C_HINT)
+	key_hint.add_theme_font_size_override("font_size", 10)
+	key_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	key_hint.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+	header.add_child(key_hint)
 
 	var close_btn := Button.new()
-	close_btn.text        = "✕"
-	close_btn.flat        = true
-	close_btn.focus_mode  = Control.FOCUS_NONE
-	close_btn.custom_minimum_size = Vector2(26, 26)
-	close_btn.add_theme_color_override("font_color", COL_HEADER)
+	close_btn.text               = "✕"
+	close_btn.flat               = true
+	close_btn.focus_mode         = Control.FOCUS_NONE
+	close_btn.custom_minimum_size = Vector2(24.0, 24.0)
+	close_btn.add_theme_color_override("font_color", C_HEADER)
 	close_btn.pressed.connect(close)
 	close_btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
 	header.add_child(close_btn)
 
-	# ── Top separator ─────────────────────────────────────────────────────────
+	# ── Thin separator ────────────────────────────────────────────────────────
 	var sep := HSeparator.new()
-	sep.add_theme_color_override("color", COL_SEPARATOR)
-	outer.add_child(sep)
+	sep.add_theme_color_override("color", C_SEP)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(sep)
 
-	# ── Scroll container for building buttons ─────────────────────────────────
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical                = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode            = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode              = ScrollContainer.SCROLL_MODE_AUTO
-	outer.add_child(scroll)
+	# ── Horizontal scroll area ────────────────────────────────────────────────
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_horizontal  = Control.SIZE_EXPAND_FILL
+	_scroll.size_flags_vertical    = Control.SIZE_EXPAND_FILL
+	_scroll.mouse_filter           = Control.MOUSE_FILTER_PASS
+	vbox.add_child(_scroll)
 
-	var content := VBoxContainer.new()
-	content.name = "ContentBox"
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 2)
-	scroll.add_child(content)
+	# ── Card row ──────────────────────────────────────────────────────────────
+	var row := HBoxContainer.new()
+	row.name = "CardRow"
+	row.add_theme_constant_override("separation", 3)
+	row.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter           = Control.MOUSE_FILTER_IGNORE
+	_scroll.add_child(row)
 
-	# ── Build sections tier order ──────────────────────────────────────
-	_build_tier_section(content, "first")
-	_build_tier_section(content, "stable")
-	_build_tier_section(content, "ready")
-	_build_tier_section(content, "decoration")
+	# Add tier headers + cards in order
+	var last_tier := ""
+	for def in _defs:
+		if def[4] != last_tier:
+			last_tier = def[4]
+			_add_tier_label(row, def[4])
+		_add_card(row, def[0], def[1], def[2], def[3], def[5])
 
-func _build_tier_section(parent: VBoxContainer, tier: String) -> void:
-	# Spacer before each tier (except the first)
-	if tier != "first":
-		var spacer := Control.new()
-		spacer.custom_minimum_size = Vector2(0, 5)
-		parent.add_child(spacer)
+	_refresh_memorial()
 
-	# Tier label
-	var tier_lbl := Label.new()
-	tier_lbl.text = TIER_HEADERS.get(tier, tier.to_upper())
-	tier_lbl.add_theme_color_override("font_color", COL_TIER_LABEL)
-	tier_lbl.add_theme_font_size_override("font_size", 10)
-	parent.add_child(tier_lbl)
-
-	var sep := HSeparator.new()
-	sep.add_theme_color_override("color", COL_SEPARATOR)
-	parent.add_child(sep)
-
-	# Building buttons for this tier
-	for def in _building_defs:
-		if def[4] != tier:
-			continue
-		var btn := _create_building_button(def[0], def[1], def[2], def[3], def[4], def[5])
-		parent.add_child(btn)
-		_buttons[def[1]] = btn
-
-func _create_building_button(
-		display_name:  String,
-		b_type:        String,
-		worker_slots:  int,
-		cost:          int,
-		_tier:         String,
-		is_decoration: bool) -> Button:
-
-	var btn := Button.new()
-	btn.flat                  = true
-	btn.focus_mode            = Control.FOCUS_NONE
-	btn.mouse_filter          = Control.MOUSE_FILTER_STOP
-	btn.custom_minimum_size   = Vector2(0, 44)
-
-	# Styles
-	btn.add_theme_stylebox_override("normal",  _make_btn_style(COL_BTN_NORMAL, 0))
-	btn.add_theme_stylebox_override("hover",   _make_btn_style(COL_BTN_HOVER,  1))
-	btn.add_theme_stylebox_override("pressed", _make_btn_style(COL_BTN_ACTIVE, 1))
-
-	# Content row (name left, stats right)
-	var hbox := HBoxContainer.new()
-	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT,
-		Control.PRESET_MODE_MINSIZE, 6)
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(hbox)
-
-	var name_lbl := Label.new()
-	name_lbl.text                    = display_name
-	name_lbl.size_flags_horizontal   = Control.SIZE_EXPAND_FILL
-	name_lbl.add_theme_color_override("font_color", COL_NAME)
-	name_lbl.add_theme_font_size_override("font_size", 12)
-	name_lbl.mouse_filter            = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(name_lbl)
-
-	var stats := VBoxContainer.new()
-	stats.add_theme_constant_override("separation", 1)
-	stats.alignment    = BoxContainer.ALIGNMENT_CENTER
-	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(stats)
-
-	# Cost label
-	var cost_lbl := Label.new()
-	if cost == 0:
-		cost_lbl.text = "Free"
-		cost_lbl.add_theme_color_override("font_color", COL_FREE)
-	else:
-		cost_lbl.text = "%d mat" % cost
-		cost_lbl.add_theme_color_override("font_color", COL_COST)
-	cost_lbl.add_theme_font_size_override("font_size", 10)
-	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	cost_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-	stats.add_child(cost_lbl)
-
-	# Worker slot label (not shown for decoration tiles)
-	if not is_decoration:
-		var wk_lbl := Label.new()
-		if worker_slots > 0:
-			wk_lbl.text = "%d slots" % worker_slots
-			wk_lbl.add_theme_color_override("font_color", COL_WORKERS)
-		else:
-			wk_lbl.text = "passive"
-			wk_lbl.add_theme_color_override("font_color", COL_PASSIVE)
-		wk_lbl.add_theme_font_size_override("font_size", 10)
-		wk_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		wk_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-		stats.add_child(wk_lbl)
-
-	# Signals
-	btn.pressed.connect(
-		Callable(self, "_on_building_button_pressed").bind(b_type, is_decoration)
-	)
-	btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
-
-	# Initial greyed state for Memorial Wall
-	if b_type == "memorial":
-		_apply_greyed_style(btn)
-
-	return btn
-
-func _make_btn_style(bg_color: Color, border_width: int) -> StyleBoxFlat:
+# ── Tier separator label ──────────────────────────────────────────────────────
+func _add_tier_label(parent: HBoxContainer, tier: String) -> void:
+	var p := Panel.new()
+	p.custom_minimum_size = Vector2(TIER_W, CARD_H)
+	p.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 	var s := StyleBoxFlat.new()
-	s.bg_color = bg_color
-	s.set_corner_radius_all(3)
-	s.set_border_width_all(border_width)
-	if border_width > 0:
-		s.border_color = Color(0.0, 0.65, 0.76, 0.55)
+	s.bg_color     = Color(C_TIER.r, C_TIER.g, C_TIER.b, 0.07)
+	s.border_color = Color(C_TIER.r, C_TIER.g, C_TIER.b, 0.25)
+	s.border_width_right = 1
+	p.add_theme_stylebox_override("panel", s)
+	parent.add_child(p)
+
+	var lbl := Label.new()
+	lbl.text = TIER_LABEL.get(tier, tier.to_upper())
+	lbl.add_theme_color_override("font_color", C_TIER)
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD
+	lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+	lbl.anchor_right         = 1.0
+	lbl.anchor_bottom        = 1.0
+	lbl.offset_left          = 2.0
+	lbl.offset_right         = -2.0
+	p.add_child(lbl)
+
+# ── Individual building card ──────────────────────────────────────────────────
+func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
+		slots: int, cost: int, is_deco: bool) -> void:
+
+	var card := Panel.new()
+	card.name                 = "Card_%s" % b_type
+	card.custom_minimum_size  = Vector2(CARD_W, CARD_H)
+	card.mouse_filter         = Control.MOUSE_FILTER_STOP
+	card.add_theme_stylebox_override("panel", _card_style(C_CARD_N, Color.TRANSPARENT, 0))
+	_cards[b_type] = card
+	parent.add_child(card)
+
+	var vb := VBoxContainer.new()
+	vb.anchor_right  = 1.0
+	vb.anchor_bottom = 1.0
+	vb.offset_left   = 3.0
+	vb.offset_right  = -3.0
+	vb.offset_top    = 3.0
+	vb.offset_bottom = -3.0
+	vb.add_theme_constant_override("separation", 2)
+	vb.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	card.add_child(vb)
+
+	# Image
+	var img_holder := Control.new()
+	img_holder.custom_minimum_size   = Vector2(0.0, IMG_H)
+	img_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	img_holder.mouse_filter          = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(img_holder)
+
+	var sprite_path : String = SPRITE_PATHS.get(b_type, "")
+	if sprite_path != "" and ResourceLoader.exists(sprite_path):
+		var tex := load(sprite_path) as Texture2D
+		if tex:
+			var tr := TextureRect.new()
+			tr.texture      = tex
+			tr.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.anchor_right = 1.0
+			tr.anchor_bottom = 1.0
+			tr.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+			img_holder.add_child(tr)
+	else:
+		var icon := Label.new()
+		icon.text = "◇" if is_deco else "□"
+		icon.add_theme_color_override("font_color", Color(0.0, 0.75, 0.85, 0.55))
+		icon.add_theme_font_size_override("font_size", 24)
+		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		icon.anchor_right  = 1.0
+		icon.anchor_bottom = 1.0
+		icon.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		img_holder.add_child(icon)
+
+	# Name
+	var name_lbl := Label.new()
+	name_lbl.text               = display_name
+	name_lbl.add_theme_color_override("font_color", C_NAME)
+	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode       = TextServer.AUTOWRAP_WORD
+	name_lbl.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(name_lbl)
+
+	# Cost
+	var cost_lbl := Label.new()
+	cost_lbl.text = "Free" if cost == 0 else ("%d mat" % cost)
+	cost_lbl.add_theme_color_override("font_color", C_FREE if cost == 0 else C_COST)
+	cost_lbl.add_theme_font_size_override("font_size", 9)
+	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(cost_lbl)
+
+	# Workers / Passive
+	if not is_deco:
+		var wk := Label.new()
+		wk.text = ("%d slots" % slots) if slots > 0 else "passive"
+		wk.add_theme_color_override("font_color", C_WRK if slots > 0 else C_PSV)
+		wk.add_theme_font_size_override("font_size", 9)
+		wk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		wk.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(wk)
+
+	# Input
+	card.gui_input.connect(func(ev: InputEvent): _on_card_input(ev, b_type, is_deco))
+	card.mouse_entered.connect(func(): _on_card_hover(b_type, true))
+	card.mouse_exited.connect(func():  _on_card_hover(b_type, false))
+
+func _card_style(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.set_corner_radius_all(4)
+	s.set_border_width_all(bw)
+	s.border_color = border
 	return s
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BUTTON INTERACTION
-# ─────────────────────────────────────────────────────────────────────────────
-func _on_building_button_pressed(b_type: String, is_decoration: bool) -> void:
-	if not _grid_manager:
-		push_warning("BuildMenu: GridManager not available.")
+# ── Input handling ────────────────────────────────────────────────────────────
+func _on_card_input(ev: InputEvent, b_type: String, is_deco: bool) -> void:
+	if not (ev is InputEventMouseButton and ev.pressed
+			and ev.button_index == MOUSE_BUTTON_LEFT):
 		return
-
-	# Memorial Wall is locked until at least one named character has died
-	if b_type == "memorial" and not _is_memorial_available():
-		_flash_unavailable(b_type)
+	if b_type == "memorial" and not _memorial_available():
+		_flash_locked(b_type)
 		return
-
 	AudioManager.play_ui_sfx("click")
-
-	# Clicking the already-active type cancels it
 	if _active_type == b_type:
 		_deactivate()
 		return
-
 	_deactivate()
 	_active_type = b_type
-	_apply_active_style(b_type)
-
-	if is_decoration:
+	_apply_active(b_type)
+	_set_hint(b_type, is_deco)
+	if not _grid_manager:
+		return
+	if is_deco:
 		_grid_manager.enter_decoration_mode(b_type)
 	else:
 		_grid_manager.enter_build_mode(b_type)
 
-func _on_building_placed_externally() -> void:
-	# Called after the player successfully places a building from the grid.
-	# Reset the active button so the menu reflects the idle state.
-	if _active_type != "":
-		_restore_normal_style(_active_type)
-		_active_type = ""
+func _on_card_hover(b_type: String, entering: bool) -> void:
+	if b_type == _active_type:
+		return
+	if entering:
+		if _cards.has(b_type):
+			_cards[b_type].add_theme_stylebox_override(
+				"panel", _card_style(C_CARD_H, C_BORDER, 1))
+		AudioManager.play_ui_sfx("hover")
+	else:
+		_restore_card(b_type)
+
+func _on_placed_externally() -> void:
+	if _active_type == "":
+		return
+	_restore_card(_active_type)
+	_active_type = ""
+	if _hint_lbl:
+		_hint_lbl.text = "Select a building to place"
 
 func _deactivate() -> void:
 	if _active_type == "":
 		return
-	_restore_normal_style(_active_type)
-	# Exit whichever mode is active in GridManager
+	_restore_card(_active_type)
+	if _hint_lbl:
+		_hint_lbl.text = "Select a building to place"
 	if _grid_manager:
 		if _grid_manager.current_build_scene != null:
 			_grid_manager.exit_build_mode()
@@ -336,94 +393,100 @@ func _deactivate() -> void:
 			_grid_manager.exit_decoration_mode()
 	_active_type = ""
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STYLE HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
-func _apply_active_style(b_type: String) -> void:
-	if not _buttons.has(b_type):
+func _set_hint(_b_type: String, is_deco: bool) -> void:
+	if not _hint_lbl:
 		return
-	var s := StyleBoxFlat.new()
-	s.bg_color = COL_BTN_ACTIVE
-	s.set_corner_radius_all(3)
-	s.border_color = COL_BORDER
-	s.set_border_width_all(1)
-	_buttons[b_type].add_theme_stylebox_override("normal", s)
+	if is_deco:
+		_hint_lbl.text = "Left-click: place tile   Right-click: erase   [Q]: cancel"
+		_hint_lbl.add_theme_color_override("font_color", C_HINT)
+	else:
+		_hint_lbl.text = "Left-click: place   Right-click / [Q]: cancel building mode"
+		_hint_lbl.add_theme_color_override("font_color", C_WARN)
 
-func _restore_normal_style(b_type: String) -> void:
-	if not _buttons.has(b_type):
-		return
-	if b_type == "memorial" and not _is_memorial_available():
-		_apply_greyed_style(_buttons[b_type])
-		return
-	_buttons[b_type].add_theme_stylebox_override("normal",
-		_make_btn_style(COL_BTN_NORMAL, 0))
+# ── Style helpers ─────────────────────────────────────────────────────────────
+func _apply_active(b_type: String) -> void:
+	if not _cards.has(b_type): return
+	_cards[b_type].add_theme_stylebox_override(
+		"panel", _card_style(C_CARD_A, C_BORDER, 1))
 
-func _apply_greyed_style(btn: Button) -> void:
-	var s := StyleBoxFlat.new()
-	s.bg_color = COL_BTN_GREY
-	s.set_corner_radius_all(3)
-	s.set_border_width_all(0)
-	btn.add_theme_stylebox_override("normal", s)
-	btn.modulate = Color(0.55, 0.55, 0.58, 0.65)
+func _restore_card(b_type: String) -> void:
+	if not _cards.has(b_type): return
+	if b_type == "memorial" and not _memorial_available():
+		_cards[b_type].modulate = Color(0.48, 0.48, 0.52, 0.55)
+		_cards[b_type].add_theme_stylebox_override(
+			"panel", _card_style(C_CARD_L, Color.TRANSPARENT, 0))
+	else:
+		_cards[b_type].modulate = Color.WHITE
+		_cards[b_type].add_theme_stylebox_override(
+			"panel", _card_style(C_CARD_N, Color.TRANSPARENT, 0))
 
-func _flash_unavailable(b_type: String) -> void:
-	if not _buttons.has(b_type):
-		return
+func _flash_locked(b_type: String) -> void:
 	AudioManager.play_build_sfx("invalid")
-	var btn: Button = _buttons[b_type]
-	var flash_s := StyleBoxFlat.new()
-	flash_s.bg_color = Color(0.32, 0.04, 0.04, 0.9)
-	flash_s.border_color = Color(0.75, 0.12, 0.12, 1.0)
-	flash_s.set_border_width_all(1)
-	flash_s.set_corner_radius_all(3)
-	btn.add_theme_stylebox_override("normal", flash_s)
-	var tween := create_tween()
-	tween.tween_interval(0.32)
-	tween.tween_callback(func(): _apply_greyed_style(btn))
+	if _hint_lbl:
+		_hint_lbl.text = "Memorial Wall requires a named character to have died first."
+		_hint_lbl.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4, 1.0))
+	if _cards.has(b_type):
+		_cards[b_type].add_theme_stylebox_override(
+			"panel", _card_style(Color(0.22, 0.03, 0.03, 0.9),
+			Color(0.75, 0.10, 0.10, 1.0), 1))
+	var t := create_tween()
+	t.tween_interval(0.5)
+	t.tween_callback(func():
+		_restore_card(b_type)
+		if _hint_lbl:
+			_hint_lbl.text = "Select a building to place"
+			_hint_lbl.add_theme_color_override("font_color", C_HINT))
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MEMORIAL WALL AVAILABILITY
-# ─────────────────────────────────────────────────────────────────────────────
-func _is_memorial_available() -> bool:
-	return (not GameManager.yuna_alive)   or \
-		   (not GameManager.rook_alive)   or \
+# ── Scroll capture: prevents mouse wheel from zooming while menu is open ──────
+func _input(event: InputEvent) -> void:
+	if not is_open or not _root or not _root.visible:
+		return
+	if not (event is InputEventMouseButton and event.pressed):
+		return
+	if event.button_index != MOUSE_BUTTON_WHEEL_UP \
+			and event.button_index != MOUSE_BUTTON_WHEEL_DOWN:
+		return
+	# Only intercept when the cursor is physically over the menu bar
+	var mp  : Vector2 = get_viewport().get_mouse_position()
+	var rc  : Rect2   = _root.get_global_rect()
+	if not rc.has_point(mp):
+		return
+	get_viewport().set_input_as_handled()
+
+# ── Memorial availability ─────────────────────────────────────────────────────
+func _memorial_available() -> bool:
+	return (not GameManager.yuna_alive)    or \
+		   (not GameManager.rook_alive)    or \
 		   (not GameManager.vasquez_alive) or \
 		   (not GameManager.meridian_alive)
 
-# Called from Main.gd when a named character dies, to update the button state.
-func refresh_memorial_button() -> void:
-	if not _buttons.has("memorial"):
-		return
-	var btn: Button = _buttons["memorial"]
-	if _is_memorial_available():
-		btn.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		btn.add_theme_stylebox_override("normal", _make_btn_style(COL_BTN_NORMAL, 0))
-	else:
-		_apply_greyed_style(btn)
+func _refresh_memorial() -> void:
+	_restore_card("memorial")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OPEN / CLOSE / TOGGLE
-# ─────────────────────────────────────────────────────────────────────────────
+func refresh_memorial_button() -> void:
+	_refresh_memorial()
+
+# ── Open / Close / Toggle ─────────────────────────────────────────────────────
 func open() -> void:
-	if is_open:
-		return
+	if is_open: return
 	is_open = true
 	visible = true
-	refresh_memorial_button()
+	_refresh_memorial()
 	build_menu_opened.emit()
-	_root_panel.modulate.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(_root_panel, "modulate:a", 1.0, 0.14)
+	if _root:
+		_root.modulate.a = 0.0
+		var t := create_tween()
+		t.tween_property(_root, "modulate:a", 1.0, 0.14)
 
 func close() -> void:
-	if not is_open:
-		return
+	if not is_open: return
 	is_open = false
 	_deactivate()
 	build_menu_closed.emit()
-	var tween := create_tween()
-	tween.tween_property(_root_panel, "modulate:a", 0.0, 0.12)
-	tween.tween_callback(func(): visible = false)
+	if _root:
+		var t := create_tween()
+		t.tween_property(_root, "modulate:a", 0.0, 0.12)
+		t.tween_callback(func(): visible = false)
 
 func toggle() -> void:
 	if is_open: close()
