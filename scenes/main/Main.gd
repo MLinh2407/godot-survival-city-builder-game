@@ -248,8 +248,12 @@ func _on_intro_finished() -> void:
 		intro_layer = null
 	_begin_gameplay()
 
-func _on_menu_load_game() -> void:
-	_open_load_game_dialog()
+func _on_menu_credits() -> void:
+	show_credits_roll_from_menu()
+
+func _on_menu_credits_finished() -> void:
+	if main_menu and is_instance_valid(main_menu) and main_menu.has_method("resume_after_credits"):
+		main_menu.call("resume_after_credits")
 
 func _on_menu_open_settings() -> void:
 	if settings_ui and settings_ui.has_method("toggle_menu"):
@@ -332,9 +336,26 @@ func _show_main_menu_overlay() -> void:
 		AudioManager.play_music(AudioManager.track_4)
 
 	main_menu.connect("start_new_game", Callable(self, "_on_menu_start_new_game"))
-	main_menu.connect("load_game", Callable(self, "_on_menu_load_game"))
+	main_menu.connect("credits", Callable(self, "_on_menu_credits"))
 	main_menu.connect("open_settings", Callable(self, "_on_menu_open_settings"))
 	main_menu.connect("exit_game", Callable(self, "_on_menu_exit"))
+
+func show_credits_roll_from_menu() -> void:
+	var ending_screen := _get_ending_screen()
+	if ending_screen == null:
+		push_warning("Main: EndingScreen node not found for credits roll")
+		return
+	if ending_screen.has_signal("credits_finished") and not ending_screen.is_connected("credits_finished", Callable(self, "_on_menu_credits_finished")):
+		ending_screen.connect("credits_finished", Callable(self, "_on_menu_credits_finished"))
+	if ending_screen.has_method("start_credits_roll"):
+		ending_screen.call("start_credits_roll", false)
+	else:
+		push_warning("Main: EndingScreen cannot start credits roll")
+
+func _get_ending_screen() -> Control:
+	if not ui_layer:
+		return null
+	return ui_layer.get_node_or_null("EndingScreen")
 
 func _play_intro_sequence() -> void:
 	if AudioManager and AudioManager.has_method("silence_music"):

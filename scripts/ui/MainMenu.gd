@@ -1,7 +1,7 @@
 extends Control
 
 signal start_new_game
-signal load_game
+signal credits
 signal open_settings
 signal exit_game
 
@@ -10,18 +10,20 @@ signal exit_game
 
 @onready var title_rect: TextureRect = $LeftColumn/VBox/Title
 @onready var btn_new: TextureButton = $LeftColumn/VBox/Buttons/NewGame
-@onready var btn_load: TextureButton = $LeftColumn/VBox/Buttons/LoadGame
+@onready var btn_credits: TextureButton = $LeftColumn/VBox/Buttons/Credits
 @onready var btn_settings: TextureButton = $LeftColumn/VBox/Buttons/Settings
 @onready var btn_exit: TextureButton = $LeftColumn/VBox/Buttons/Exit
 var _buttons: Array[TextureButton] = []
 var _button_tweens: Dictionary = {}
 var _button_blurs: Dictionary = {}
 var _standalone_load_dialog: FileDialog
+var _standalone_credits_screen: Control
 var _blur_shader: Shader
 var _input_locked_until_msec: int = 0
 var initial_input_lock_sec: float = 0.0
 var _input_lock_timer: SceneTreeTimer
 var _input_lock_retry_timer: SceneTreeTimer
+var _credits_roll_active: bool = false
 
 var settings_scene_path: String = "res://scenes/main/SettingsUI.tscn"
 var main_scene_path: String = "res://scenes/main/Main.tscn"
@@ -45,7 +47,7 @@ func _ready() -> void:
 			if child is Control:
 				child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_buttons = [btn_new, btn_load, btn_settings, btn_exit]
+	_buttons = [btn_new, btn_credits, btn_settings, btn_exit]
 	for b in _buttons:
 		if b:
 			b.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -115,10 +117,10 @@ func _connect_buttons() -> void:
 		btn_new.pressed.connect(Callable(self, "_on_new_game_pressed"))
 		btn_new.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("NewGame", btn_new))
 		btn_new.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("NewGame", btn_new))
-	if btn_load:
-		btn_load.pressed.connect(Callable(self, "_on_load_game_pressed"))
-		btn_load.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("LoadGame", btn_load))
-		btn_load.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("LoadGame", btn_load))
+	if btn_credits:
+		btn_credits.pressed.connect(Callable(self, "_on_credits_pressed"))
+		btn_credits.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("Credits", btn_credits))
+		btn_credits.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("Credits", btn_credits))
 	if btn_settings:
 		btn_settings.pressed.connect(Callable(self, "_on_settings_pressed"))
 		btn_settings.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("Settings", btn_settings))
@@ -339,20 +341,69 @@ func _on_new_game_pressed() -> void:
 		else:
 			push_warning("MainMenu: main scene not found at %s" % main_scene_path)
 
-func _on_load_game_pressed() -> void:
+func _on_credits_pressed() -> void:
 	if not _can_accept_input():
 		return
+	if _credits_roll_active:
+		return
+	_credits_roll_active = true
+	_set_buttons_enabled(false)
+	if btn_credits:
+		btn_credits.release_focus()
 	if AudioManager and AudioManager.has_method("play_ui_sfx"):
 		AudioManager.play_ui_sfx("click")
-	emit_signal("load_game")
-	if _get_signal_listener_count("load_game") == 0:
-		if _standalone_load_dialog:
-			if not DirAccess.dir_exists_absolute("user://saves"):
-				DirAccess.make_dir_absolute("user://saves")
-			_standalone_load_dialog.current_dir = "user://saves"
-			_standalone_load_dialog.popup_centered()
+	emit_signal("credits")
+	if _get_signal_listener_count("credits") == 0:
+		var main := get_tree().root.get_node_or_null("Main")
+		if not main:
+			main = get_tree().root.find_child("Main", true, false)
+		if main and main.has_method("show_credits_roll_from_menu"):
+			main.call("show_credits_roll_from_menu")
 		else:
-			push_warning("MainMenu: standalone load dialog is unavailable")
+			_open_standalone_credits_roll()
+
+func _open_standalone_credits_roll() -> void:
+	if _standalone_credits_screen and is_instance_valid(_standalone_credits_screen):
+		if _standalone_credits_screen.has_method("start_credits_roll"):
+			_standalone_credits_screen.call("start_credits_roll", false)
+			return
+	var credits_scene_path := "res://scenes/UI/EndingScreen.tscn"
+	if not ResourceLoader.exists(credits_scene_path):
+		push_warning("MainMenu: credits scene not found at %s" % credits_scene_path)
+		return
+	var credits_scene := load(credits_scene_path) as PackedScene
+	if credits_scene == null:
+		push_warning("MainMenu: credits scene failed to load")
+		return
+	_standalone_credits_screen = credits_scene.instantiate()
+	if _standalone_credits_screen == null:
+		push_warning("MainMenu: credits scene failed to instantiate")
+		return
+	_standalone_credits_screen.name = "StandaloneCreditsScreen"
+	if _standalone_credits_screen.has_signal("credits_finished") and not _standalone_credits_screen.is_connected("credits_finished", Callable(self, "_on_standalone_credits_finished")):
+		_standalone_credits_screen.connect("credits_finished", Callable(self, "_on_standalone_credits_finished"))
+	add_child(_standalone_credits_screen)
+	if _standalone_credits_screen.has_method("start_credits_roll"):
+		_standalone_credits_screen.call("start_credits_roll", false)
+
+func _on_standalone_credits_finished() -> void:
+	if _standalone_credits_screen and is_instance_valid(_standalone_credits_screen):
+		_standalone_credits_screen.queue_free()
+		_standalone_credits_screen = null
+	resume_after_credits()
+
+func resume_after_credits() -> void:
+	_credits_roll_active = false
+	_set_buttons_enabled(true)
+	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
+		AudioManager.set_menu_music_locked(true)
+	if AudioManager and AudioManager.track_4:
+		if AudioManager.has_method("crossfade_to"):
+			AudioManager.crossfade_to(AudioManager.track_4, 1.0)
+		elif AudioManager.has_method("play_music"):
+			AudioManager.play_music(AudioManager.track_4)
+	if btn_new:
+		btn_new.grab_focus()
 
 func _on_standalone_load_file_selected(path: String) -> void:
 	if main_scene_packed == null:

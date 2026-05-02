@@ -1,5 +1,7 @@
 extends Control
 
+signal credits_finished
+
 const ENDING_VIDEO_PREFIX := {
 	EndingManager.ENDING_THE_SIGNAL: "signal",
 	EndingManager.ENDING_THE_QUIET: "quiet",
@@ -28,6 +30,7 @@ var _previous_speed: int = TimeManager.GameSpeed.NORMAL
 var _skip_tween: Tween
 var _continue_hover_tween: Tween
 var _fade_tween: Tween
+var return_to_main_menu_after_credits: bool = true
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -153,7 +156,29 @@ func _on_continue_pressed() -> void:
 	if AudioManager and AudioManager.track_3:
 		AudioManager.play_music(AudioManager.track_3)
 
+func start_credits_roll(return_to_menu: bool = true) -> void:
+	return_to_main_menu_after_credits = return_to_menu
+	visible = true
+	if video_player:
+		video_player.visible = false
+	if end_card:
+		end_card.visible = false
+	if continue_button:
+		continue_button.visible = false
+	_stop_continue_idle_fx()
+	if credits_roll and credits_roll.has_method("start_roll"):
+		credits_roll.visible = true
+		credits_roll.call("start_roll")
+	if AudioManager and AudioManager.track_3:
+		AudioManager.play_music(AudioManager.track_3)
+
 func _on_credits_finished() -> void:
+	if not return_to_main_menu_after_credits:
+		visible = false
+		if credits_roll:
+			credits_roll.visible = false
+		credits_finished.emit()
+		return
 	await _fade_to_menu()
 
 func _return_to_main_menu() -> void:

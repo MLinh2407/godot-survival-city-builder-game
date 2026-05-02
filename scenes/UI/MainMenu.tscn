@@ -121,26 +121,6 @@ text = "NEW GAME"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="LoadGame" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1589802443]
-layout_mode = 2
-texture_normal = ExtResource("4")
-stretch_mode = 3
-
-[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/LoadGame" unique_id=1985828943]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 22
-text = "LOAD GAME"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="Settings" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1321456169]
 layout_mode = 2
 texture_normal = ExtResource("4")
@@ -158,6 +138,26 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 22
 text = "SETTINGS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Credits" type="TextureButton" parent="LeftColumn/VBox/Buttons" unique_id=1589802443]
+layout_mode = 2
+texture_normal = ExtResource("4")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="LeftColumn/VBox/Buttons/Credits" unique_id=1985828943]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "CREDITS"
 horizontal_alignment = 1
 vertical_alignment = 1
 
