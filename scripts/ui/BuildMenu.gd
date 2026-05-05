@@ -95,6 +95,12 @@ func _connect_gm() -> void:
 	if _grid_manager.has_signal("building_placed"):
 		_grid_manager.building_placed.connect(
 			func(_t: String, _p: Vector2i): _on_placed_externally())
+	# Update card affordability whenever materials change
+	await get_tree().process_frame
+	if ResourceManager:
+		ResourceManager.resources_changed.connect(
+			func(_p, _f, _m, _mat: int): _refresh_affordability())
+	_refresh_affordability()
 
 # ── UI construction ───────────────────────────────────────────────────────────
 func _build_ui() -> void:
@@ -465,6 +471,29 @@ func _refresh_memorial() -> void:
 
 func refresh_memorial_button() -> void:
 	_refresh_memorial()
+
+# ── Affordability ─────────────────────────────────────────────────────────────
+# Called every time materials change. Dims cards the player cannot afford.
+func _refresh_affordability() -> void:
+	var current_mat: int = GameManager.materials
+	for def in _defs:
+		var b_type : String = def[1]
+		var cost   : int    = def[3]
+		var is_deco: bool   = def[5]
+		if not _cards.has(b_type):
+			continue
+		if b_type == _active_type:
+			continue   # never dim the one being actively placed
+		if b_type == "memorial":
+			continue   # memorial has its own locked logic
+		if is_deco or cost == 0:
+			_cards[b_type].modulate = Color.WHITE
+			continue
+		if current_mat < cost:
+			# Cannot afford — dim to 55% and tint slightly red
+			_cards[b_type].modulate = Color(0.90, 0.65, 0.65, 0.55)
+		else:
+			_cards[b_type].modulate = Color.WHITE
 
 # ── Open / Close / Toggle ─────────────────────────────────────────────────────
 func open() -> void:

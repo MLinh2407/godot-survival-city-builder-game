@@ -13,6 +13,9 @@ var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
 
+# Status badge labels — one Label per placed building, keyed by grid_pos
+var _status_badges: Dictionary = {}
+
 const T1_SPRITES = {
 	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T1_Buildings/Coal_Generator_T1.png"),
 	BuildingData.BuildingType.HYDROPONIC_BAY: preload("res://assets/buildings/T1_Buildings/Hydroponic_Bay_T1.png"),
@@ -183,6 +186,7 @@ func _on_day_changed(_day: int) -> void:
 					if sb.shield_days_accumulated >= GameConstants.STORM_SHIELD_WORKER_DAYS:
 						sb.is_shielding = false
 						sb.is_shielded = true
+						_refresh_badge(shield_pos)
 						print("BuildingSystem: ✅ [%s] is now fully shielded." % sb.building_name)
 						building_state_changed.emit(shield_pos)
 
@@ -351,6 +355,13 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	if b_type != "memorial":
 		AudioManager.play_build_sfx("place")
 
+	# Auto-select the just-placed building so players can assign workers immediately
+	var _auto_sel_pos := grid_pos
+	var _auto_sel_t   := get_tree().create_timer(0.12)
+	_auto_sel_t.timeout.connect(func():
+		if active_buildings.has(_auto_sel_pos):
+			_on_building_selected(_auto_sel_pos))
+
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
@@ -366,6 +377,7 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 			
 	AudioManager.play_build_sfx("remove")
 	AudioManager.remove_ambient(grid_pos)
+	_remove_badge(grid_pos)
 	active_buildings.erase(grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
@@ -466,6 +478,8 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	emit_signal("building_state_changed", grid_pos)
 
 	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+
+	_refresh_badge(grid_pos)
 	
 func set_building_damaged_randomly() -> void:
 	if active_buildings.is_empty(): return
@@ -586,7 +600,7 @@ func apply_upgrade_visual(grid_pos: Vector2i) -> void:
 
 	print("BuildingSystem: apply_upgrade_visual complete at %s | building: %s" \
 		% [str(grid_pos), b.building_name])
-
+	
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
 	for pos in active_buildings.keys():
 		var b: BuildingData = active_buildings[pos]
@@ -607,6 +621,10 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 		AudioManager.update_ambient(pos, b.building_type, _should_ambient_play(b))
 
 		update_building_visual(pos)
+
+		# Refresh all status badges to reflect new power/damage states
+		for badge_pos in active_buildings:
+			_refresh_badge(badge_pos)
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
 	if not active_buildings.has(grid_pos):
@@ -826,6 +844,74 @@ func _get_build_cost(b_type: String) -> int:
 		"archive":    return GameConstants.BUILD_COST_ARCHIVE_HALL
 		"memorial":   return GameConstants.BUILD_COST_MEMORIAL_WALL
 		_:            return 0
+
+# ── Status badges ─────────────────────────────────────────────────────────────
+func _get_or_create_badge(grid_pos: Vector2i) -> Label:
+	if _status_badges.has(grid_pos):
+		var existing = _status_badges[grid_pos]
+		if is_instance_valid(existing):
+			return existing
+	if not grid_manager:
+		return null
+	var lbl := Label.new()
+	lbl.z_index       = 60
+	lbl.z_as_relative = false
+	lbl.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_font_size_override("font_size", 14)
+	grid_manager.add_child(lbl)
+	_status_badges[grid_pos] = lbl
+	return lbl
+
+func _remove_badge(grid_pos: Vector2i) -> void:
+	if not _status_badges.has(grid_pos):
+		return
+	var lbl = _status_badges[grid_pos]
+	if is_instance_valid(lbl):
+		lbl.queue_free()
+	_status_badges.erase(grid_pos)
+
+func _refresh_badge(grid_pos: Vector2i) -> void:
+	if not active_buildings.has(grid_pos):
+		_remove_badge(grid_pos)
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+
+	# Determine which badge to show (priority: damaged > unpowered > shielding > shielded)
+	var icon : String = ""
+	var color: Color  = Color.WHITE
+
+	if b.is_damaged:
+		icon  = "🔴"
+		color = Color(1.0, 0.35, 0.35, 1.0)
+	elif not b.is_powered and b.base_production_power <= 0.0 and b.power_draw > 0.0:
+		icon  = "⚫"
+		color = Color(0.55, 0.55, 0.60, 1.0)
+	elif b.is_shielding:
+		icon  = "🔷"
+		color = Color(0.3, 0.7, 1.0, 1.0)
+	elif b.is_shielded:
+		icon  = "✅"
+		color = Color(0.35, 0.85, 0.45, 1.0)
+
+	if icon == "":
+		# No badge needed — remove if one exists
+		_remove_badge(grid_pos)
+		return
+
+	var lbl: Label = _get_or_create_badge(grid_pos)
+	if not lbl:
+		return
+	lbl.text = icon
+	lbl.add_theme_color_override("font_color", color)
+	# Position above the building sprite centre
+	if grid_manager and grid_manager.base_grid:
+		var world_pos: Vector2 = grid_manager.base_grid.map_to_local(grid_pos)
+		lbl.position = world_pos + Vector2(-10, -70)
+	lbl.visible = true
+
+func refresh_all_badges() -> void:
+	for pos in active_buildings:
+		_refresh_badge(pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

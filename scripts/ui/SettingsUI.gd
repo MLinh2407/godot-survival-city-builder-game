@@ -30,9 +30,8 @@ func _ready() -> void:
     file_dialog.file_selected.connect(_on_file_selected)
     add_child(file_dialog)
 
-func _input(event: InputEvent) -> void:
-    if event.is_action_pressed("ui_cancel"):
-        toggle_menu()
+func _input(_event: InputEvent) -> void:
+    pass
 
 func toggle_menu() -> void:
     visible = !visible

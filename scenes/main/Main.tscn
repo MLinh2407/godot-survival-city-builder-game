@@ -29,6 +29,8 @@
 [ext_resource type="Script" uid="uid://dmyrj11qrcfnj" path="res://scripts/ui/BuildMenu.gd" id="15_ilqpp"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
 [ext_resource type="TileSet" uid="uid://bago6eevk5c46" path="res://floor_tileset.tres" id="25_u7tt4"]
+[ext_resource type="Script" uid="uid://2ultnrgjmwll" path="res://scripts/ui/StormShieldPanel.gd" id="30_ftc2p"]
+[ext_resource type="Script" uid="uid://4ubmq6b1q7hm" path="res://scripts/ui/ShortcutPanel.gd" id="31_04n4k"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -752,6 +754,13 @@ offset_top = 5.0
 offset_right = 263.0
 offset_bottom = 28.0
 
+[node name="ButtonHelp" type="Button" parent="UILayer/HUD" unique_id=233160623]
+offset_left = 1252.0
+offset_top = 178.0
+offset_right = 1268.0
+offset_bottom = 209.0
+text = "?"
+
 [node name="DialogueBox" type="Control" parent="UILayer" unique_id=1285129592]
 visible = false
 z_index = 5
@@ -894,3 +903,9 @@ script = ExtResource("13_dialogue_engine")
 [node name="BuildingSystem" type="Node" parent="." unique_id=749927356 node_paths=PackedStringArray("grid_manager")]
 script = ExtResource("6_1rhdn")
 grid_manager = NodePath("../GameWorld/GridSystem")
+
+[node name="StormShieldPanel" type="CanvasLayer" parent="." unique_id=1876456300]
+script = ExtResource("30_ftc2p")
+
+[node name="ShortcutPanel" type="CanvasLayer" parent="." unique_id=1617948373]
+script = ExtResource("31_04n4k")

@@ -42,6 +42,8 @@ extends Node
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
 @onready var _camera: Camera2D = $GameWorld/Camera2D  
+@onready var shortcut_panel: CanvasLayer = $ShortcutPanel
+@onready var btn_help:       Button      = $UILayer/HUD/ButtonHelp
 
 @export var use_journal_unread_count: bool = true
 @export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
@@ -201,9 +203,20 @@ func _ready() -> void:
 		food_bar.get_parent().add_child(_ration_buffer_bar)
 		_ration_buffer_bar.visible = false
 
-	# TEMP VERIFICATION — remove after confirming
-	# GameManager.hope_order_slider = 90.0
-	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
+	# Storm shield panel auto-refreshes on day change (connected in its own _ready).
+	# Also refresh when building state changes (e.g. shield complete mid-day).
+	var bs_node = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	var shield_panel = get_node_or_null("StormShieldPanel")
+	if bs_node and shield_panel and bs_node.has_signal("building_state_changed"):
+		bs_node.building_state_changed.connect(func(_pos: Vector2i):
+			if shield_panel.visible:
+				shield_panel._refresh_list(TimeManager.current_day))
+
+	if btn_help:
+		btn_help.text       = "?"
+		btn_help.focus_mode = Control.FOCUS_NONE
+		btn_help.pressed.connect(func():
+			if shortcut_panel: shortcut_panel.toggle())
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
@@ -370,6 +383,24 @@ func _unhandled_input(event: InputEvent) -> void:
 				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
 				if bs and bs.has_selected_building:
 					bs.remove_worker(bs.current_selected_grid_pos)
+			KEY_ESCAPE:
+				# ESC priority chain (highest to lowest):
+				# 1. Close shortcut panel if open
+				# 2. Close journal if open
+				# 3. Cancel active build/decoration mode
+				# 4. Close build menu if open
+				# 5. Toggle settings (original ESC behaviour)
+				if shortcut_panel and shortcut_panel.visible:
+					shortcut_panel.hide_panel()
+				elif colony_journal and colony_journal.is_open:
+					colony_journal.close()
+				elif build_menu and build_menu._active_type != "":
+					build_menu._deactivate()
+				elif build_menu and build_menu.is_open:
+					build_menu.close()
+				else:
+					if settings_ui and settings_ui.has_method("toggle_menu"):
+						settings_ui.toggle_menu()
 
 	# ── Mouse wheel zoom ──────────────────────────────────────────────────────
 	if event is InputEventMouseButton:

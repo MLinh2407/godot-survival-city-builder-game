@@ -73,6 +73,8 @@ var _ghost_pulse_t: float = 0.0
 var _selection_outline_node: Node2D = null
 var _current_placement_anchor: Vector2i = Vector2i.ZERO
 
+var _place_preview_label: Label = null
+
 # Cached per build-mode session so _process doesn't recompute every frame
 var _ghost_y_offset: float = 0.0
 
@@ -124,6 +126,83 @@ func _ready() -> void:
 	call_deferred("_prefill_void")
 
 	_setup_hover_tooltip()
+
+	_setup_place_preview()
+
+func _setup_place_preview() -> void:
+	_place_preview_label               = Label.new()
+	_place_preview_label.z_index       = 150
+	_place_preview_label.z_as_relative = false
+	_place_preview_label.visible       = false
+	_place_preview_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	_place_preview_label.add_theme_font_size_override("font_size", 11)
+	_place_preview_label.add_theme_color_override("font_color", Color(0.0, 0.96, 1.0, 0.92))
+	add_child(_place_preview_label)
+
+func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> void:
+	if not _place_preview_label:
+		return
+	if not valid or b_type == "":
+		_place_preview_label.visible = false
+		return
+
+	# Build preview text based on building type
+	var lines: Array[String] = []
+	match b_type:
+		"coal":
+			lines.append("⚡ +%d kW" % GameConstants.COAL_POWER_T1)
+		"geothermal":
+			lines.append("⚡ +%d kW (passive)" % GameConstants.GEOTHERMAL_POWER_T1)
+		"relay":
+			lines.append("⚡ −%.0f kW draw" % GameConstants.RELAY_HUB_POWER_DRAW)
+			lines.append("Extends power radius")
+		"hydro":
+			lines.append("🍲 +%d food/day" % GameConstants.BASE_FOOD_RATE)
+			lines.append("Requires %d workers" % GameConstants.HYDROPONIC_BAY_SLOTS)
+		"ration":
+			lines.append("Buffer: %d days reserve" % GameConstants.RATION_STORE_BUFFER_T1)
+		"water":
+			lines.append("Disease prevention")
+			lines.append("Requires workers always")
+		"med":
+			lines.append("✦ +%d Morale/day" % GameConstants.MED_CLINIC_MORALE_PASSIVE)
+			lines.append("−30%% event deaths")
+		"shelter":
+			lines.append("Houses %d colonists" % GameConstants.SHELTER_CAPACITY_T1)
+			lines.append("✦ +%d Morale at capacity" % int(GameConstants.SHELTER_MORALE_AT_CAPACITY_T1))
+		"archive":
+			lines.append("✦ +%d Morale/day" % int(GameConstants.ARCHIVE_HALL_MORALE_PASSIVE))
+			lines.append("Unlocks MERIDIAN terminal")
+		"memorial":
+			lines.append("✦ +%d Morale one-time" % int(GameConstants.MEMORIAL_WALL_MORALE_BUILD))
+			lines.append("+%d Morale/day forever" % int(GameConstants.MEMORIAL_WALL_MORALE_DAILY))
+		_:
+			_place_preview_label.visible = false
+			return
+
+	# Cost line
+	var cost: int = 0
+	var bs_node = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if bs_node and bs_node.has_method("_get_build_cost"):
+		cost = bs_node._get_build_cost(b_type)
+	if cost > 0:
+		var mat: int = GameManager.materials
+		var affordable: bool = mat >= cost
+		var cost_col: String = "[ok]" if affordable else "[low]"
+		lines.append("%s Cost: %d mat (have %d)" % [cost_col, cost, mat])
+
+	_place_preview_label.text = "\n".join(lines)
+
+	# Colour the last (cost) line red if unaffordable
+	if cost > 0 and GameManager.materials < cost:
+		_place_preview_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5, 0.92))
+	else:
+		_place_preview_label.add_theme_color_override("font_color", Color(0.0, 0.96, 1.0, 0.92))
+
+	# Position above and to the right of the ghost
+	var world_pos: Vector2 = base_grid.map_to_local(anchor)
+	_place_preview_label.position = world_pos + Vector2(20, -90)
+	_place_preview_label.visible  = true
 
 # ── Void pre-fill ─────────────────────────────────────────────────────────────
 func _prefill_void() -> void:
@@ -268,6 +347,9 @@ func exit_build_mode() -> void:
 	_clear_footprint_overlay()
 	_clear_blocker_highlight()  
 
+	if _place_preview_label:
+		_place_preview_label.visible = false
+
 # ── Decoration Mode ────────────────────────────────────────────────────────────
 
 func enter_decoration_mode(dec_type: String) -> void:
@@ -382,8 +464,11 @@ func _process(delta: float) -> void:
 							  + get_footprint_centre_offset(current_build_type) \
 							  + Vector2(0.0, _ghost_y_offset)                   \
 							  + _shake_offset
-
+		
 		var valid: bool = is_valid_placement(snapped_anchor, current_build_type)
+		# Update resource preview label
+		_update_place_preview(snapped_anchor, current_build_type, valid)
+
 		if snapped_anchor != _last_fp_anchor or valid != _last_fp_valid:
 			_last_fp_anchor = snapped_anchor
 			_last_fp_valid  = valid

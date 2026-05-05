@@ -104,6 +104,39 @@ func _setup_worker_ui() -> void:
 	_worker_plus_btn.pressed.connect(_on_worker_plus_pressed)
 	row.add_child(_worker_plus_btn)
 
+	# "Fill All" button
+	var fill_btn := Button.new()
+	fill_btn.text = "Fill"
+	fill_btn.custom_minimum_size = Vector2(38, 34)
+	fill_btn.focus_mode = Control.FOCUS_NONE
+	var fs := StyleBoxFlat.new()
+	fs.bg_color    = Color(0.04, 0.18, 0.12, 1.0)
+	fs.border_color = Color(0.0, 0.75, 0.50, 0.60)
+	fs.set_border_width_all(1)
+	fs.set_corner_radius_all(4)
+	fill_btn.add_theme_stylebox_override("normal", fs)
+	var fh := StyleBoxFlat.new()
+	fh.bg_color    = Color(0.06, 0.28, 0.18, 1.0)
+	fh.border_color = Color(0.0, 0.95, 0.65, 0.90)
+	fh.set_border_width_all(1)
+	fh.set_corner_radius_all(4)
+	fill_btn.add_theme_stylebox_override("hover", fh)
+	fill_btn.add_theme_color_override("font_color", Color(0.35, 0.95, 0.60, 1.0))
+	fill_btn.add_theme_font_size_override("font_size", 11)
+	fill_btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
+	fill_btn.pressed.connect(_on_fill_workers_pressed)
+	row.add_child(fill_btn)
+
+func _on_fill_workers_pressed() -> void:
+	if not building_system or not current_building: return
+	var slots_needed: int = current_building.worker_capacity - current_building.workers_assigned
+	var can_assign:   int = mini(slots_needed, GameManager.available_workers)
+	for i in range(can_assign):
+		building_system.assign_worker()
+	if can_assign > 0:
+		_animate_btn(_worker_plus_btn)
+	_refresh_ui_text()
+
 func _make_worker_btn(txt: String) -> Button:
 	var btn := Button.new()
 	btn.text = txt
@@ -365,6 +398,41 @@ func _refresh_ui_text() -> void:
 			_worker_count_lbl.text = "Passive"
 			if _worker_plus_btn:  _worker_plus_btn.disabled  = true
 			if _worker_minus_btn: _worker_minus_btn.disabled = true
+	
+	# ── Live output display ────────────────────────────────────────────────────
+	if output_label and current_building and building_system:
+		var out = building_system.get_effective_output(current_building.grid_position)
+		var lines: Array[String] = ["Live Output:"]
+		if out.get("power", 0.0) != 0.0:
+			lines.append("  ⚡ Power: %+.0f kW" % out["power"])
+		if out.get("food", 0.0) != 0.0:
+			lines.append("  🍲 Food: %+.0f/day" % out["food"])
+		if out.get("morale", 0.0) != 0.0:
+			lines.append("  ✦ Morale: %+.0f/day" % out["morale"])
+		if current_building.base_passive_morale > 0.0:
+			lines.append("  ✦ Passive: %+.0f/day" % current_building.base_passive_morale)
+		if lines.size() == 1:
+			lines.append("  Status: Active")
+		# Append damage/power warning
+		if current_building.is_damaged:
+			lines.append("  ⚠ DAMAGED — 30% output")
+		if not current_building.is_powered and current_building.power_draw > 0.0:
+			lines.append("  ⚫ UNPOWERED — offline")
+		output_label.text = "\n".join(lines)
+
+	# ── Upgrade button: show materials availability ────────────────────────────
+	if upgrade_button and not current_building.is_upgraded:
+		var u_cost := GameConstants.UPGRADE_COST_BASE
+		if current_building.building_type == BuildingData.BuildingType.WATER_RECYCLER \
+				or current_building.building_type == BuildingData.BuildingType.MED_CLINIC:
+			u_cost = GameConstants.UPGRADE_COST_HIGH
+		var mat: int = GameManager.materials
+		if mat >= u_cost:
+			upgrade_button.text = "Upgrade  (%d mat)" % u_cost
+			upgrade_button.add_theme_color_override("font_color", Color(0.0, 0.95, 0.70, 1.0))
+		else:
+			upgrade_button.text = "Upgrade  (%d mat — need %d more)" % [u_cost, u_cost - mat]
+			upgrade_button.add_theme_color_override("font_color", Color(0.80, 0.40, 0.40, 1.0))
 
 	# ── Remove button visibility ───────────────────────────────────────────────
 	var show_remove := current_building != null
