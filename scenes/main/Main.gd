@@ -479,6 +479,14 @@ func _prepare_new_game_state() -> void:
 		ResourceManager.reset_for_new_game()
 	if PopulationManager and PopulationManager.has_method("reset_for_new_game"):
 		PopulationManager.reset_for_new_game()
+	if has_node("BuildingSystem"):
+		var bs = $BuildingSystem
+		if bs and bs.has_method("reset_for_new_game"):
+			bs.reset_for_new_game()
+	if has_node("GameWorld/GridSystem"):
+		var gs = $GameWorld/GridSystem
+		if gs and gs.has_method("reset_for_new_game"):
+			gs.reset_for_new_game()
 	if CrisisEventSystem and CrisisEventSystem.has_method("reset_for_new_game"):
 		CrisisEventSystem.reset_for_new_game()
 	if EndingManager and EndingManager.has_method("reset_for_new_game"):

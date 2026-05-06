@@ -417,6 +417,23 @@ func clear_grid() -> void:
     for anchor in occupied_cells.keys().duplicate():
         remove_building(anchor)
 
+func reset_for_new_game() -> void:
+    exit_build_mode()
+    _cancel_demolish()
+    _clear_demolish_arc()
+    _clear_footprint_overlay()
+    _clear_blocker_highlight()
+    _clear_node(_hover_highlight)
+    _clear_node(_selection_outline_node)
+    _hovered_building_node = null
+    _selected_building_node = null
+    _selected_anchor = Vector2i(-9999, -9999)
+    _last_hovered_anchor = Vector2i(-9999, -9999)
+    ghost_sprite.visible = false
+    hover_cursor.visible = false
+    if not occupied_cells.is_empty():
+        clear_grid()
+
 func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
     if not building_scenes.has(b_type):
         push_error("GridManager: unknown type for save spawn: " + b_type)

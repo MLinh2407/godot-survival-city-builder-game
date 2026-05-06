@@ -12,6 +12,7 @@ var _prev_powered_states: Dictionary = {}
 var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
+var _is_resetting: bool = false
 
 const T1_SPRITES = {
 	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T1_Buildings/Coal_Generator_T1.png"),
@@ -110,6 +111,24 @@ func _ready() -> void:
 							placed_node.set_building_state("tier1")
 				# Ensure centralized tint selection is applied
 				update_building_visual(pos)
+
+func reset_for_new_game() -> void:
+	_is_resetting = true
+	_power_sfx_cooldown = 0.0
+	current_selected_grid_pos = Vector2i.ZERO
+	has_selected_building = false
+
+	if grid_manager:
+		if grid_manager.has_method("exit_build_mode"):
+			grid_manager.exit_build_mode()
+		if grid_manager.has_method("clear_grid"):
+			grid_manager.clear_grid()
+
+	active_buildings.clear()
+	_prev_powered_states.clear()
+	building_selected_data.emit(null)
+	workers_changed.emit()
+	_is_resetting = false
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DAILY TICK — tracks unstaffed days for damage and Water Recycler disease
@@ -334,6 +353,13 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
+		return
+
+	if _is_resetting:
+		AudioManager.remove_ambient(grid_pos)
+		active_buildings.erase(grid_pos)
+		if current_selected_grid_pos == grid_pos:
+			_on_building_deselected()
 		return
 		
 	var b_data: BuildingData = active_buildings[grid_pos]

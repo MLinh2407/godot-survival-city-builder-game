@@ -234,6 +234,9 @@ func show_event(event_id: String) -> void:
 	_active_event_id = event_id
 	_build_card(_events_by_id[event_id])
 
+func has_event(event_id: String) -> bool:
+	return _events_by_id.has(event_id)
+
 func _build_card(event_data: Dictionary) -> void:
 	_pause_game()
 	var setup_text = str(event_data.get("setup_text", ""))

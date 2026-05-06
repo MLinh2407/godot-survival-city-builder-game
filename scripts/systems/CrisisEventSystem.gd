@@ -11,6 +11,7 @@ var _temporary_effects = []
 var _fired_events: Dictionary = {}
 var _sub_event_journals_by_id: Dictionary = {}
 var _event_journals_by_slug: Dictionary = {}
+var _dialogue_engine: Node
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -19,9 +20,7 @@ func _ready() -> void:
 	if TimeManager:
 		TimeManager.day_changed.connect(_on_day_changed)
 
-	var de = _get_dialogue_engine()
-	if de:
-		de.choice_made.connect(_on_choice_made)
+	_ensure_dialogue_engine()
 
 	_load_event_journals()
 	_load_sub_event_journals()
@@ -44,6 +43,15 @@ func _get_dialogue_engine() -> Node:
 	if main:
 		return main.get_node_or_null("Events/DialogueEngine")
 	return null
+
+func _ensure_dialogue_engine() -> void:
+	if _dialogue_engine and is_instance_valid(_dialogue_engine):
+		return
+	var de = _get_dialogue_engine()
+	if de:
+		_dialogue_engine = de
+		if de.has_signal("choice_made") and not de.choice_made.is_connected(_on_choice_made):
+			de.choice_made.connect(_on_choice_made)
 
 func _get_building_system() -> Node:
 	var main = get_tree().root.get_node_or_null("Main")
@@ -187,10 +195,12 @@ func _fire_sub_event_journal(
 func _fire_event_once(event_id: String) -> void:
 	if _fired_events.has(event_id):
 		return
-	var de = _get_dialogue_engine()
-	if de:
+	_ensure_dialogue_engine()
+	if _dialogue_engine:
+		if _dialogue_engine.has_method("has_event") and not _dialogue_engine.has_event(event_id):
+			return
 		_fired_events[event_id] = true
-		de.show_event(event_id)
+		_dialogue_engine.show_event(event_id)
 
 func _fire_journal(slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
@@ -205,6 +215,7 @@ func _fire_journal(slug: String, title: String, body: String) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_day_changed(new_day: int) -> void:
+	_ensure_dialogue_engine()
 	_process_temporary_effects()
 
 	# Apply any persistent daily food modifier from active effects
