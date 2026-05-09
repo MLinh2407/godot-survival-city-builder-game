@@ -63,7 +63,6 @@ var _demolish_armed_anchor: Vector2i = Vector2i(-9999, -9999)
 var _demolish_arm_label:    Label    = null
 
 var _hover_tip_panel:  Panel    = null
-var _hover_tip_anchor: Vector2i = Vector2i(-9999, -9999)
 var _hover_tip_timer:  float    = 0.0
 const HOVER_TIP_DELAY: float    = 0.45
 

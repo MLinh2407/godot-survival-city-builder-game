@@ -186,7 +186,7 @@ func _fire_event_once(event_id: String) -> void:
 		_fired_events[event_id] = true
 		de.show_event(event_id)
 
-func _fire_journal(slug: String, title: String, body: String) -> void:
+func _fire_journal(_slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal and journal.has_method("add_entry"):
 		var entry_type = preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE
@@ -544,7 +544,7 @@ func _add_temporary_effect(target: String, value: float, duration_days: int) -> 
 	_recalc_active_modifiers()
 
 func _process_temporary_effects() -> void:
-	var current_day = TimeManager.current_day if TimeManager else 0
+	var _current_day = TimeManager.current_day if TimeManager else 0
 	var to_remove = []
 
 	for effect in _temporary_effects:

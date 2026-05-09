@@ -1,7 +1,6 @@
 extends CanvasLayer
 
 var _root: Control = null
-var _visible: bool = false
 
 const SHORTCUTS: Array = [
 	["SPACE",      "Pause / Unpause"],

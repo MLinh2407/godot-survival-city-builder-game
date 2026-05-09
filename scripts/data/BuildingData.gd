@@ -4,6 +4,7 @@
 class_name BuildingData
 extends Resource
 
+@warning_ignore("unused_signal")
 signal staffing_changed(current: int, capacity: int)
 
 # Building type enum (10 building types)

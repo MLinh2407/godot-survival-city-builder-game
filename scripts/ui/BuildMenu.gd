@@ -286,14 +286,14 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		var tex := load(sprite_path) as Texture2D
 		if tex:
-			var tr := TextureRect.new()
-			tr.texture      = tex
-			tr.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tr.anchor_right = 1.0
-			tr.anchor_bottom = 1.0
-			tr.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-			img_holder.add_child(tr)
+			var tex_rect := TextureRect.new()
+			tex_rect.texture      = tex
+			tex_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.anchor_right  = 1.0
+			tex_rect.anchor_bottom = 1.0
+			tex_rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+			img_holder.add_child(tex_rect)
 	else:
 		var icon := Label.new()
 		icon.text = "◇" if is_deco else "□"
