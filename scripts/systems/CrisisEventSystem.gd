@@ -389,6 +389,10 @@ func _trigger_unrest_riot() -> void:
 	if bs and bs.has_method("set_building_damaged_randomly"):
 		bs.set_building_damaged_randomly()
 
+	# M4 riot tiles
+	if TilePainter:
+		TilePainter.on_unrest_riot()
+
 func _trigger_rook_injury() -> void:
 	if _fired_events.has("rook_injury"):
 		return

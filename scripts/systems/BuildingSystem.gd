@@ -228,7 +228,16 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 				grid_manager.remove_building(grid_pos)
 			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
 			return
-	
+
+	# Archive Hall: one per colony
+	if b_type == "archive":
+		for _pos in active_buildings:
+			if active_buildings[_pos].building_type == BuildingData.BuildingType.ARCHIVE_HALL:
+				if grid_manager:
+					grid_manager.remove_building(grid_pos)
+				spawn_floating_text(grid_pos, "Only one Archive Hall allowed!", Color(1.0, 0.55, 0.2))
+				return
+		
 	# ── Materials cost check ──────────────────────────────────────────────────
 	var build_cost: int = _get_build_cost(b_type)
 	if build_cost > 0 and not ResourceManager.consume_materials(build_cost):
@@ -355,6 +364,10 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	if b_type != "memorial":
 		AudioManager.play_build_sfx("place")
 
+	# Notify TilePainter after successful placement
+	if TilePainter:
+		TilePainter.on_building_placed(b_type, grid_pos)
+
 	# Auto-select the just-placed building so players can assign workers immediately
 	var _auto_sel_pos := grid_pos
 	var _auto_sel_t   := get_tree().create_timer(0.12)
@@ -379,6 +392,25 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 	AudioManager.remove_ambient(grid_pos)
 	_remove_badge(grid_pos)
 	active_buildings.erase(grid_pos)
+
+	# Notify TilePainter after removal
+	if TilePainter:
+		var removed_type_str: String = ""
+		# Map BuildingType enum back to string key
+		var type_to_str: Dictionary = {
+			BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+			BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+			BuildingData.BuildingType.RELAY_HUB:       "relay",
+			BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+			BuildingData.BuildingType.RATION_STORE:    "ration",
+			BuildingData.BuildingType.WATER_RECYCLER:  "water",
+			BuildingData.BuildingType.MED_CLINIC:      "med",
+			BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+			BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+			BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+		}
+		removed_type_str = type_to_str.get(b_data.building_type, "")
+		TilePainter.on_building_removed(removed_type_str, grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
 		_on_building_deselected() # Safely clear selection
@@ -442,6 +474,27 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	if not active_buildings.has(grid_pos): return
 	var b_data = active_buildings[grid_pos]
 	b_data.is_damaged = is_damaged
+
+	# M4 tile paint/revert
+	var type_to_str_map: Dictionary = {
+		BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+		BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+		BuildingData.BuildingType.RELAY_HUB:       "relay",
+		BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+		BuildingData.BuildingType.RATION_STORE:    "ration",
+		BuildingData.BuildingType.WATER_RECYCLER:  "water",
+		BuildingData.BuildingType.MED_CLINIC:      "med",
+		BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+		BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+		BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+	}
+	var b_type_str: String = type_to_str_map.get(b_data.building_type, "")
+	if TilePainter and b_type_str != "":
+		if is_damaged:
+			TilePainter.on_building_damaged(grid_pos, b_type_str)
+		else:
+			TilePainter.on_building_repaired(grid_pos, b_type_str)
+
 	# Inform scene instance to update its visual
 	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
 		var node = grid_manager.occupied_cells[grid_pos]

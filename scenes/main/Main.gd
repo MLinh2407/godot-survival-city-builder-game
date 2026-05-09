@@ -80,6 +80,10 @@ const ZOOM_STEPS:     Array[float] = [0.2, 0.3, 0.4, 0.55, 0.75, 1.0, 1.5, 2.0, 
 const ZOOM_DEFAULT:   int          = 4   
 const ZOOM_LERP_SPEED: float       = 10.0  
 
+# ── Map boundary constants ────────────────────────────────────────────────────
+const MAP_HALF_W: float = 2560.0
+const MAP_HALF_H: float = 1280.0
+
 var _zoom_index:  int   = ZOOM_DEFAULT
 var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
 
@@ -234,18 +238,43 @@ func _on_population_changed() -> void:
 
 func _zoom_step(direction: int) -> void:
 	var old_zoom: float = ZOOM_STEPS[_zoom_index]
-	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	_zoom_index = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	
+	_zoom_index = maxi(_zoom_index, _get_min_zoom_index())
+	
 	var new_zoom: float = ZOOM_STEPS[_zoom_index]
 	_zoom_target = new_zoom
-
 	if is_equal_approx(old_zoom, new_zoom):
 		return
-
-	# Keep the world point currently under the cursor at the same screen position.
-	var viewport_size:   Vector2 = get_viewport().get_visible_rect().size
-	var mouse_screen:    Vector2 = get_viewport().get_mouse_position()
-	var cursor_offset:   Vector2 = mouse_screen - viewport_size * 0.5
+	# Zoom toward cursor
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var mouse_screen:  Vector2 = get_viewport().get_mouse_position()
+	var cursor_offset: Vector2 = mouse_screen - viewport_size * 0.5
 	_camera.position += cursor_offset * (1.0 / old_zoom - 1.0 / new_zoom)
+	_clamp_camera_position()
+
+## Returns the minimum zoom index that keeps the full map visible.
+func _get_min_zoom_index() -> int:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var min_zoom_x: float = viewport_size.x / (MAP_HALF_W * 2.0)
+	var min_zoom_y: float = viewport_size.y / (MAP_HALF_H * 2.0)
+	var min_zoom: float = minf(min_zoom_x, min_zoom_y)
+	for i in range(ZOOM_STEPS.size()):
+		if ZOOM_STEPS[i] >= min_zoom:
+			return i
+	return ZOOM_STEPS.size() - 1
+
+## Clamps camera position so the viewport never shows outside the map.
+func _clamp_camera_position() -> void:
+	if not _camera:
+		return
+	var zoom: float = _camera.zoom.x
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var half_vp: Vector2 = (viewport_size * 0.5) / zoom
+	var max_x: float = maxf(0.0, MAP_HALF_W - half_vp.x)
+	var max_y: float = maxf(0.0, MAP_HALF_H - half_vp.y)
+	_camera.position.x = clampf(_camera.position.x, -max_x, max_x)
+	_camera.position.y = clampf(_camera.position.y, -max_y, max_y)
 
 func _process(delta: float) -> void:
 	_update_camera_zoom(delta)
@@ -295,6 +324,7 @@ func _update_camera_zoom(delta: float) -> void:
 		_camera.zoom = Vector2(next_zoom, next_zoom)
 	else:
 		_camera.zoom = Vector2(_zoom_target, _zoom_target)
+	_clamp_camera_position()
 
 func _update_rates() -> void:
 	if power_rate_lbl:
@@ -427,6 +457,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var delta: Vector2 = event.position - _pan_last_mouse
 		_pan_last_mouse    = event.position
 		_camera.position  -= delta / _camera.zoom.x
+		_clamp_camera_position()
 		get_viewport().set_input_as_handled()
 
 func _on_day_changed(new_day: int) -> void:

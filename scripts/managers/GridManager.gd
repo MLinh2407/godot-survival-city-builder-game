@@ -204,6 +204,12 @@ func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> voi
 	_place_preview_label.position = world_pos + Vector2(20, -90)
 	_place_preview_label.visible  = true
 
+func _get_type_y_offset_override(b_type: String) -> float:
+	match b_type:
+		"coal":	return - 6.0	
+		"shelter":	return - 4.0
+		_: 		return 0.0
+
 # ── Void pre-fill ─────────────────────────────────────────────────────────────
 func _prefill_void() -> void:
 	if not void_layer:
@@ -330,7 +336,7 @@ func enter_build_mode(b_type: String) -> void:
 		ghost_sprite.offset  = b_sprite.offset
 		var sf: float        = _get_scale_for_type(b_type, b_sprite)
 		ghost_sprite.scale   = Vector2(sf, sf)
-		_ghost_y_offset      = _get_y_offset(b_sprite, sf)
+		_ghost_y_offset = _get_y_offset(b_sprite, sf) + _get_type_y_offset_override(b_type)
 	temp.queue_free()
 
 	ghost_sprite.modulate = Color(1.0, 1.0, 1.0, 0.70)
@@ -599,8 +605,9 @@ func place_building(anchor: Vector2i) -> void:
 	var sf: float           = _get_scale_for_type(current_build_type, b_sprite)
 	new_building.scale      = Vector2(sf, sf)
 	new_building.position = base_grid.map_to_local(anchor)                    \
-						+ get_footprint_centre_offset(current_build_type)   \
-						+ Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR))
+                      + get_footprint_centre_offset(current_build_type)   \
+                      + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR) \
+					  + _get_type_y_offset_override(current_build_type))
 
 	building_container.add_child(new_building)
 
@@ -705,8 +712,9 @@ func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
 	var sf: float           = _get_scale_for_type(b_type, b_sprite)
 	new_building.scale      = Vector2(sf, sf)
 	new_building.position = base_grid.map_to_local(anchor)        \
-						+ get_footprint_centre_offset(b_type)   \
-						+ Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR))
+                      + get_footprint_centre_offset(b_type)   \
+                      + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR) \
+					  + _get_type_y_offset_override(b_type))
 
 	building_container.add_child(new_building)
 	occupied_cells[anchor] = new_building

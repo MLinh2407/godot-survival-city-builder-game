@@ -41,6 +41,10 @@ const SPRITE_PATHS : Dictionary = {
 	"geothermal": "res://assets/buildings/T1_Buildings/Geothermal_Tap_T1.png",
 	"archive"   : "res://assets/buildings/T1_Buildings/Archive_Hall_T1.png",
 	"memorial"  : "res://assets/buildings/T1_Buildings/Memorial_Wall.png",
+	"neon_h"   : "res://assets/ui/decorations/deco_neon_h.png",
+	"neon_d"   : "res://assets/ui/decorations/deco_neon_d.png",
+	"cable_h"  : "res://assets/ui/decorations/deco_cable_h.png",
+	"cable_d"  : "res://assets/ui/decorations/deco_cable_d.png",
 }
 
 const TIER_LABEL : Dictionary = {
