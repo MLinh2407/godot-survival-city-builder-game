@@ -30,8 +30,8 @@ var _m14_cells: Array[Vector2i] = []
 const MAX_M14_COVERAGE: float   = 0.20
 
 # ── Colony search bounds ──────────────────────────────────────────────────────
-var _colony_min: Vector2i    = Vector2i(-20, -20)
-var _colony_max: Vector2i    = Vector2i(20, 20)
+var _colony_min: Vector2i = Vector2i(-40, -40)  
+var _colony_max: Vector2i = Vector2i(40, 40)    
 const OUTER_ZONE_FRACTION: float = 0.30  
 
 # ══════════════════════════════════════════════════════════════════════════════

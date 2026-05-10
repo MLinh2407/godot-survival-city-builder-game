@@ -385,6 +385,10 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		GameManager.available_workers                  += b_data.workers_assigned
 		GameManager.population_state.available_workers += b_data.workers_assigned
 		workers_changed.emit()
+		# Visual feedback
+		spawn_floating_text(grid_pos,
+			"+%d workers returned" % b_data.workers_assigned,
+			Color(0.55, 0.90, 0.62))
 		print("BuildingSystem: Returned %d workers from demolished [%s]" \
 			% [b_data.workers_assigned, b_data.building_name])
 			

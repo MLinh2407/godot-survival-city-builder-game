@@ -129,13 +129,14 @@ func _ready() -> void:
 	_setup_place_preview()
 
 func _setup_place_preview() -> void:
-	_place_preview_label               = Label.new()
+	_place_preview_label = Label.new()
 	_place_preview_label.z_index       = 150
 	_place_preview_label.z_as_relative = false
 	_place_preview_label.visible       = false
 	_place_preview_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	_place_preview_label.add_theme_font_size_override("font_size", 11)
-	_place_preview_label.add_theme_color_override("font_color", Color(0.0, 0.96, 1.0, 0.92))
+	_place_preview_label.add_theme_color_override("font_color",
+		Color(0.0, 0.96, 1.0, 0.92))
 	add_child(_place_preview_label)
 
 func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> void:
@@ -202,6 +203,18 @@ func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> voi
 	var world_pos: Vector2 = base_grid.map_to_local(anchor)
 	_place_preview_label.position = world_pos + Vector2(20, -90)
 	_place_preview_label.visible  = true
+
+	var bg_node: Panel = get_node_or_null("PlacePreviewBG")
+	if bg_node and _place_preview_label.visible:
+		var bg_world_pos: Vector2 = base_grid.map_to_local(anchor)
+		bg_node.position = bg_world_pos + Vector2(16, -94)
+		bg_node.custom_minimum_size = Vector2(
+			_place_preview_label.get_minimum_size().x + 12,
+			_place_preview_label.get_minimum_size().y + 8
+		)
+		bg_node.visible = true
+	elif bg_node:
+		bg_node.visible = false
 
 func _get_type_y_offset_override(b_type: String) -> float:
 	match b_type:
@@ -534,6 +547,19 @@ func is_valid_placement(anchor: Vector2i, b_type: String = "") -> bool:
 	for cell in get_footprint_cells(anchor, b_type):
 		if cell_to_anchor.has(cell):
 			return false
+		if base_grid:
+			var source: int = base_grid.get_cell_source_id(cell)
+			if source == -1:
+				return false
+			var atlas: Vector2i = base_grid.get_cell_atlas_coords(cell)
+			var placeable: Array[Vector2i] = [
+				TileRegistry.M1_DRY_CONCRETE,
+				TileRegistry.M2_WET_CONCRETE,
+				TileRegistry.M4_CRACKED_CONCRETE,
+				TileRegistry.M6_PATHWAY,
+			]
+			if not atlas in placeable:
+				return false
 	return true
 
 # ── Input ──────────────────────────────────────────────────────────────────────
@@ -566,14 +592,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				if cell_to_anchor.has(map_pos):
 					var anchor: Vector2i = cell_to_anchor[map_pos]
 					if _demolish_armed and _demolish_armed_anchor == anchor:
-						# Player confirmed via dialog — start the hold arc
 						_demolish_anchor = anchor
 						_demolish_timer  = 0.0
 						_demolish_active = true
 						_spawn_demolish_arc(anchor)
 					else:
-						# Not armed yet — select the building and let the
-						# inspector's Remove button handle the confirmation flow
 						building_selected.emit(anchor)
 			else:
 				_cancel_demolish()
@@ -1042,6 +1065,20 @@ func _show_hover_tip(anchor: Vector2i) -> void:
 		if out.get("morale", 0.0) > 0.0:
 			_tip_label(vb, "✦ Morale: +%.0f/day" % out["morale"],
 				Color(0.65, 0.55, 0.95, 0.9), 10, false)
+
+	# Storm shield status during prep window
+	var current_day_val: int = TimeManager.current_day if TimeManager else 0
+	if current_day_val >= GameConstants.STORM_START_DAY \
+			and current_day_val < GameConstants.STORM_HIT_DAY:
+		if b_data.is_shielded:
+			_tip_label(vb, "✅ Shielded", Color(0.35, 0.88, 0.48, 1.0), 10, false)
+		elif b_data.is_shielding:
+			_tip_label(vb,
+				"🔷 Shielding... %d/%d days" \
+					% [b_data.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS],
+				Color(0.30, 0.65, 1.0, 1.0), 10, false)
+		else:
+			_tip_label(vb, "⚠ Exposed to storm!", Color(1.0, 0.45, 0.35, 1.0), 10, false)
 
 	# Position tooltip near cursor, avoiding screen edges
 	_hover_tip_panel.custom_minimum_size = Vector2(160, 0)

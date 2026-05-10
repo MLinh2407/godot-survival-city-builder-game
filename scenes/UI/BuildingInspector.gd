@@ -420,6 +420,14 @@ func _refresh_ui_text() -> void:
 			lines.append("  ⚫ UNPOWERED — offline")
 		output_label.text = "\n".join(lines)
 
+	# Morale efficiency penalty warning
+	if ResourceManager \
+			and ResourceManager.morale < GameConstants.MORALE_EFFICIENCY_THRESHOLD \
+			and output_label:
+		output_label.text += "\n  ⚠ LOW MORALE — all output ×80%"
+		output_label.add_theme_color_override("font_color",
+			GameConstants.UI_COLOR_WARNING)
+
 	# ── Upgrade button: show materials availability ────────────────────────────
 	if upgrade_button and not current_building.is_upgraded:
 		var u_cost := GameConstants.UPGRADE_COST_BASE
@@ -438,6 +446,18 @@ func _refresh_ui_text() -> void:
 	var show_remove := current_building != null
 	if _remove_btn:       _remove_btn.visible      = show_remove
 	if _remove_hint_lbl:  _remove_hint_lbl.visible = show_remove
+
+	# Days until damage countdown
+	if current_building.workers_assigned == 0 \
+			and current_building.worker_capacity > 0 \
+			and not current_building.is_damaged:
+		var days_left: int = GameConstants.BUILDING_DAMAGE_DAYS \
+			- current_building.days_unstaffed
+		if days_left > 0 and output_label:
+			output_label.text += "\n  ⚠ Damages in %d day%s if unstaffed" \
+				% [days_left, "s" if days_left != 1 else ""]
+			output_label.add_theme_color_override("font_color",
+				GameConstants.UI_COLOR_WARNING)
 
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears

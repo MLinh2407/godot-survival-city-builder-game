@@ -498,6 +498,20 @@ func _refresh_affordability() -> void:
 			_cards[b_type].modulate = Color(0.90, 0.65, 0.65, 0.55)
 		else:
 			_cards[b_type].modulate = Color.WHITE
+		
+		# Tint the cost label red/normal inside the card
+		var card_vb: VBoxContainer = _cards[b_type].get_node_or_null("VBoxContainer")
+		if card_vb:
+			for child in card_vb.get_children():
+				if child is Label:
+					var lbl: Label = child as Label
+					# Cost label contains "mat" in its text
+					if "mat" in lbl.text:
+						if current_mat < cost:
+							lbl.add_theme_color_override("font_color",
+								Color(1.0, 0.40, 0.40, 1.0))
+						else:
+							lbl.add_theme_color_override("font_color", C_COST)
 
 # ── Open / Close / Toggle ─────────────────────────────────────────────────────
 func open() -> void:
