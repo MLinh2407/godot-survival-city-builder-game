@@ -9,6 +9,8 @@ var ui_sfx_player_slider: AudioStreamPlayer
 var ui_sfx_player_journal: AudioStreamPlayer
 var build_sfx_player: AudioStreamPlayer
 var _build_sfx_stop_timer: Timer
+var rain_player: AudioStreamPlayer
+var _rain_active: bool = false
 
 
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
@@ -58,6 +60,7 @@ var sfx_ambient_water_recycler: AudioStream = preload("res://assets/audio/sfx/am
 var sfx_ambient_med_clinic:     AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_med_clinic.mp3")
 var sfx_ambient_archive:        AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_archive.mp3")
 var sfx_ambient_shelter:        AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_shelter.mp3")
+var sfx_ambient_rain:           AudioStream = preload("res://assets/audio/sfx/ambient/sfx_raining.mp3")
 
 # Dictionary: Vector2i grid_pos → AudioStreamPlayer
 # One ambient player per placed building instance on the grid
@@ -153,6 +156,14 @@ func _ready() -> void:
 	build_sfx_player = AudioStreamPlayer.new()
 	build_sfx_player.bus = "SFX"
 	add_child(build_sfx_player)
+
+	# Rain ambient loop
+	rain_player = AudioStreamPlayer.new()
+	rain_player.bus = "SFX"
+	rain_player.volume_db = -80.0
+	rain_player.stream = sfx_ambient_rain
+	rain_player.finished.connect(_on_rain_finished)
+	add_child(rain_player)
 	
 	# Music Players
 	music_player_a = AudioStreamPlayer.new()
@@ -231,6 +242,32 @@ func play_event_sfx(type: String) -> void:
 	if ui_sfx_player and stream:
 		ui_sfx_player.stream = stream
 		ui_sfx_player.play()
+
+func start_rain() -> void:
+	if _rain_active:
+		return
+	_rain_active = true
+	if not rain_player or not rain_player.stream:
+		return
+	rain_player.volume_db = -80.0
+	rain_player.play()
+	var tween := create_tween()
+	var target_db: float = linear_to_db(GameConstants.RAIN_VOLUME_RATIO)
+	tween.tween_property(rain_player, "volume_db", target_db, GameConstants.AMBIENT_FADE_IN)
+
+func stop_rain() -> void:
+	if not _rain_active:
+		return
+	_rain_active = false
+	if not rain_player:
+		return
+	var tween := create_tween()
+	tween.tween_property(rain_player, "volume_db", -80.0, GameConstants.AMBIENT_FADE_OUT)
+	tween.tween_callback(rain_player.stop)
+
+func _on_rain_finished() -> void:
+	if _rain_active and rain_player:
+		rain_player.play()
 
 func _get_ambient_stream(building_type: BuildingData.BuildingType) -> AudioStream:
 	match building_type:

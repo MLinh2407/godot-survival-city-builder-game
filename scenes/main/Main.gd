@@ -39,6 +39,11 @@ extends Node
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
 @onready var _camera: Camera2D = $GameWorld/Camera2D  
+@onready var fog_overlay: ParallaxBackground = $FogOverlay
+@onready var fog_layer: ParallaxLayer = $FogOverlay/FogLayer
+@onready var fog_rect: ColorRect = $FogOverlay/FogLayer/FogRect
+@onready var rain_drops: GPUParticles2D = $RainDrops
+@onready var rain_splashs: GPUParticles2D = $RainSplashs
 
 @export var use_journal_unread_count: bool = true
 @export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
@@ -75,6 +80,8 @@ var _power_bar_tween: Tween
 var _food_bar_tween: Tween
 var _morale_bar_tween: Tween
 var _hope_slider_tween: Tween
+var _rng := RandomNumberGenerator.new()
+var _is_raining: bool = false
 
 var IntroScene := preload("res://scenes/main/Intro.tscn")
 
@@ -84,6 +91,7 @@ const JOURNAL_PROMPT_DURATION_SEC: float = 3.2
 const JOURNAL_PROMPT_BURST_WINDOW_MSEC: int = 1400
 const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
 const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
+const FOG_DAILY_CHANCE: float = 0.3
 
 # ── Zoom configuration ───────────────────────────────────────────────────────
 const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
@@ -95,6 +103,7 @@ var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_rng.randomize()
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
@@ -110,6 +119,10 @@ func _ready() -> void:
 	
 	if day_label:
 		day_label.text = "DAY " + str(TimeManager.current_day)
+	_update_fog_layout()
+	if get_viewport():
+		get_viewport().size_changed.connect(_on_viewport_size_changed)
+	_set_rain_active(false)
 	_update_hope_order_visuals()
 	
 	# Connect buttons
@@ -678,6 +691,45 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
 		day_label.text = "DAY " + str(new_day)
+	_apply_daily_weather(new_day)
+
+func _apply_daily_weather(_day: int) -> void:
+	var should_rain := _rng.randf() < FOG_DAILY_CHANCE
+	_set_rain_active(should_rain)
+
+func _set_rain_active(active: bool) -> void:
+	_is_raining = active
+	if rain_drops:
+		rain_drops.emitting = active
+		rain_drops.visible = active
+	if rain_splashs:
+		rain_splashs.emitting = active
+		rain_splashs.visible = active
+	if AudioManager:
+		if active:
+			AudioManager.start_rain()
+		else:
+			AudioManager.stop_rain()
+	_update_fog_visibility()
+
+func _update_fog_visibility() -> void:
+	if not fog_overlay:
+		return
+	var should_show := _is_raining and _has_started_gameplay
+	fog_overlay.visible = should_show
+
+func _update_fog_layout() -> void:
+	if not fog_layer or not fog_rect:
+		return
+	var view_size := get_viewport().get_visible_rect().size
+	fog_layer.motion_mirroring = view_size
+	fog_rect.offset_left = 0.0
+	fog_rect.offset_top = 0.0
+	fog_rect.offset_right = view_size.x
+	fog_rect.offset_bottom = view_size.y
+
+func _on_viewport_size_changed() -> void:
+	_update_fog_layout()
 
 func _on_time_changed(time_string: String) -> void:
 	if time_label:

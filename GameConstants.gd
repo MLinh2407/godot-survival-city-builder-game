@@ -230,6 +230,7 @@ const BUILDING_UPGRADE_PARTICLE_DURATION: float = 1.5   # smoke burst before spr
 const AMBIENT_FADE_IN: float                    = 0.5   # AudioManager ambient loop fade-in
 const AMBIENT_FADE_OUT: float                   = 1.0   # AudioManager ambient loop fade-out
 const AMBIENT_VOLUME_RATIO: float               = 0.50  # ambient at 50% of music track volume
+const RAIN_VOLUME_RATIO: float                  = 0.40  # rain loop base volume ratio
 
 
 # ══════════════════════════════════════════════════════════════════════════════
