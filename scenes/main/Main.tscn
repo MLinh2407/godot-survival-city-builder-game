@@ -30,6 +30,8 @@
 [ext_resource type="Script" uid="uid://bf2hye37f35fc" path="res://scripts/systems/MemorialWallSystem.gd" id="16_memorial_system"]
 [ext_resource type="PackedScene" uid="uid://dm3b4ntev3nd" path="res://scenes/UI/EndingScreen.tscn" id="17_ending_screen"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
+[ext_resource type="Texture2D" uid="uid://c3y1yuqosfv1r" path="res://assets/environment/raindrop.png" id="31_04n4k"]
+[ext_resource type="Texture2D" uid="uid://cuuhiwgj5x28e" path="res://assets/environment/rainsplash.png" id="32_8dhb5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -271,6 +273,51 @@ tile_shape = 1
 tile_layout = 5
 tile_size = Vector2i(64, 32)
 sources/1 = SubResource("TileSetAtlasSource_n12rl")
+
+[sub_resource type="Curve" id="Curve_8dhb5"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.270073, 0.7186312), 0.0, 0.0, 0, 0, Vector2(0.7469586, 0.7528517), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_ew7m7"]
+curve = SubResource("Curve_8dhb5")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_fg4ko"]
+lifetime_randomness = 1.0
+particle_flag_disable_z = true
+emission_shape_offset = Vector3(100, -400, 0)
+emission_shape_scale = Vector3(1, 0.1, 1)
+emission_shape = 3
+emission_box_extents = Vector3(750, 1, 1)
+angle_min = 10.0000105
+angle_max = 10.0000105
+direction = Vector3(-0.4, 1, 0)
+spread = 0.0
+initial_velocity_min = 350.0
+initial_velocity_max = 400.0
+gravity = Vector3(-2, 25, 0)
+alpha_curve = SubResource("CurveTexture_ew7m7")
+sub_emitter_mode = 2
+sub_emitter_amount_at_end = 1
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_ew7m7"]
+particles_animation = true
+particles_anim_h_frames = 3
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="Curve" id="Curve_fg4ko"]
+_data = [Vector2(0, 0.5931559), 0.0, 0.0, 0, 0, Vector2(0.24330902, 0.5893537), 0.0, 0.0, 0, 0, Vector2(0.33819953, 0), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_m1khv"]
+curve = SubResource("Curve_fg4ko")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_vs4dm"]
+particle_flag_disable_z = true
+gravity = Vector3(0, 0, 0)
+alpha_curve = SubResource("CurveTexture_m1khv")
+anim_speed_min = 4.0
+anim_speed_max = 4.0
 
 [node name="Main" type="Node" unique_id=1028254611]
 script = ExtResource("1_main_script")
@@ -882,6 +929,24 @@ script = ExtResource("6_1rhdn")
 grid_manager = NodePath("../GameWorld/GridSystem")
 
 [node name="RainDrops" type="GPUParticles2D" parent="." unique_id=1709572352]
-amount = 1000
+texture_filter = 1
+position = Vector2(1, 4)
+amount = 200
+sub_emitter = NodePath("../RainSplashs")
+texture = ExtResource("31_04n4k")
+lifetime = 2.0
+randomness = 1.0
+visibility_rect = Rect2(-1000, -1000, 2000, 2000)
+process_material = SubResource("ParticleProcessMaterial_fg4ko")
 
 [node name="RainSplashs" type="GPUParticles2D" parent="." unique_id=2058589139]
+texture_filter = 1
+material = SubResource("CanvasItemMaterial_ew7m7")
+emitting = false
+amount = 200
+texture = ExtResource("32_8dhb5")
+lifetime = 1.2
+one_shot = true
+preprocess = 0.01
+explosiveness = 0.51
+process_material = SubResource("ParticleProcessMaterial_vs4dm")
