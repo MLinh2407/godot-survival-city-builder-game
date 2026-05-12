@@ -63,7 +63,7 @@ shape = SubResource("CircleShape2D_m1khv")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2139768415]
 position = Vector2(-20, 28)
-scale = Vector2(0.06944445, 0.075)
+scale = Vector2(0.1388889, 0.15)
 sprite_frames = SubResource("SpriteFrames_yq8p8")
 animation = &"Human5_idle"
 autoplay = "Human5_idle"

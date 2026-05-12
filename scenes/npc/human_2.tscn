@@ -59,7 +59,7 @@ script = ExtResource("1_npc_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2121941736]
 	position = Vector2(-20, 28)
-scale = Vector2(0.06944445, 0.08125002)
+scale = Vector2(0.1388889, 0.16250004)
 sprite_frames = SubResource("SpriteFrames_wke70")
 animation = &"Human2_moving"
 autoplay = "Human2_idle"
