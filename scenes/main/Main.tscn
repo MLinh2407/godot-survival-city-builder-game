@@ -29,15 +29,15 @@
 [ext_resource type="PackedScene" uid="uid://b8d8g5alc8m06" path="res://scenes/UI/MemorialPanel.tscn" id="15_memorial_panel"]
 [ext_resource type="Script" uid="uid://bf2hye37f35fc" path="res://scripts/systems/MemorialWallSystem.gd" id="16_memorial_system"]
 [ext_resource type="PackedScene" uid="uid://dm3b4ntev3nd" path="res://scenes/UI/EndingScreen.tscn" id="17_ending_screen"]
+[ext_resource type="Shader" uid="uid://gbvrdbfto0mh" path="res://assets/shaders/fog_overlay.gdshader" id="18_fog_shader"]
+[ext_resource type="Texture2D" uid="uid://d31kaorgxanxt" path="res://assets/shaders/fog_noise.tres" id="19_fog_noise"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
-[ext_resource type="Texture2D" uid="uid://c3y1yuqosfv1r" path="res://assets/environment/raindrop.png" id="31_04n4k"]
-[ext_resource type="Texture2D" uid="uid://cuuhiwgj5x28e" path="res://assets/environment/rainsplash.png" id="32_8dhb5"]
-[ext_resource type="Shader" path="res://assets/shaders/fog_overlay.gdshader" id="18_fog_shader"]
-[ext_resource type="Texture2D" path="res://assets/shaders/fog_noise.tres" id="19_fog_noise"]
 [ext_resource type="PackedScene" uid="uid://coi1lx2t736jp" path="res://scenes/npc/human_1.tscn" id="28_8dhb5"]
 [ext_resource type="PackedScene" uid="uid://da3j5jpth6v1" path="res://scenes/npc/human_2.tscn" id="29_ew7m7"]
 [ext_resource type="PackedScene" uid="uid://cyvn3pshvjuny" path="res://scenes/npc/human_3.tscn" id="30_fg4ko"]
+[ext_resource type="Texture2D" uid="uid://c3y1yuqosfv1r" path="res://assets/environment/raindrop.png" id="31_04n4k"]
 [ext_resource type="PackedScene" uid="uid://dpevyybil3odx" path="res://scenes/npc/human_4.tscn" id="31_m1khv"]
+[ext_resource type="Texture2D" uid="uid://cuuhiwgj5x28e" path="res://assets/environment/rainsplash.png" id="32_8dhb5"]
 [ext_resource type="PackedScene" uid="uid://bxftbmag6j1ro" path="res://scenes/npc/human_5.tscn" id="32_vs4dm"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
@@ -270,6 +270,12 @@ shader_parameter/sweepWidth = 0.24
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_vyk5b"]
 blend_mode = 3
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fog"]
+shader = ExtResource("18_fog_shader")
+shader_parameter/noise_texture = ExtResource("19_fog_noise")
+shader_parameter/density = 0.2
+shader_parameter/speed = Vector2(0.02, 0.01)
+
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n12rl"]
 texture = ExtResource("22_j0f7u")
 texture_region_size = Vector2i(64, 32)
@@ -292,7 +298,6 @@ curve = SubResource("Curve_8dhb5")
 lifetime_randomness = 1.0
 particle_flag_disable_z = true
 emission_shape_offset = Vector3(0, -450, 0)
-emission_shape_scale = Vector3(1, 1, 1)
 emission_shape = 3
 emission_box_extents = Vector3(900, 260, 1)
 angle_min = 10.0000105
@@ -302,6 +307,8 @@ spread = 0.0
 initial_velocity_min = 350.0
 initial_velocity_max = 400.0
 gravity = Vector3(-2, 25, 0)
+scale_min = 0.8
+scale_max = 0.8
 alpha_curve = SubResource("CurveTexture_ew7m7")
 sub_emitter_mode = 2
 sub_emitter_amount_at_end = 1
@@ -311,12 +318,6 @@ particles_animation = true
 particles_anim_h_frames = 3
 particles_anim_v_frames = 1
 particles_anim_loop = false
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_fog"]
-shader = ExtResource("18_fog_shader")
-shader_parameter/noise_texture = ExtResource("19_fog_noise")
-shader_parameter/density = 0.2
-shader_parameter/speed = Vector2(0.02, 0.01)
 
 [sub_resource type="Curve" id="Curve_fg4ko"]
 _data = [Vector2(0, 0.5931559), 0.0, 0.0, 0, 0, Vector2(0.24330902, 0.5893537), 0.0, 0.0, 0, 0, Vector2(0.33819953, 0), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -328,6 +329,8 @@ curve = SubResource("Curve_fg4ko")
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_vs4dm"]
 particle_flag_disable_z = true
 gravity = Vector3(0, 0, 0)
+scale_min = 0.5
+scale_max = 0.5
 alpha_curve = SubResource("CurveTexture_m1khv")
 anim_speed_min = 4.0
 anim_speed_max = 4.0
@@ -892,19 +895,18 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 color = Color(0.03876, 0.09320182, 0.15594886, 1)
 
-[node name="FogOverlay" type="ParallaxBackground" parent="."]
+[node name="FogOverlay" type="ParallaxBackground" parent="." unique_id=1292945315]
 layer = 3
 visible = false
 
-[node name="FogLayer" type="ParallaxLayer" parent="FogOverlay"]
+[node name="FogLayer" type="ParallaxLayer" parent="FogOverlay" unique_id=1832599673]
 motion_mirroring = Vector2(1280, 720)
 
-[node name="FogRect" type="ColorRect" parent="FogOverlay/FogLayer"]
+[node name="FogRect" type="ColorRect" parent="FogOverlay/FogLayer" unique_id=1399338292]
 material = SubResource("ShaderMaterial_fog")
 offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
-color = Color(1, 1, 1, 1)
 
 [node name="GameWorld" type="Node2D" parent="." unique_id=1890764090]
 
@@ -956,10 +958,10 @@ script = ExtResource("6_1rhdn")
 grid_manager = NodePath("../GameWorld/GridSystem")
 
 [node name="RainDrops" type="GPUParticles2D" parent="." unique_id=1709572352]
+modulate = Color(0.75, 0.8, 0.85, 0.7)
 texture_filter = 1
 position = Vector2(1, 4)
-modulate = Color(0.75, 0.8, 0.85, 0.7)
-amount = 350
+amount = 550
 sub_emitter = NodePath("../RainSplashs")
 texture = ExtResource("31_04n4k")
 lifetime = 2.0
@@ -974,11 +976,11 @@ emitting = false
 amount = 250
 texture = ExtResource("32_8dhb5")
 lifetime = 1.2
-randomness = 0.2
-one_shot = false
 preprocess = 0.01
 explosiveness = 0.6
+randomness = 0.2
 process_material = SubResource("ParticleProcessMaterial_vs4dm")
+
 [node name="NPC" type="Node" parent="." unique_id=2014251887]
 
 [node name="Human1" parent="NPC" unique_id=1884332169 instance=ExtResource("28_8dhb5")]
