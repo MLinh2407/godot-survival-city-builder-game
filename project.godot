@@ -24,6 +24,7 @@ AudioManager="*uid://ddhlbd5igyi77"
 TimeManager="*res://scripts/managers/TimeManager.gd"
 CrisisEventSystem="*res://scripts/systems/CrisisEventSystem.gd"
 EndingManager="*uid://dwu6np34ixhan"
+NPCManager="*res://scripts/managers/NPCManager.gd"
 
 [display]
 
