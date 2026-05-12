@@ -67,6 +67,7 @@ var _power_bar_tween: Tween
 var _food_bar_tween: Tween
 var _morale_bar_tween: Tween
 var _hope_slider_tween: Tween
+var meridian_terminal: CanvasLayer
 
 const UI_BAR_TWEEN_DURATION: float = 0.6
 const UI_SLIDER_TWEEN_DURATION: float = 0.45
@@ -96,6 +97,10 @@ func _ready() -> void:
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
+
+	meridian_terminal = preload("res://scripts/ui/MeridianTerminal.gd").new()
+	meridian_terminal.name = "MeridianTerminal"
+	add_child(meridian_terminal)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)

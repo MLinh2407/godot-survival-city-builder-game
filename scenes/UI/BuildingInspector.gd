@@ -26,6 +26,8 @@ var _remove_btn:        Button              = null
 var _remove_hint_lbl:   Label               = null
 var _confirm_dialog:    ConfirmationDialog  = null
 
+var _terminal_btn: Button = null
+
 func _ready() -> void:
 	# Hide the panel by default
 	visible = false
@@ -126,6 +128,8 @@ func _setup_worker_ui() -> void:
 	fill_btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
 	fill_btn.pressed.connect(_on_fill_workers_pressed)
 	row.add_child(fill_btn)
+
+	_setup_terminal_button()
 
 func _on_fill_workers_pressed() -> void:
 	if not building_system or not current_building: return
@@ -278,6 +282,44 @@ func _search_for_building_system(node: Node) -> Node:
 			if found:
 				return found
 	return null
+
+func _setup_terminal_button() -> void:
+	var vbox = $VBoxContainer
+	
+	_terminal_btn = Button.new()
+	_terminal_btn.text = "◈  MERIDIAN Terminal"
+	_terminal_btn.focus_mode = Control.FOCUS_NONE
+	_terminal_btn.custom_minimum_size = Vector2(0, 36)
+	_terminal_btn.visible = false   # only shown for Archive Hall
+
+	var tn := StyleBoxFlat.new()
+	tn.bg_color    = Color(0.05, 0.03, 0.12, 0.90)
+	tn.border_color = Color(0.61, 0.35, 1.0, 0.60)
+	tn.set_border_width_all(1)
+	tn.set_corner_radius_all(3)
+	_terminal_btn.add_theme_stylebox_override("normal", tn)
+
+	var th := StyleBoxFlat.new()
+	th.bg_color    = Color(0.09, 0.05, 0.20, 0.90)
+	th.border_color = Color(0.61, 0.35, 1.0, 1.0)
+	th.set_border_width_all(1)
+	th.set_corner_radius_all(3)
+	_terminal_btn.add_theme_stylebox_override("hover", th)
+
+	_terminal_btn.add_theme_color_override("font_color", Color(0.61, 0.35, 1.0, 1.0))
+	_terminal_btn.add_theme_font_size_override("font_size", 12)
+	_terminal_btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
+	_terminal_btn.pressed.connect(_on_terminal_pressed)
+	_terminal_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	vbox.add_child(_terminal_btn)
+
+
+func _on_terminal_pressed() -> void:
+	var terminal = get_tree().root.get_node_or_null("Main/MeridianTerminal")
+	if terminal and terminal.has_method("open_terminal"):
+		terminal.open_terminal()
+	else:
+		push_warning("BuildingInspector: MeridianTerminal not found at Main/MeridianTerminal")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SELECTION HANDLING
@@ -458,6 +500,18 @@ func _refresh_ui_text() -> void:
 				% [days_left, "s" if days_left != 1 else ""]
 			output_label.add_theme_color_override("font_color",
 				GameConstants.UI_COLOR_WARNING)
+
+	# Terminal button — only visible for Archive Hall
+	if _terminal_btn:
+		var is_archive: bool = (
+			current_building != null
+			and current_building.building_type == BuildingData.BuildingType.ARCHIVE_HALL
+		)
+		_terminal_btn.visible = is_archive
+		if is_archive:
+			var trusted: bool = GameManager.meridian_trusted
+			_terminal_btn.text = "◈  MERIDIAN Terminal" if trusted \
+				else "◈  MERIDIAN Terminal  [limited]"
 
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears
