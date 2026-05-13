@@ -9,11 +9,14 @@ var ui_sfx_player_slider: AudioStreamPlayer
 var ui_sfx_player_journal: AudioStreamPlayer
 var build_sfx_player: AudioStreamPlayer
 var _build_sfx_stop_timer: Timer
+var rain_player: AudioStreamPlayer
+var _rain_active: bool = false
 
 
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
+var track_4: AudioStream = preload("res://assets/audio/music/Track_4.mp3")
 
 # ── UI SFX ───────────────────────────────────────────────────────────────────
 var sfx_hover:            AudioStream = preload("res://assets/audio/sfx/ui/sfx_ui_button_hover.mp3")
@@ -57,11 +60,14 @@ var sfx_ambient_water_recycler: AudioStream = preload("res://assets/audio/sfx/am
 var sfx_ambient_med_clinic:     AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_med_clinic.mp3")
 var sfx_ambient_archive:        AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_archive.mp3")
 var sfx_ambient_shelter:        AudioStream = preload("res://assets/audio/sfx/ambient/sfx_ambient_shelter.mp3")
+var sfx_ambient_rain:           AudioStream = preload("res://assets/audio/sfx/ambient/sfx_raining.mp3")
 
 # Dictionary: Vector2i grid_pos → AudioStreamPlayer
 # One ambient player per placed building instance on the grid
 var _ambient_players: Dictionary = {}
 var _startup_music_timer: Timer
+var _menu_music_locked: bool = false
+var _music_fade_tween: Tween
 
 const STARTUP_MUSIC_DELAY_SEC: float = 2.2
 
@@ -150,14 +156,24 @@ func _ready() -> void:
 	build_sfx_player = AudioStreamPlayer.new()
 	build_sfx_player.bus = "SFX"
 	add_child(build_sfx_player)
+
+	# Rain ambient loop
+	rain_player = AudioStreamPlayer.new()
+	rain_player.bus = "SFX"
+	rain_player.volume_db = -80.0
+	rain_player.stream = sfx_ambient_rain
+	rain_player.finished.connect(_on_rain_finished)
+	add_child(rain_player)
 	
 	# Music Players
 	music_player_a = AudioStreamPlayer.new()
 	music_player_a.bus = "Music"
+	music_player_a.finished.connect(_on_music_player_a_finished)
 	add_child(music_player_a)
 	
 	music_player_b = AudioStreamPlayer.new()
 	music_player_b.bus = "Music"
+	music_player_b.finished.connect(_on_music_player_b_finished)
 	add_child(music_player_b)
 	_schedule_startup_music()
 
@@ -226,6 +242,32 @@ func play_event_sfx(type: String) -> void:
 	if ui_sfx_player and stream:
 		ui_sfx_player.stream = stream
 		ui_sfx_player.play()
+
+func start_rain() -> void:
+	if _rain_active:
+		return
+	_rain_active = true
+	if not rain_player or not rain_player.stream:
+		return
+	rain_player.volume_db = -80.0
+	rain_player.play()
+	var tween := create_tween()
+	var target_db: float = linear_to_db(GameConstants.RAIN_VOLUME_RATIO)
+	tween.tween_property(rain_player, "volume_db", target_db, GameConstants.AMBIENT_FADE_IN)
+
+func stop_rain() -> void:
+	if not _rain_active:
+		return
+	_rain_active = false
+	if not rain_player:
+		return
+	var tween := create_tween()
+	tween.tween_property(rain_player, "volume_db", -80.0, GameConstants.AMBIENT_FADE_OUT)
+	tween.tween_callback(rain_player.stop)
+
+func _on_rain_finished() -> void:
+	if _rain_active and rain_player:
+		rain_player.play()
 
 func _get_ambient_stream(building_type: BuildingData.BuildingType) -> AudioStream:
 	match building_type:
@@ -305,11 +347,17 @@ func update_ambient(grid_pos: Vector2i, building_type: BuildingData.BuildingType
 		stop_ambient(grid_pos)
 
 func play_music(stream: AudioStream) -> void:
+	_kill_music_fade_tween()
+	# Stop the other player to prevent overlapping audio
 	if is_playing_a:
+		if music_player_b and music_player_b.playing:
+			music_player_b.stop()
 		music_player_a.stream = stream
 		music_player_a.play()
 		music_player_a.volume_db = 0.0
 	else:
+		if music_player_a and music_player_a.playing:
+			music_player_a.stop()
 		music_player_b.stream = stream
 		music_player_b.play()
 		music_player_b.volume_db = 0.0
@@ -343,12 +391,60 @@ func _cancel_startup_music_timer() -> void:
 
 func _on_startup_music_timer_timeout() -> void:
 	_startup_music_timer = null
+	if _menu_music_locked:
+		return
 	if _is_any_music_playing():
 		return
 	play_music(track_1)
 
-func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
+func set_menu_music_locked(locked: bool) -> void:
+	_menu_music_locked = locked
+
+func fade_out_music(duration: float = 1.5) -> void:
+	if not _is_any_music_playing():
+		return
+	_kill_music_fade_tween()
 	var tween = create_tween()
+	_music_fade_tween = tween
+	if music_player_a and music_player_a.playing:
+		tween.tween_property(music_player_a, "volume_db", -80.0, duration)
+		tween.tween_callback(music_player_a.stop)
+	if music_player_b and music_player_b.playing:
+		tween.parallel().tween_property(music_player_b, "volume_db", -80.0, duration)
+		tween.parallel().tween_callback(music_player_b.stop)
+func silence_music(fade_duration: float = 0.35) -> void:
+	fade_duration = maxf(fade_duration, 0.0)
+	if fade_duration <= 0.0:
+		_kill_music_fade_tween()
+		_stop_and_reset_music_player(music_player_a)
+		_stop_and_reset_music_player(music_player_b)
+		return
+
+	_kill_music_fade_tween()
+	_fade_out_and_stop_player(music_player_a, fade_duration)
+	_fade_out_and_stop_player(music_player_b, fade_duration)
+
+func _fade_out_and_stop_player(player: AudioStreamPlayer, fade_duration: float) -> void:
+	if player == null:
+		return
+	if not player.playing:
+		_stop_and_reset_music_player(player)
+		return
+
+	var tween = create_tween()
+	tween.tween_property(player, "volume_db", -40.0, fade_duration)
+	tween.tween_callback(Callable(self, "_stop_and_reset_music_player").bind(player))
+
+func _stop_and_reset_music_player(player: AudioStreamPlayer) -> void:
+	if player == null:
+		return
+	player.stop()
+	player.volume_db = 0.0
+
+func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
+	_kill_music_fade_tween()
+	var tween = create_tween()
+	_music_fade_tween = tween
 	
 	if is_playing_a:
 		# Fade out A, fade in B
@@ -371,7 +467,14 @@ func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
 		
 	is_playing_a = not is_playing_a
 
+func _kill_music_fade_tween() -> void:
+	if _music_fade_tween:
+		_music_fade_tween.kill()
+		_music_fade_tween = null
+
 func on_crisis_card_opened() -> void:
+	if _menu_music_locked:
+		return
 	_cancel_startup_music_timer()
 	if _is_track_currently_playing(track_2):
 		return
@@ -381,6 +484,8 @@ func on_crisis_card_opened() -> void:
 		play_music(track_2)
 
 func on_crisis_card_dismissed() -> void:
+	if _menu_music_locked:
+		return
 	if _is_any_music_playing():
 		crossfade_to(track_1, 1.5)
 	else:
@@ -398,3 +503,15 @@ func _on_storm_warning() -> void:
 
 func _on_storm_hit() -> void:
 	play_event_sfx("storm_hit")
+	if _menu_music_locked:
+		return
+	crossfade_to(track_1, 1.5)
+
+func _on_music_player_a_finished() -> void:
+	# Loops at the stream level, restart on finish to guarantee looping
+	if music_player_a and music_player_a.stream:
+		music_player_a.play()
+
+func _on_music_player_b_finished() -> void:
+	if music_player_b and music_player_b.stream:
+		music_player_b.play()

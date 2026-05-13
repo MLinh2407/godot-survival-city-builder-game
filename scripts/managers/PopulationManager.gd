@@ -30,6 +30,22 @@ func _ready() -> void:
 	await get_tree().process_frame
 	TimeManager.day_changed.connect(process_daily_population_tick)
 
+func reset_for_new_game() -> void:
+	consecutive_days_starving = 0
+	consecutive_days_water_unstaffed = 0
+	var pop_data = GameManager.population_state
+	if pop_data:
+		pop_data.total_population = GameConstants.STARTING_POPULATION
+		pop_data.available_workers = GameConstants.STARTING_WORKERS
+		pop_data.sick_count = 0
+		pop_data.max_workers = GameConstants.MAX_WORKERS_LATE_GAME
+		pop_data.outbreak_active = false
+		pop_data.disease_resistance_active = false
+	GameManager.current_population = GameConstants.STARTING_POPULATION
+	GameManager.available_workers = GameConstants.STARTING_WORKERS
+	GameManager.sick_count = 0
+	population_changed.emit()
+
 # Called by BuildingSystem registration 
 var building_system = null
 func register_building_system(bs) -> void:
@@ -200,10 +216,8 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 		var no_clinic = not GameManager.med_clinic_built or not GameManager.med_clinic_upgraded_to_tier_2
 		
 		if pop_too_low and no_clinic:
-			GameManager.colonist_yuna.is_alive = false
-			GameManager.yuna_alive = false 
+			GameManager.record_named_death("yuna")
 			character_died.emit("Yuna")
-			GameManager.named_character_died.emit("yuna")  # For BuildingSystem morale bonus removal
 			AudioManager.play_event_sfx("death_named")
 			
 	# VASQUEZ'S DEATH CHECK
@@ -211,19 +225,15 @@ func _process_character_deaths(day: int, pop_data: PopulationStateData) -> void:
 		if GameManager.vasquez_trade_accepted:
 			var survival_rate = float(pop_data.total_population) / float(GameConstants.STARTING_POPULATION)
 			if survival_rate < GameConstants.VASQUEZ_DEATH_SURVIVAL_THRESHOLD:
-				GameManager.colonist_vasquez.is_alive = false
-				GameManager.vasquez_alive = false
+				GameManager.record_named_death("vasquez")
 				character_died.emit("Vasquez")
-				GameManager.named_character_died.emit("vasquez")  # Reserved for future BuildingSystem effects
 				AudioManager.play_event_sfx("death_named")
 			
 	# ROOK'S DEATH CHECK
 	if day == GameConstants.ROOK_RECONCILIATION_DEADLINE and GameManager.colonist_rook.is_alive:
 		if GameManager.rook_militia_stopped and not GameManager.rook_reconciliation_taken:
-			GameManager.colonist_rook.is_alive = false
-			GameManager.rook_alive = false
+			GameManager.record_named_death("rook")
 			character_died.emit("Rook")
-			GameManager.named_character_died.emit("rook")  # Reserved for future BuildingSystem effects
 			AudioManager.play_event_sfx("death_named")
 
 # ══════════════════════════════════════════════════════════════════════════════

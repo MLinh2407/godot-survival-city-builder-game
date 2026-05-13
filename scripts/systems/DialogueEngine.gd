@@ -35,7 +35,10 @@ const _SPEAKER_ROLE_TOP: float = 376.0
 const _SPEAKER_ROLE_BOTTOM: float = 396.0
 const _PORTRAIT_TEXTURES_BY_KEY: Dictionary = {
 	"kael": "res://assets/characters/Kael.png",
-	"yuna": "res://assets/characters/Yuna.png"
+	"yuna": "res://assets/characters/Yuna.png",
+	"rook": "res://assets/characters/Rook.png",
+	"vasquez": "res://assets/characters/Vasquez.png",
+	"meridian": "res://assets/characters/MERDIAN.png"
 }
 const _PORTRAIT_NAMES_BY_KEY: Dictionary = {
 	"kael": "Kael",
@@ -45,8 +48,8 @@ const _PORTRAIT_NAMES_BY_KEY: Dictionary = {
 	"meridian": "MERIDIAN"
 }
 const _PORTRAIT_ROLES_BY_KEY: Dictionary = {
-	"kael": "Director",
-	"yuna": "Doctor",
+	"kael": "Grid-7 Director",
+	"yuna": "Head Medic",
 	"rook": "Scout",
 	"vasquez": "Grid-9 Director",
 	"meridian": "AI"
@@ -231,7 +234,11 @@ func show_event(event_id: String) -> void:
 	_active_event_id = event_id
 	_build_card(_events_by_id[event_id])
 
+func has_event(event_id: String) -> bool:
+	return _events_by_id.has(event_id)
+
 func _build_card(event_data: Dictionary) -> void:
+	_pause_game()
 	var setup_text = str(event_data.get("setup_text", ""))
 	_text_label.text = setup_text
 	_set_portrait_for_event(event_data)
@@ -277,7 +284,6 @@ func _build_card(event_data: Dictionary) -> void:
 		# Keep a minimum size so the card doesn't collapse too small
 		var min_bottom = _card_panel.offset_top + 240.0
 		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
-	_pause_game()
 	_set_card_visible(true)
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()
@@ -398,6 +404,7 @@ func _recursive_find(node: Node, target_name: String):
 	return null
 
 func _dismiss_card() -> void:
+	var should_force_unpause := _active_event_id.begins_with("intro_")
 	_set_portrait_for_event({})
 	_set_card_visible(false)
 	_clear_choices()
@@ -405,6 +412,9 @@ func _dismiss_card() -> void:
 	card_dismissed.emit()
 	await get_tree().process_frame
 	_resume_game()
+	if should_force_unpause:
+		get_tree().paused = false
+		TimeManager.set_game_speed(TimeManager.GameSpeed.NORMAL)
 	if _dialogue_root and _dialogue_root.visible:
 		return
 	AudioManager.on_crisis_card_dismissed()
@@ -419,7 +429,7 @@ func _pause_game() -> void:
 	if _dialogue_pause_depth == 0:
 		_was_tree_paused = get_tree().paused
 		_previous_speed = TimeManager.current_speed
-	_dialogue_pause_depth += 1
+		_dialogue_pause_depth = 1
 	get_tree().paused = true
 	TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 
@@ -478,3 +488,20 @@ func _play_event_specific_sfx(event_id: String) -> void:
 			AudioManager.play_event_sfx("meridian_contact")
 		_:
 			return
+
+func show_death_card(portrait_key: String, char_name: String, char_role: String, prompt_text: String) -> void:
+	var event_data: Dictionary = {
+		"setup_text": prompt_text,
+		"character_portrait": portrait_key,
+		"character_name": char_name,
+		"character_role": char_role,
+		"choices": [
+			{"id": "acknowledge", "text": "Acknowledge", "outcomes": []}
+		]
+	}
+	
+	# Use a special ID for death cards
+	_active_event_id = "death_card_" + portrait_key
+	
+	# Build and show the card
+	_build_card(event_data)

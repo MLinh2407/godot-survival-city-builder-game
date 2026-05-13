@@ -1,0 +1,131 @@
+[LOOK FOR THE LIGHT]
+
+A Game By
+Team03
+
+---
+
+👨‍💻 DEVELOPMENT TEAM
+
+Hoang Ngoc Mai Linh
+Lead Developer & Technical Director
+
+Project Planning & Setup
+Project architecture design
+Folder structure and system organization
+GitHub repository setup and version control workflow
+
+Core Development
+System integration across all modules
+JSON data structure design and implementation
+Game state management
+Debugging and performance optimization
+
+Game Design
+Story writing and narrative direction
+Crisis Event System design and implementation
+Multiple ending paths design
+Event flow and player choice structure
+
+Content Creation
+2D asset generation using AI tools
+Asset importing and management in engine
+Audio sourcing and integration
+UI asset preparation
+
+---
+
+Tran Trong Nghia
+Systems Programmer
+
+Core Systems
+Game constants and configuration systems
+Balancing values for gameplay mechanics
+System parameter tuning
+
+World Systems
+Isometric grid system implementation
+Tile placement logic
+Grid interaction handling
+
+Technical Implementation
+Data-driven system setup
+Support for scalable gameplay systems
+Code structure for reusable components
+
+---
+
+Ma Tan Khang Nguyen
+Gameplay Programmer
+
+Core Gameplay
+Day/Night cycle system
+Time progression mechanics
+Game loop implementation
+
+Resource Systems
+Food system logic
+Power system logic
+Morale system logic
+Resource consumption and balancing
+
+Simulation Systems
+Player action handling
+System interaction logic
+Gameplay feedback and updates
+
+---
+
+🧪 TESTING & POLISH
+
+System testing and debugging
+Gameplay balancing adjustments
+Bug fixing and stability improvements
+Performance optimization
+
+---
+
+🎨 VISUAL & AUDIO IMPLEMENTATION
+
+UI element integration
+HUD display implementation
+Resource indicators and feedback
+Background and environment visuals
+Audio effects integration
+Music implementation
+
+---
+
+🛠️ TOOLS & TECHNOLOGY
+
+Game Engine: Godot 4
+Programming Language: GDScript
+Version Control: GitHub
+
+Music Generation: Suno
+Sound Effects: Pixabay
+Voiceover Generation: ElevenLabs
+Live Background (Main Menu): Wallpaper Engine
+
+Art & Asset Creation: Gemini, Aseprite
+Video Creation (Intro & Endings): Luma Dream Machine, Roboneo
+
+---
+
+🙏 SPECIAL THANKS
+
+Our Course Lecturer
+For guidance and support throughout development
+
+Playtesters and Supporters
+For feedback and encouragement
+
+---
+
+© 2026 Team03
+
+All rights reserved.
+
+---
+
+Thank you for playing.

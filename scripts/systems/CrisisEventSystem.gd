@@ -11,6 +11,7 @@ var _temporary_effects = []
 var _fired_events: Dictionary = {}
 var _sub_event_journals_by_id: Dictionary = {}
 var _event_journals_by_slug: Dictionary = {}
+var _dialogue_engine: Node
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -19,15 +20,19 @@ func _ready() -> void:
 	if TimeManager:
 		TimeManager.day_changed.connect(_on_day_changed)
 
-	var de = _get_dialogue_engine()
-	if de:
-		de.choice_made.connect(_on_choice_made)
+	_ensure_dialogue_engine()
 
 	_load_event_journals()
 	_load_sub_event_journals()
 
 	if TimeManager and TimeManager.current_day == 1:
 		_on_day_changed(1)
+
+func reset_for_new_game() -> void:
+	active_food_delta = 0.0
+	active_morale_decay_mult = 1.0
+	_temporary_effects.clear()
+	_fired_events.clear()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
@@ -38,6 +43,15 @@ func _get_dialogue_engine() -> Node:
 	if main:
 		return main.get_node_or_null("Events/DialogueEngine")
 	return null
+
+func _ensure_dialogue_engine() -> void:
+	if _dialogue_engine and is_instance_valid(_dialogue_engine):
+		return
+	var de = _get_dialogue_engine()
+	if de:
+		_dialogue_engine = de
+		if de.has_signal("choice_made") and not de.choice_made.is_connected(_on_choice_made):
+			de.choice_made.connect(_on_choice_made)
 
 func _get_building_system() -> Node:
 	var main = get_tree().root.get_node_or_null("Main")
@@ -181,12 +195,14 @@ func _fire_sub_event_journal(
 func _fire_event_once(event_id: String) -> void:
 	if _fired_events.has(event_id):
 		return
-	var de = _get_dialogue_engine()
-	if de:
+	_ensure_dialogue_engine()
+	if _dialogue_engine:
+		if _dialogue_engine.has_method("has_event") and not _dialogue_engine.has_event(event_id):
+			return
 		_fired_events[event_id] = true
-		de.show_event(event_id)
+		_dialogue_engine.show_event(event_id)
 
-func _fire_journal(slug: String, title: String, body: String) -> void:
+func _fire_journal(_slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal and journal.has_method("add_entry"):
 		var entry_type = preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE
@@ -199,6 +215,7 @@ func _fire_journal(slug: String, title: String, body: String) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_day_changed(new_day: int) -> void:
+	_ensure_dialogue_engine()
 	_process_temporary_effects()
 
 	# Apply any persistent daily food modifier from active effects
@@ -389,6 +406,10 @@ func _trigger_unrest_riot() -> void:
 	if bs and bs.has_method("set_building_damaged_randomly"):
 		bs.set_building_damaged_randomly()
 
+	# M4 riot tiles
+	if TilePainter:
+		TilePainter.on_unrest_riot()
+
 func _trigger_rook_injury() -> void:
 	if _fired_events.has("rook_injury"):
 		return
@@ -540,7 +561,7 @@ func _add_temporary_effect(target: String, value: float, duration_days: int) -> 
 	_recalc_active_modifiers()
 
 func _process_temporary_effects() -> void:
-	var current_day = TimeManager.current_day if TimeManager else 0
+	var _current_day = TimeManager.current_day if TimeManager else 0
 	var to_remove = []
 
 	for effect in _temporary_effects:

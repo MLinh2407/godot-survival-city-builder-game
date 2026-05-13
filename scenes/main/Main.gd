@@ -10,6 +10,8 @@ extends Node
 @onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
 @onready var btn_journal: Button = $UILayer/HUD/ButtonJournal
 @onready var colony_journal: CanvasLayer = $UILayer/ColonyJournal
+@onready var build_menu: CanvasLayer = $BuildMenu
+@onready var btn_build:  Button = $UILayer/HUD/ButtonBuild
 @onready var journal_unread_badge: Panel = $UILayer/HUD/ButtonJournal/JournalUnreadBadge
 @onready var journal_unread_badge_text: Label = $UILayer/HUD/ButtonJournal/JournalUnreadBadge/BadgeText
 @onready var journal_write_prompt: Control = $UILayer/HUD/JournalWritePrompt
@@ -28,6 +30,7 @@ extends Node
 @onready var power_rate_lbl: Label = $UILayer/HUD/PowerRateLabel
 @onready var food_rate_lbl: Label = $UILayer/HUD/FoodRateLabel
 @onready var morale_rate_lbl: Label = $UILayer/HUD/MoraleRateLabel
+@onready var storm_countdown_label: Label = $UILayer/HUD/StormCountdownLabel
 @onready var hope_slider: HSlider = $UILayer/HUD/HopeOrderSlider
 @onready var hope_label: Label = $UILayer/HUD/HopeLabel
 @onready var order_label: Label = $UILayer/HUD/OrderLabel
@@ -39,9 +42,18 @@ extends Node
 @onready var dialogue_engine = $Events/DialogueEngine
 @onready var disease_label: Label = $UILayer/HUD/DiseaseLabel
 @onready var _camera: Camera2D = $GameWorld/Camera2D  
+@onready var fog_overlay: ParallaxBackground = $FogOverlay
+@onready var fog_layer: ParallaxLayer = $FogOverlay/FogLayer
+@onready var fog_rect: ColorRect = $FogOverlay/FogLayer/FogRect
+@onready var rain_drops: GPUParticles2D = $RainDrops
+@onready var rain_splashs: GPUParticles2D = $RainSplashs
+@onready var shortcut_panel: CanvasLayer = $ShortcutPanel
+@onready var btn_help:       Button      = $UILayer/HUD/ButtonHelp
 
 @export var use_journal_unread_count: bool = true
 @export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
+@onready var ui_layer: CanvasLayer = $UILayer
+@onready var game_world: Node2D = $GameWorld
 
 var was_power_critical: bool = false
 var was_food_critical: bool = false
@@ -53,6 +65,17 @@ const ORDER_COLOR := Color(0.94, 0.74, 1.0, 1.0)
 
 var _ration_buffer_bar: ProgressBar = null
 var settings_ui: CanvasLayer
+var menu_layer: CanvasLayer
+var intro_layer: CanvasLayer
+var main_menu: Control
+var _has_started_gameplay: bool = false
+var _was_time_frozen_by_menu: bool = false
+var _speed_before_menu: int = TimeManager.GameSpeed.NORMAL
+var _cached_intro_stream: VideoStream
+var _returning_to_menu_from_ending: bool = false
+var _menu_accept_enabled_at_msec: int = 0
+const INTRO_VIDEO_PATH: String = "res://assets/ui/main_menu/intro_video.ogv"
+const MENU_RETURN_INPUT_LOCK_SEC: float = 0.6
 var _journal_prompt_serial: int = 0
 var _last_journal_prompt_msec: int = -10000
 var _journal_badge_tween: Tween
@@ -62,6 +85,11 @@ var _power_bar_tween: Tween
 var _food_bar_tween: Tween
 var _morale_bar_tween: Tween
 var _hope_slider_tween: Tween
+var _rng := RandomNumberGenerator.new()
+var _is_raining: bool = false
+
+var IntroScene := preload("res://scenes/main/Intro.tscn")
+var meridian_terminal: CanvasLayer
 
 const UI_BAR_TWEEN_DURATION: float = 0.6
 const UI_SLIDER_TWEEN_DURATION: float = 0.45
@@ -69,20 +97,36 @@ const JOURNAL_PROMPT_DURATION_SEC: float = 3.2
 const JOURNAL_PROMPT_BURST_WINDOW_MSEC: int = 1400
 const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
 const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
+const FOG_DAILY_CHANCE: float = 0.3
 
 # ── Zoom configuration ───────────────────────────────────────────────────────
-const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
-const ZOOM_DEFAULT:   int          = 1    
+const ZOOM_STEPS:     Array[float] = [0.2, 0.3, 0.4, 0.55, 0.75, 1.0, 1.5, 2.0, 3.0]
+const ZOOM_DEFAULT:   int          = 4   
 const ZOOM_LERP_SPEED: float       = 10.0  
+
+# ── Map boundary constants ────────────────────────────────────────────────────
+const MAP_HALF_W: float = 2560.0
+const MAP_HALF_H: float = 1280.0
 
 var _zoom_index:  int   = ZOOM_DEFAULT
 var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
 
+# ── Pan state ────────────────────────────────────────────────────────────────
+var _is_panning:      bool    = false
+var _pan_last_mouse:  Vector2 = Vector2.ZERO
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_rng.randomize()
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
+	if settings_ui and settings_ui.has_signal("load_file_selected"):
+		settings_ui.load_file_selected.connect(_on_settings_load_file_selected)
+
+	meridian_terminal = preload("res://scripts/ui/MeridianTerminal.gd").new()
+	meridian_terminal.name = "MeridianTerminal"
+	add_child(meridian_terminal)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -91,14 +135,41 @@ func _ready() -> void:
 	PopulationManager.population_changed.connect(_on_population_changed)
 	GameManager.hope_order_changed.connect(_on_hope_order_changed)
 	
+	# Wire build menu button
+	if btn_build:
+		btn_build.focus_mode = Control.FOCUS_NONE
+		if btn_build.has_signal("gui_input"):
+			btn_build.gui_input.connect(func(ev):
+				if ev is InputEventMouseButton and ev.pressed \
+						and ev.button_index == MOUSE_BUTTON_LEFT:
+					if build_menu:
+						build_menu.toggle()
+			)
+
+	# Refresh Memorial Wall button availability when a character dies
+	if build_menu:
+		GameManager.named_character_died.connect(
+			func(_char_name: String): build_menu.refresh_memorial_button()
+		)
+	
 	if day_label:
 		day_label.text = "DAY " + str(TimeManager.current_day)
+	_update_fog_layout()
+	if get_viewport():
+		get_viewport().size_changed.connect(_on_viewport_size_changed)
+	_set_rain_active(false)
 	_update_hope_order_visuals()
 	
 	# Connect buttons
-	if btn_pause: btn_pause.pressed.connect(toggle_pause)
-	if btn_1x: btn_1x.pressed.connect(_on_button_1x_pressed)
-	if btn_2x: btn_2x.pressed.connect(_on_button_2x_pressed)
+	if btn_pause:
+		btn_pause.focus_mode = Control.FOCUS_NONE
+		btn_pause.pressed.connect(toggle_pause)
+	if btn_1x:
+		btn_1x.focus_mode = Control.FOCUS_NONE
+		btn_1x.pressed.connect(_on_button_1x_pressed)
+	if btn_2x:
+		btn_2x.focus_mode = Control.FOCUS_NONE
+		btn_2x.pressed.connect(_on_button_2x_pressed)
 	if btn_settings:
 		btn_settings.focus_mode = Control.FOCUS_NONE
 		if btn_settings.has_signal("gui_input"):
@@ -177,9 +248,335 @@ func _ready() -> void:
 		food_bar.get_parent().add_child(_ration_buffer_bar)
 		_ration_buffer_bar.visible = false
 
-	# TEMP VERIFICATION — remove after confirming
-	# GameManager.hope_order_slider = 90.0
-	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
+	# Storm shield panel auto-refreshes on day change (connected in its own _ready).
+	# Also refresh when building state changes (e.g. shield complete mid-day).
+	var bs_node = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	var shield_panel = get_node_or_null("StormShieldPanel")
+	if bs_node and shield_panel and bs_node.has_signal("building_state_changed"):
+		bs_node.building_state_changed.connect(func(_pos: Vector2i):
+			if shield_panel.visible:
+				shield_panel._refresh_list(TimeManager.current_day))
+
+	if btn_help:
+		btn_help.text       = "?"
+		btn_help.focus_mode = Control.FOCUS_NONE
+		btn_help.pressed.connect(func():
+			if shortcut_panel: shortcut_panel.toggle())
+
+	if _consume_tree_bool_meta("launch_new_game_flow"):
+		_prepare_new_game_state()
+		call_deferred("_preload_intro_stream")
+		if _consume_tree_bool_meta("play_intro_on_new_game"):
+			_ensure_intro_layer_ready()
+			_play_intro_sequence()
+		else:
+			_begin_gameplay()
+		return
+
+	if _consume_tree_bool_meta("launch_load_game_flow"):
+		_open_load_game_dialog()
+		return
+
+	var launch_load_path := _consume_tree_string_meta("launch_load_game_path")
+	if launch_load_path != "":
+		_begin_gameplay()
+		if GameManager and GameManager.has_method("load_game"):
+			GameManager.load_game(launch_load_path)
+		else:
+			push_warning("Main: GameManager.load_game is unavailable")
+		return
+
+	_show_main_menu_overlay()
+	call_deferred("_preload_intro_stream")
+
+func _on_menu_start_new_game() -> void:
+	if _menu_accept_enabled_at_msec > 0 and Time.get_ticks_msec() < _menu_accept_enabled_at_msec:
+		return
+	_menu_accept_enabled_at_msec = 0
+	if colony_journal and colony_journal.has_method("close_silent"):
+		colony_journal.close_silent()
+	_prepare_new_game_state()
+	_set_gameplay_visible(false)
+	_ensure_intro_layer_ready()
+	_dismiss_main_menu()
+	_play_intro_sequence()
+
+func _on_intro_finished() -> void:
+	if intro_layer and is_instance_valid(intro_layer):
+		intro_layer.queue_free()
+		intro_layer = null
+	_begin_gameplay()
+
+func _on_menu_credits() -> void:
+	show_credits_roll_from_menu()
+
+func _on_menu_credits_finished() -> void:
+	if main_menu and is_instance_valid(main_menu) and main_menu.has_method("resume_after_credits"):
+		main_menu.call("resume_after_credits")
+
+func _on_menu_open_settings() -> void:
+	if settings_ui and settings_ui.has_method("toggle_menu"):
+		settings_ui.layer = 300
+		settings_ui.toggle_menu()
+	else:
+		var s = preload("res://scenes/main/SettingsUI.tscn").instantiate()
+		s.layer = 300
+		add_child(s)
+
+func _on_menu_exit() -> void:
+	get_tree().quit()
+
+func _open_load_game_dialog() -> void:
+	if settings_ui and settings_ui.has_method("load_settings"):
+		settings_ui.layer = 300
+		settings_ui.visible = true
+		get_tree().paused = true
+		settings_ui.load_settings()
+	else:
+		push_warning("Load game requested but SettingsUI.load_settings() is unavailable")
+
+func _on_settings_load_file_selected(_path: String) -> void:
+	_dismiss_main_menu()
+	_begin_gameplay()
+
+func _dismiss_main_menu() -> void:
+	if main_menu and is_instance_valid(main_menu):
+		main_menu.queue_free()
+		main_menu = null
+	if menu_layer and is_instance_valid(menu_layer):
+		menu_layer.queue_free()
+		menu_layer = null
+	if colony_journal:
+		colony_journal.visible = true
+
+func show_main_menu_from_ending() -> void:
+	_dismiss_main_menu()
+	_set_gameplay_visible(false)
+	_clear_launch_meta_flags()
+	_returning_to_menu_from_ending = true
+	_has_started_gameplay = false
+	_menu_accept_enabled_at_msec = Time.get_ticks_msec() + int(MENU_RETURN_INPUT_LOCK_SEC * 1000.0)
+	_show_main_menu_overlay()
+
+func _show_main_menu_overlay() -> void:
+	if not ResourceLoader.exists("res://scenes/UI/MainMenu.tscn"):
+		_begin_gameplay()
+		return
+	var menu_scene := ResourceLoader.load("res://scenes/UI/MainMenu.tscn") as PackedScene
+	if menu_scene == null:
+		push_warning("Main: MainMenu packed scene failed to load")
+		return
+
+	_freeze_time_for_menu()
+
+	menu_layer = CanvasLayer.new()
+	menu_layer.name = "MainMenuLayer"
+	menu_layer.layer = 200
+	add_child(menu_layer)
+
+	main_menu = menu_scene.instantiate()
+	if not main_menu:
+		push_warning("Main: MainMenu scene failed to instantiate")
+		return
+	if _returning_to_menu_from_ending:
+		main_menu.set("initial_input_lock_sec", MENU_RETURN_INPUT_LOCK_SEC)
+	menu_layer.add_child(main_menu)
+	if _returning_to_menu_from_ending:
+		_returning_to_menu_from_ending = false
+
+	if colony_journal:
+		if colony_journal.has_method("close_silent"):
+			colony_journal.close_silent()
+		colony_journal.visible = false
+
+	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
+		AudioManager.set_menu_music_locked(true)
+	if AudioManager and AudioManager.has_method("play_music") and AudioManager.track_4:
+		AudioManager.play_music(AudioManager.track_4)
+
+	main_menu.connect("start_new_game", Callable(self, "_on_menu_start_new_game"))
+	main_menu.connect("credits", Callable(self, "_on_menu_credits"))
+	main_menu.connect("open_settings", Callable(self, "_on_menu_open_settings"))
+	main_menu.connect("exit_game", Callable(self, "_on_menu_exit"))
+
+func show_credits_roll_from_menu() -> void:
+	var ending_screen := _get_ending_screen()
+	if ending_screen == null:
+		push_warning("Main: EndingScreen node not found for credits roll")
+		return
+	if ending_screen.has_signal("credits_finished") and not ending_screen.is_connected("credits_finished", Callable(self, "_on_menu_credits_finished")):
+		ending_screen.connect("credits_finished", Callable(self, "_on_menu_credits_finished"))
+	if ending_screen.has_method("start_credits_roll"):
+		ending_screen.call("start_credits_roll", false)
+	else:
+		push_warning("Main: EndingScreen cannot start credits roll")
+
+func _get_ending_screen() -> Control:
+	if not ui_layer:
+		return null
+	return ui_layer.get_node_or_null("EndingScreen")
+
+func _play_intro_sequence() -> void:
+	if AudioManager and AudioManager.has_method("silence_music"):
+		AudioManager.silence_music(0.45)
+
+	if intro_layer == null or not is_instance_valid(intro_layer):
+		_on_intro_finished()
+		return
+
+	if intro_layer.has_meta("intro_node"):
+		var intro: Node = intro_layer.get_meta("intro_node")
+		if intro and is_instance_valid(intro):
+			if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+				intro.set_preloaded_stream(_cached_intro_stream)
+			if intro.has_signal("intro_finished") and not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+				intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+			if intro.has_method("start_intro"):
+				intro.start_intro()
+			print("Main: start_new_game signal received, intro shown")
+			return
+
+	_on_intro_finished()
+
+func _ensure_intro_layer_ready() -> void:
+	if intro_layer and is_instance_valid(intro_layer):
+		return
+	if not ResourceLoader.exists("res://scenes/main/Intro.tscn"):
+		return
+
+	intro_layer = CanvasLayer.new()
+	intro_layer.name = "IntroLayer"
+	intro_layer.layer = 190
+	add_child(intro_layer)
+
+	var intro = IntroScene.instantiate()
+	intro_layer.add_child(intro)
+	if intro is Control:
+		intro.modulate.a = 1.0
+	if _cached_intro_stream and intro.has_method("set_preloaded_stream"):
+		intro.set_preloaded_stream(_cached_intro_stream)
+	if intro.has_signal("intro_finished"):
+		if not intro.is_connected("intro_finished", Callable(self, "_on_intro_finished")):
+			intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
+	intro_layer.set_meta("intro_node", intro)
+
+func _fade_out_main_menu(duration: float) -> void:
+	if duration <= 0.0:
+		return
+	if not menu_layer or not is_instance_valid(menu_layer):
+		return
+
+	if main_menu and is_instance_valid(main_menu):
+		main_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var tween := create_tween()
+	if main_menu and is_instance_valid(main_menu):
+		tween.tween_property(main_menu, "modulate:a", 0.0, duration)
+	else:
+		tween.tween_interval(duration)
+	await tween.finished
+
+func _begin_gameplay() -> void:
+	if _has_started_gameplay:
+		return
+	_has_started_gameplay = true
+	_set_gameplay_visible(true)
+	if colony_journal and colony_journal.has_method("close_silent"):
+		colony_journal.close_silent()
+	_unfreeze_time_after_menu()
+	get_tree().paused = false
+	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
+		AudioManager.set_menu_music_locked(false)
+	if AudioManager and AudioManager.has_method("crossfade_to") and AudioManager.track_1:
+		AudioManager.crossfade_to(AudioManager.track_1, 0.6)
+	elif AudioManager and AudioManager.has_method("play_music") and AudioManager.track_1:
+		AudioManager.play_music(AudioManager.track_1)
+	if dialogue_engine:
+		dialogue_engine.call_deferred("show_event", "cold_night")
+
+func _consume_tree_bool_meta(key: StringName) -> bool:
+	if not get_tree().has_meta(key):
+		return false
+	var value: Variant = get_tree().get_meta(key)
+	get_tree().remove_meta(key)
+	return bool(value)
+
+func _consume_tree_string_meta(key: StringName) -> String:
+	if not get_tree().has_meta(key):
+		return ""
+	var value: Variant = get_tree().get_meta(key)
+	get_tree().remove_meta(key)
+	if value == null:
+		return ""
+	return str(value)
+
+func _clear_launch_meta_flags() -> void:
+	if not get_tree():
+		return
+	var keys := [
+		"launch_new_game_flow",
+		"play_intro_on_new_game",
+		"launch_load_game_flow",
+		"launch_load_game_path"
+	]
+	for key in keys:
+		if get_tree().has_meta(key):
+			get_tree().remove_meta(key)
+
+func _preload_intro_stream() -> void:
+	if _cached_intro_stream:
+		return
+	if not ResourceLoader.exists(INTRO_VIDEO_PATH):
+		return
+	_cached_intro_stream = ResourceLoader.load(INTRO_VIDEO_PATH) as VideoStream
+
+func _prepare_new_game_state() -> void:
+	if GameManager and GameManager.has_method("reset_for_new_game"):
+		GameManager.reset_for_new_game()
+	if ResourceManager and ResourceManager.has_method("reset_for_new_game"):
+		ResourceManager.reset_for_new_game()
+	if PopulationManager and PopulationManager.has_method("reset_for_new_game"):
+		PopulationManager.reset_for_new_game()
+	if has_node("BuildingSystem"):
+		var bs = $BuildingSystem
+		if bs and bs.has_method("reset_for_new_game"):
+			bs.reset_for_new_game()
+	if has_node("GameWorld/GridSystem"):
+		var gs = $GameWorld/GridSystem
+		if gs and gs.has_method("reset_for_new_game"):
+			gs.reset_for_new_game()
+	if CrisisEventSystem and CrisisEventSystem.has_method("reset_for_new_game"):
+		CrisisEventSystem.reset_for_new_game()
+	if EndingManager and EndingManager.has_method("reset_for_new_game"):
+		EndingManager.reset_for_new_game()
+	if colony_journal and colony_journal.has_method("reset_for_new_game"):
+		colony_journal.reset_for_new_game()
+	if TimeManager and TimeManager.has_method("reset_for_new_game"):
+		TimeManager.reset_for_new_game()
+
+func _freeze_time_for_menu() -> void:
+	if _was_time_frozen_by_menu:
+		return
+	if TimeManager:
+		_speed_before_menu = TimeManager.current_speed
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+		_was_time_frozen_by_menu = true
+
+func _unfreeze_time_after_menu() -> void:
+	if not _was_time_frozen_by_menu:
+		return
+	if TimeManager:
+		if _speed_before_menu == TimeManager.GameSpeed.PAUSED:
+			_speed_before_menu = TimeManager.GameSpeed.NORMAL
+		TimeManager.set_game_speed(_speed_before_menu)
+	_was_time_frozen_by_menu = false
+
+func _set_gameplay_visible(is_visible: bool) -> void:
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = is_visible
+	if game_world and is_instance_valid(game_world):
+		game_world.visible = is_visible
 
 func _on_population_changed() -> void:
 	var p = GameManager.population_state
@@ -196,13 +593,44 @@ func _on_population_changed() -> void:
 			disease_label.remove_theme_color_override("font_color")
 
 func _zoom_step(direction: int) -> void:
-	var mouse_world_before: Vector2 = _camera.get_global_transform().affine_inverse() \
-									 * get_viewport().get_mouse_position()
-	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
-	_zoom_target = ZOOM_STEPS[_zoom_index]
-	var mouse_world_after: Vector2 = _camera.get_global_transform().affine_inverse() \
-									* get_viewport().get_mouse_position()
-	_camera.position += mouse_world_before - mouse_world_after
+	var old_zoom: float = ZOOM_STEPS[_zoom_index]
+	_zoom_index = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	
+	_zoom_index = maxi(_zoom_index, _get_min_zoom_index())
+	
+	var new_zoom: float = ZOOM_STEPS[_zoom_index]
+	_zoom_target = new_zoom
+	if is_equal_approx(old_zoom, new_zoom):
+		return
+	# Zoom toward cursor
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var mouse_screen:  Vector2 = get_viewport().get_mouse_position()
+	var cursor_offset: Vector2 = mouse_screen - viewport_size * 0.5
+	_camera.position += cursor_offset * (1.0 / old_zoom - 1.0 / new_zoom)
+	_clamp_camera_position()
+
+## Returns the minimum zoom index that keeps the full map visible.
+func _get_min_zoom_index() -> int:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var min_zoom_x: float = viewport_size.x / (MAP_HALF_W * 2.0)
+	var min_zoom_y: float = viewport_size.y / (MAP_HALF_H * 2.0)
+	var min_zoom: float = minf(min_zoom_x, min_zoom_y)
+	for i in range(ZOOM_STEPS.size()):
+		if ZOOM_STEPS[i] >= min_zoom:
+			return i
+	return ZOOM_STEPS.size() - 1
+
+## Clamps camera position so the viewport never shows outside the map.
+func _clamp_camera_position() -> void:
+	if not _camera:
+		return
+	var zoom: float = _camera.zoom.x
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var half_vp: Vector2 = (viewport_size * 0.5) / zoom
+	var max_x: float = maxf(0.0, MAP_HALF_W - half_vp.x)
+	var max_y: float = maxf(0.0, MAP_HALF_H - half_vp.y)
+	_camera.position.x = clampf(_camera.position.x, -max_x, max_x)
+	_camera.position.y = clampf(_camera.position.y, -max_y, max_y)
 
 func _process(delta: float) -> void:
 	_update_camera_zoom(delta)
@@ -239,6 +667,11 @@ func _process(delta: float) -> void:
 		top_sweep_line.color = Color(0.58, 1.0, 1.0, sweep_alpha)
 
 func _update_camera_zoom(delta: float) -> void:
+	# Safety: if middle mouse was released outside the window, clear pan state
+	if _is_panning and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		_is_panning = false
+		Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+
 	if not _camera:
 		return
 	var current: float = _camera.zoom.x
@@ -247,6 +680,8 @@ func _update_camera_zoom(delta: float) -> void:
 		_camera.zoom = Vector2(next_zoom, next_zoom)
 	else:
 		_camera.zoom = Vector2(_zoom_target, _zoom_target)
+	_update_fog_layout()
+	_clamp_camera_position()
 
 func _update_rates() -> void:
 	if power_rate_lbl:
@@ -317,26 +752,136 @@ func _on_button_settings_pressed() -> void:
 		settings_ui.toggle_menu()
 
 func _unhandled_input(event: InputEvent) -> void:
+	var ending_screen := get_node_or_null("UILayer/EndingScreen")
+	if ending_screen and ending_screen.visible:
+		return
+	# ── Keyboard shortcuts ────────────────────────────────────────────────────
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE: toggle_pause()
 			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
-			KEY_J:	   colony_journal.toggle()
-			
-			# Keyboard zoom shortcuts 
-			KEY_EQUAL, KEY_KP_ADD:      _zoom_step(+1)   # '+'  key zooms in
-			KEY_MINUS, KEY_KP_SUBTRACT: _zoom_step(-1)   # '-'  key zooms out
+			KEY_J:     colony_journal.toggle()
+			KEY_B:
+				if build_menu:
+					build_menu.toggle()
+			KEY_EQUAL, KEY_KP_ADD:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.assign_worker()
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.remove_worker(bs.current_selected_grid_pos)
+			KEY_ESCAPE:
+				# ESC priority chain (highest to lowest):
+				# 1. Close shortcut panel if open
+				# 2. Close journal if open
+				# 3. Cancel active build/decoration mode
+				# 4. Close build menu if open
+				# 5. Toggle settings (original ESC behaviour)
+				if shortcut_panel and shortcut_panel.visible:
+					shortcut_panel.hide_panel()
+				elif colony_journal and colony_journal.is_open:
+					colony_journal.close()
+				elif build_menu and build_menu._active_type != "":
+					build_menu._deactivate()
+				elif build_menu and build_menu.is_open:
+					build_menu.close()
+				else:
+					if settings_ui and settings_ui.has_method("toggle_menu"):
+						settings_ui.toggle_menu()
 
-	# ── mouse-wheel zoom ──
-	if event is InputEventMouseButton and event.pressed:
+	# ── Mouse wheel zoom ──────────────────────────────────────────────────────
+	if event is InputEventMouseButton:
 		match event.button_index:
-			MOUSE_BUTTON_WHEEL_UP:   _zoom_step(+1)
-			MOUSE_BUTTON_WHEEL_DOWN: _zoom_step(-1)
+			MOUSE_BUTTON_WHEEL_UP:
+				_zoom_step(+1)
+				get_viewport().set_input_as_handled()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_step(-1)
+				get_viewport().set_input_as_handled()
+			# ── Middle mouse pan — press to start, release to stop ────────────
+			MOUSE_BUTTON_MIDDLE:
+				if event.pressed:
+					_is_panning     = true
+					_pan_last_mouse = event.position
+					Input.set_default_cursor_shape(Input.CURSOR_DRAG)
+				else:
+					_is_panning = false
+					Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				get_viewport().set_input_as_handled()
+
+	# ── Mouse motion: pan when middle button is held ──────────────────────────
+	if event is InputEventMouseMotion and _is_panning:
+		var delta: Vector2 = event.position - _pan_last_mouse
+		_pan_last_mouse    = event.position
+		_camera.position  -= delta / _camera.zoom.x
+		_clamp_camera_position()
+		get_viewport().set_input_as_handled()
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
 		day_label.text = "DAY " + str(new_day)
+	_apply_daily_weather(new_day)
+	_update_storm_countdown(new_day)
+
+func _apply_daily_weather(_day: int) -> void:
+	var should_rain := _rng.randf() < FOG_DAILY_CHANCE
+	_set_rain_active(should_rain)
+
+func _set_rain_active(active: bool) -> void:
+	_is_raining = active
+	if rain_drops:
+		rain_drops.emitting = active
+		rain_drops.visible = active
+	if rain_splashs:
+		rain_splashs.emitting = active
+		rain_splashs.visible = active
+	if AudioManager:
+		if active:
+			AudioManager.start_rain()
+		else:
+			AudioManager.stop_rain()
+	_update_fog_visibility()
+
+func _update_fog_visibility() -> void:
+	if not fog_overlay:
+		return
+	var should_show := _is_raining and _has_started_gameplay
+	fog_overlay.visible = should_show
+
+func _update_fog_layout() -> void:
+	if not fog_layer or not fog_rect:
+		return
+	var view_size := get_viewport().get_visible_rect().size
+	var zoom := 1.0
+	if _camera:
+		zoom = _camera.zoom.x
+	var world_view := view_size / maxf(zoom, 0.001)
+	fog_layer.motion_mirroring = world_view
+	fog_rect.offset_left = 0.0
+	fog_rect.offset_top = 0.0
+	fog_rect.offset_right = world_view.x
+	fog_rect.offset_bottom = world_view.y
+
+func _on_viewport_size_changed() -> void:
+	_update_fog_layout()
+
+func _update_storm_countdown(current_day: int) -> void:
+	if not storm_countdown_label:
+		return
+	if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
+		var days_remaining: int = GameConstants.STORM_HIT_DAY - current_day
+		storm_countdown_label.text = "⚡ STORM IN " + str(days_remaining) + " DAYS"
+		storm_countdown_label.visible = true
+		# Pulse red as deadline approaches
+		if days_remaining <= 3:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+		else:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+	else:
+		storm_countdown_label.visible = false
 
 func _on_time_changed(time_string: String) -> void:
 	if time_label:

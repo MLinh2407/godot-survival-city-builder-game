@@ -12,6 +12,10 @@ var _prev_powered_states: Dictionary = {}
 var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
+var _is_resetting: bool = false
+
+# Status badge labels — one Label per placed building, keyed by grid_pos
+var _status_badges: Dictionary = {}
 
 const T1_SPRITES = {
 	BuildingData.BuildingType.COAL_GENERATOR: preload("res://assets/buildings/T1_Buildings/Coal_Generator_T1.png"),
@@ -111,6 +115,24 @@ func _ready() -> void:
 				# Ensure centralized tint selection is applied
 				update_building_visual(pos)
 
+func reset_for_new_game() -> void:
+	_is_resetting = true
+	_power_sfx_cooldown = 0.0
+	current_selected_grid_pos = Vector2i.ZERO
+	has_selected_building = false
+
+	if grid_manager:
+		if grid_manager.has_method("exit_build_mode"):
+			grid_manager.exit_build_mode()
+		if grid_manager.has_method("clear_grid"):
+			grid_manager.clear_grid()
+
+	active_buildings.clear()
+	_prev_powered_states.clear()
+	building_selected_data.emit(null)
+	workers_changed.emit()
+	_is_resetting = false
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DAILY TICK — tracks unstaffed days for damage and Water Recycler disease
 # ══════════════════════════════════════════════════════════════════════════════
@@ -166,6 +188,26 @@ func _on_day_changed(_day: int) -> void:
 			# Reset counters when staffed
 			b.days_unstaffed = 0
 			b.days_unstaffed_for_disease = 0
+		
+		# ── Storm shielding progress tick ─────────────────────────────────────
+		# Only runs during the preparation window (Days 26–34)
+		var current_day: int = TimeManager.current_day if TimeManager else 0
+		if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
+			for shield_pos in active_buildings:
+				var sb: BuildingData = active_buildings[shield_pos]
+				if not sb.is_shielding:
+					continue
+				# Only accumulate if the building has at least one worker assigned
+				if sb.workers_assigned > 0:
+					sb.shield_days_accumulated += 1
+					print("BuildingSystem: [%s] shielding progress %d/%d worker-days" \
+						% [sb.building_name, sb.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS])
+					if sb.shield_days_accumulated >= GameConstants.STORM_SHIELD_WORKER_DAYS:
+						sb.is_shielding = false
+						sb.is_shielded = true
+						_refresh_badge(shield_pos)
+						print("BuildingSystem: ✅ [%s] is now fully shielded." % sb.building_name)
+						building_state_changed.emit(shield_pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SELECTION
@@ -195,6 +237,12 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	
 	# Memorial Wall can only be placed after at least one named character has died
 	if b_type == "memorial":
+		if GameManager.memorial_wall_built:
+			if grid_manager:
+				grid_manager.remove_building(grid_pos)
+			print("BuildingSystem: Memorial Wall is unique and already built.")
+			return
+
 		var any_dead: bool = (not GameManager.yuna_alive) or \
 							 (not GameManager.rook_alive) or \
 							 (not GameManager.vasquez_alive) or \
@@ -205,6 +253,24 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 				grid_manager.remove_building(grid_pos)
 			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
 			return
+
+	# Archive Hall: one per colony
+	if b_type == "archive":
+		for _pos in active_buildings:
+			if active_buildings[_pos].building_type == BuildingData.BuildingType.ARCHIVE_HALL:
+				if grid_manager:
+					grid_manager.remove_building(grid_pos)
+				spawn_floating_text(grid_pos, "Only one Archive Hall allowed!", Color(1.0, 0.55, 0.2))
+				return
+		
+	# ── Materials cost check ──────────────────────────────────────────────────
+	var build_cost: int = _get_build_cost(b_type)
+	if build_cost > 0 and not ResourceManager.consume_materials(build_cost):
+		if grid_manager:
+			grid_manager.remove_building(grid_pos)
+		spawn_floating_text(grid_pos, "Not enough materials!", Color(1.0, 0.45, 0.2))
+		print("BuildingSystem: Cannot place [%s] — need %d materials." % [b_type, build_cost])
+		return
 	
 	match b_type:
 		"coal":
@@ -288,6 +354,9 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.power_draw            = 0.0
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
 			AudioManager.play_build_sfx("memorial_place")
+			GameManager.memorial_wall_built = true  # Mark wall as built for death prompt gating
+			if grid_manager and grid_manager.has_method("exit_build_mode"):
+				grid_manager.exit_build_mode()
 			
 	active_buildings[grid_pos] = new_data
 	new_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
@@ -323,8 +392,26 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	if b_type != "memorial":
 		AudioManager.play_build_sfx("place")
 
+	# Notify TilePainter after successful placement
+	if TilePainter:
+		TilePainter.on_building_placed(b_type, grid_pos)
+
+	# Auto-select the just-placed building so players can assign workers immediately
+	var _auto_sel_pos := grid_pos
+	var _auto_sel_t   := get_tree().create_timer(0.12)
+	_auto_sel_t.timeout.connect(func():
+		if active_buildings.has(_auto_sel_pos):
+			_on_building_selected(_auto_sel_pos))
+
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
+		return
+
+	if _is_resetting:
+		AudioManager.remove_ambient(grid_pos)
+		active_buildings.erase(grid_pos)
+		if current_selected_grid_pos == grid_pos:
+			_on_building_deselected()
 		return
 		
 	var b_data: BuildingData = active_buildings[grid_pos]
@@ -333,12 +420,36 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		GameManager.available_workers                  += b_data.workers_assigned
 		GameManager.population_state.available_workers += b_data.workers_assigned
 		workers_changed.emit()
+		# Visual feedback
+		spawn_floating_text(grid_pos,
+			"+%d workers returned" % b_data.workers_assigned,
+			Color(0.55, 0.90, 0.62))
 		print("BuildingSystem: Returned %d workers from demolished [%s]" \
 			% [b_data.workers_assigned, b_data.building_name])
 			
 	AudioManager.play_build_sfx("remove")
 	AudioManager.remove_ambient(grid_pos)
+	_remove_badge(grid_pos)
 	active_buildings.erase(grid_pos)
+
+	# Notify TilePainter after removal
+	if TilePainter:
+		var removed_type_str: String = ""
+		# Map BuildingType enum back to string key
+		var type_to_str: Dictionary = {
+			BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+			BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+			BuildingData.BuildingType.RELAY_HUB:       "relay",
+			BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+			BuildingData.BuildingType.RATION_STORE:    "ration",
+			BuildingData.BuildingType.WATER_RECYCLER:  "water",
+			BuildingData.BuildingType.MED_CLINIC:      "med",
+			BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+			BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+			BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+		}
+		removed_type_str = type_to_str.get(b_data.building_type, "")
+		TilePainter.on_building_removed(removed_type_str, grid_pos)
 	
 	if current_selected_grid_pos == grid_pos:
 		_on_building_deselected() # Safely clear selection
@@ -402,6 +513,27 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	if not active_buildings.has(grid_pos): return
 	var b_data = active_buildings[grid_pos]
 	b_data.is_damaged = is_damaged
+
+	# M4 tile paint/revert
+	var type_to_str_map: Dictionary = {
+		BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+		BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+		BuildingData.BuildingType.RELAY_HUB:       "relay",
+		BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+		BuildingData.BuildingType.RATION_STORE:    "ration",
+		BuildingData.BuildingType.WATER_RECYCLER:  "water",
+		BuildingData.BuildingType.MED_CLINIC:      "med",
+		BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+		BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+		BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+	}
+	var b_type_str: String = type_to_str_map.get(b_data.building_type, "")
+	if TilePainter and b_type_str != "":
+		if is_damaged:
+			TilePainter.on_building_damaged(grid_pos, b_type_str)
+		else:
+			TilePainter.on_building_repaired(grid_pos, b_type_str)
+
 	# Inform scene instance to update its visual
 	if grid_manager and grid_manager.occupied_cells.has(grid_pos):
 		var node = grid_manager.occupied_cells[grid_pos]
@@ -438,6 +570,8 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	emit_signal("building_state_changed", grid_pos)
 
 	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
+
+	_refresh_badge(grid_pos)
 	
 func set_building_damaged_randomly() -> void:
 	if active_buildings.is_empty(): return
@@ -558,7 +692,7 @@ func apply_upgrade_visual(grid_pos: Vector2i) -> void:
 
 	print("BuildingSystem: apply_upgrade_visual complete at %s | building: %s" \
 		% [str(grid_pos), b.building_name])
-
+	
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
 	for pos in active_buildings.keys():
 		var b: BuildingData = active_buildings[pos]
@@ -579,6 +713,10 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 		AudioManager.update_ambient(pos, b.building_type, _should_ambient_play(b))
 
 		update_building_visual(pos)
+
+		# Refresh all status badges to reflect new power/damage states
+		for badge_pos in active_buildings:
+			_refresh_badge(badge_pos)
 
 func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
 	if not active_buildings.has(grid_pos):
@@ -738,6 +876,134 @@ func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.Bui
 
 	print("BuildingSystem: Upgrade particles spawned at %s | color: %s" \
 		% [str(grid_pos), str(particle_color)])
+
+func begin_shield(grid_pos: Vector2i) -> bool:
+	if not active_buildings.has(grid_pos):
+		return false
+	
+	var b: BuildingData = active_buildings[grid_pos]
+	
+	# Already shielded or shielding in progress
+	if b.is_shielded or b.is_shielding:
+		print("BuildingSystem: [%s] is already shielded or shielding in progress." % b.building_name)
+		return false
+	
+	# Check materials
+	if not ResourceManager.consume_materials(GameConstants.STORM_SHIELD_COST):
+		print("BuildingSystem: Not enough materials to shield [%s]." % b.building_name)
+		return false
+	
+	b.is_shielding = true
+	b.shield_days_accumulated = 0
+	
+	AudioManager.play_build_sfx("shield_apply")
+	
+	print("BuildingSystem: Shielding started on [%s] | Cost: %d materials" \
+		% [b.building_name, GameConstants.STORM_SHIELD_COST])
+	
+	building_state_changed.emit(grid_pos)
+	return true
+
+func shutdown_unshielded_buildings() -> void:
+	print("BuildingSystem: Storm hit — shutting down unshielded buildings.")
+	for grid_pos in active_buildings:
+		var b: BuildingData = active_buildings[grid_pos]
+		if not b.is_shielded:
+			b.is_powered = false
+			print("BuildingSystem: [%s] went offline — unshielded." % b.building_name)
+			update_building_visual(grid_pos)
+			AudioManager.stop_ambient(grid_pos)
+	# Recalculate so HUD reflects the new power state
+	if ResourceManager:
+		ResourceManager.resources_changed.emit(
+			ResourceManager.net_power,
+			ResourceManager.food,
+			ResourceManager.morale,
+			ResourceManager.materials
+		)
+
+# ── Build cost lookup ─────────────────────────────────────────────────────────
+func _get_build_cost(b_type: String) -> int:
+	match b_type:
+		"coal":       return GameConstants.BUILD_COST_COAL_GENERATOR
+		"geothermal": return GameConstants.BUILD_COST_GEOTHERMAL_TAP
+		"relay":      return GameConstants.BUILD_COST_RELAY_HUB
+		"hydro":      return GameConstants.BUILD_COST_HYDROPONIC_BAY
+		"ration":     return GameConstants.BUILD_COST_RATION_STORE
+		"water":      return GameConstants.BUILD_COST_WATER_RECYCLER
+		"med":        return GameConstants.BUILD_COST_MED_CLINIC
+		"shelter":    return GameConstants.BUILD_COST_SHELTER_BLOCK
+		"archive":    return GameConstants.BUILD_COST_ARCHIVE_HALL
+		"memorial":   return GameConstants.BUILD_COST_MEMORIAL_WALL
+		_:            return 0
+
+# ── Status badges ─────────────────────────────────────────────────────────────
+func _get_or_create_badge(grid_pos: Vector2i) -> Label:
+	if _status_badges.has(grid_pos):
+		var existing = _status_badges[grid_pos]
+		if is_instance_valid(existing):
+			return existing
+	if not grid_manager:
+		return null
+	var lbl := Label.new()
+	lbl.z_index       = 60
+	lbl.z_as_relative = false
+	lbl.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_font_size_override("font_size", 14)
+	grid_manager.add_child(lbl)
+	_status_badges[grid_pos] = lbl
+	return lbl
+
+func _remove_badge(grid_pos: Vector2i) -> void:
+	if not _status_badges.has(grid_pos):
+		return
+	var lbl = _status_badges[grid_pos]
+	if is_instance_valid(lbl):
+		lbl.queue_free()
+	_status_badges.erase(grid_pos)
+
+func _refresh_badge(grid_pos: Vector2i) -> void:
+	if not active_buildings.has(grid_pos):
+		_remove_badge(grid_pos)
+		return
+	var b: BuildingData = active_buildings[grid_pos]
+
+	# Determine which badge to show (priority: damaged > unpowered > shielding > shielded)
+	var icon : String = ""
+	var color: Color  = Color.WHITE
+
+	if b.is_damaged:
+		icon  = "🔴"
+		color = Color(1.0, 0.35, 0.35, 1.0)
+	elif not b.is_powered and b.base_production_power <= 0.0 and b.power_draw > 0.0:
+		icon  = "⚫"
+		color = Color(0.55, 0.55, 0.60, 1.0)
+	elif b.is_shielding:
+		icon  = "🔷"
+		color = Color(0.3, 0.7, 1.0, 1.0)
+	elif b.is_shielded:
+		icon  = "✅"
+		color = Color(0.35, 0.85, 0.45, 1.0)
+
+	if icon == "":
+		# No badge needed — remove if one exists
+		_remove_badge(grid_pos)
+		return
+
+	var lbl: Label = _get_or_create_badge(grid_pos)
+	if not lbl:
+		return
+	lbl.text = icon
+	lbl.add_theme_color_override("font_color", color)
+	# Position above the building sprite centre
+	if grid_manager and grid_manager.base_grid:
+		var world_pos: Vector2 = grid_manager.base_grid.map_to_local(grid_pos)
+		lbl.position = world_pos + Vector2(-10, -70)
+	lbl.visible = true
+
+func refresh_all_badges() -> void:
+	for pos in active_buildings:
+		_refresh_badge(pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready

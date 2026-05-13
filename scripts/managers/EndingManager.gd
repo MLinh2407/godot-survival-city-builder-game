@@ -16,6 +16,18 @@ const ENDING_THE_QUIET         := "the_quiet"
 
 var _ending_fired: bool = false
 
+func _get_building_system() -> Node:
+	var main = get_tree().root.get_node_or_null("Main")
+	if main:
+		return main.get_node_or_null("BuildingSystem")
+	return null
+
+func _has_archive_hall() -> bool:
+	var bs = _get_building_system()
+	if not bs or not bs.has_method("has_building"):
+		return false
+	return bs.has_building(BuildingData.BuildingType.ARCHIVE_HALL)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -27,32 +39,8 @@ func _ready() -> void:
 		TimeManager.storm_hit.connect(_on_storm_hit)
 	print("EndingManager ready — listening for storm_hit signal.")
 
-# 	# TEMP — ending gate verification, remove after confirming
-# 	call_deferred("_test_ending_gates")
-
-# func _test_ending_gates() -> void:
-# 	print("=== ENDING GATE TESTS ===")
-	
-# 	# Test 1: survival 70%, slider 30 → should be The Torch
-# 	GameManager.current_population = int(847 * 0.70)
-# 	GameManager.hope_order_slider = 30.0
-# 	GameManager.yuna_alive = false  # prevent The Signal
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	# Test 2: survival 70%, slider 70 → should be The Necessary Evil
-# 	GameManager.current_population = int(847 * 0.70)
-# 	GameManager.hope_order_slider = 70.0
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	# Test 3: survival 50%, any slider → should be The Quiet
-# 	GameManager.current_population = int(847 * 0.50)
-# 	GameManager.hope_order_slider = 30.0
-# 	_ending_fired = false
-# 	determine_ending()
-	
-# 	print("=== END GATE TESTS ===")
+func reset_for_new_game() -> void:
+	_ending_fired = false
 
 # ══════════════════════════════════════════════════════════════════════════════
 # STORM HIT — Day 35 trigger
@@ -62,6 +50,44 @@ func _on_storm_hit() -> void:
 	if _ending_fired:
 		return
 	_ending_fired = true
+
+	# Step 1 — Shut down all unshielded buildings
+	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if building_sys and building_sys.has_method("shutdown_unshielded_buildings"):
+		building_sys.shutdown_unshielded_buildings()
+
+	# Step 2 — Apply storm-damaged floor tiles to unshielded building footprints
+	var grid_sys = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
+	if grid_sys != null and building_sys != null:
+		var special_layer = grid_sys.get_node_or_null("SpecialFloorLayer")
+		if special_layer and special_layer is TileMapLayer:
+			for grid_pos in building_sys.active_buildings:
+				var b: BuildingData = building_sys.active_buildings[grid_pos]
+				if not b.is_shielded:
+					var b_type_str: String = grid_sys.anchor_to_type.get(grid_pos, "")
+					if b_type_str == "":
+						continue
+					for cell in grid_sys.get_footprint_cells(grid_pos, b_type_str):
+						special_layer.set_cell(
+							cell,
+							TileRegistry.FLOOR_SOURCE_ID,
+							TileRegistry.M5_STORM_DAMAGED
+						)
+			print("EndingManager: Storm-damaged floor tiles applied to unshielded buildings.")
+		else:
+			push_warning("EndingManager: $SpecialFloorLayer not found — M5 tiles skipped.")
+	
+	# Step 3 — Freeze time permanently
+	if TimeManager:
+		TimeManager.game_ended = true
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+	if get_tree():
+		get_tree().paused = false   # Un-pause the tree so UI still works
+
+	# Step 4 — Brief delay so the storm SFX and visual shutdown are visible
+	await get_tree().create_timer(2.0).timeout
+
+	# Step 5 — Determine and fire the ending
 	determine_ending()
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -76,6 +102,8 @@ func determine_ending() -> void:
 	var vasquez_alive: bool   = GameManager.vasquez_alive
 	var meridian_alive: bool  = GameManager.meridian_alive
 	var all_alive: bool       = rook_alive and yuna_alive and vasquez_alive and meridian_alive
+	var meridian_trusted: bool = GameManager.meridian_trusted
+	var archive_hall_built: bool = _has_archive_hall()
 
 	print("══════════════════════════════════════════════════════")
 	print(" ENDING DETERMINATION — Day 35")
@@ -86,13 +114,15 @@ func determine_ending() -> void:
 	print(" Rook alive    : %s" % str(rook_alive))
 	print(" Vasquez alive : %s" % str(vasquez_alive))
 	print(" MERIDIAN alive: %s" % str(meridian_alive))
+	print(" MERIDIAN trusted: %s" % str(meridian_trusted))
+	print(" Archive Hall built: %s" % str(archive_hall_built))
 	print(" All alive     : %s" % str(all_alive))
 	print("──────────────────────────────────────────────────────")
 
 	var ending_key: String
 
 	# Step 0 — Secret ending check (highest priority)
-	if all_alive and survival_rate >= GameConstants.ENDING_SIGNAL_RATE:
+	if all_alive and survival_rate >= GameConstants.ENDING_SIGNAL_RATE and meridian_trusted and archive_hall_built:
 		ending_key = ENDING_THE_SIGNAL
 		print(" STEP 0: The Signal conditions met → firing secret ending")
 		_play_ending(ending_key, rook_alive)
@@ -140,9 +170,15 @@ func _play_ending(key: String, rook_modifier: bool) -> void:
 	# Log ending final line to journal
 	var ending_text: String = ending_data.get("final_line", "")
 
-	# Play ending music
-	if AudioManager:
-		AudioManager.crossfade_to(AudioManager.track_3, 2.0)
+	if ending_text != "":
+		var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+		if journal and journal.has_method("add_entry"):
+			journal.add_entry(
+				TimeManager.current_day,
+				ending_text,
+				preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE,
+				"Final Entry"
+			)
 
 func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
 	var file = FileAccess.open("res://data/endings.json", FileAccess.READ)
@@ -184,13 +220,3 @@ func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
 		return variants[0]
 
 	return {}
-
-# ══════════════════════════════════════════════════════════════════════════════
-# DEBUG — force-fire a specific ending for testing without playing 35 days
-# Call from the Godot debugger: EndingManager.debug_force_ending("the_torch", true)
-# ══════════════════════════════════════════════════════════════════════════════
-
-func debug_force_ending(key: String, rook_alive: bool) -> void:
-	print("EndingManager: DEBUG — force firing ending '%s' rook_alive=%s" % [key, str(rook_alive)])
-	_ending_fired = false   # Reset so it can fire again
-	_play_ending(key, rook_alive)

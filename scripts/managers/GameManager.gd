@@ -4,6 +4,17 @@ signal hope_order_changed(new_value: float)
 signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CHARACTER METADATA 
+# ══════════════════════════════════════════════════════════════════════════════
+const CHARACTER_METADATA: Dictionary = {
+	"yuna": {"name": "Yuna Tran", "role": "Head Medic", "portrait": "res://assets/characters/Yuna.png"},
+	"rook": {"name": "Rook", "role": "Scout", "portrait": "res://assets/characters/Rook.png"},
+	"vasquez": {"name": "Harlan Vasquez", "role": "Grid-9 Director", "portrait": "res://assets/characters/Vasquez.png"},
+	"meridian": {"name": "MERIDIAN", "role": "AI", "portrait": "res://assets/characters/MERDIAN.png"},
+	"kael": {"name": "Kael", "role": "Grid-7 Director", "portrait": "res://assets/characters/Kael.png"}
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # GLOBAL GAME STATE
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -49,6 +60,14 @@ var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez c
 var deserters_lockdown_taken: bool = false
 
 # ══════════════════════════════════════════════════════════════════════════════
+# MEMORIAL WALL STATE
+# ══════════════════════════════════════════════════════════════════════════════
+
+var memorial_wall_built: bool = false # Set TRUE by BuildingSystem when wall placed
+var memorial_prompt_consumed: bool = false # Set TRUE after first death prompt shown and wall built
+var named_death_days: Dictionary = {} # Maps character id to day of death
+
+# ══════════════════════════════════════════════════════════════════════════════
 # DATA CLASS INSTANCES
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -82,6 +101,69 @@ func _ready() -> void:
 	print("Alive Flags - Yuna: ", yuna_alive, " | Rook: ", rook_alive, " | Vasquez: ", vasquez_alive, " | Meridian: ", meridian_alive)
 	print("Current Day: ", current_day)
 	print("-------------------------------")
+
+func reset_for_new_game() -> void:
+	current_population = GameConstants.STARTING_POPULATION
+	available_workers = GameConstants.STARTING_WORKERS
+	sick_count = 0
+	current_day = 1
+	materials = GameConstants.STARTING_MATERIALS
+
+	yuna_alive = true
+	rook_alive = true
+	vasquez_alive = true
+	meridian_alive = true
+
+	med_clinic_built = false
+	med_clinic_upgraded_to_tier_2 = false
+	rook_militia_stopped = false
+	rook_militia_sanctioned = false
+	rook_reconciliation_taken = false
+	vasquez_trade_accepted = false
+	meridian_trusted = false
+	vasquez_intel_shared = false
+	deserters_lockdown_taken = false
+
+	memorial_wall_built = false
+	memorial_prompt_consumed = false
+	named_death_days.clear()
+
+	_initialize_data_classes()
+	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
+
+	if population_state:
+		population_state.total_population = current_population
+		population_state.available_workers = available_workers
+		population_state.sick_count = 0
+		population_state.max_workers = GameConstants.MAX_WORKERS_LATE_GAME
+		population_state.outbreak_active = false
+		population_state.disease_resistance_active = false
+
+	if colonist_kael:
+		colonist_kael.is_alive = true
+		colonist_kael.death_day = -1
+		colonist_kael.death_cause = ""
+		colonist_kael.memorial_text = ""
+	if colonist_yuna:
+		colonist_yuna.is_alive = true
+		colonist_yuna.death_day = -1
+		colonist_yuna.death_cause = ""
+		colonist_yuna.memorial_text = ""
+	if colonist_rook:
+		colonist_rook.is_alive = true
+		colonist_rook.death_day = -1
+		colonist_rook.death_cause = ""
+		colonist_rook.memorial_text = ""
+	if colonist_vasquez:
+		colonist_vasquez.is_alive = true
+		colonist_vasquez.death_day = -1
+		colonist_vasquez.death_cause = ""
+		colonist_vasquez.memorial_text = ""
+	if colonist_meridian:
+		colonist_meridian.is_alive = true
+		colonist_meridian.death_day = -1
+		colonist_meridian.death_cause = ""
+		colonist_meridian.memorial_text = ""
 
 func _initialize_data_classes() -> void:
 	# 1. Population State
@@ -176,6 +258,38 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if changed and not is_alive:
 		named_character_died.emit(lower_id)
 
+func record_named_death(identifier: String) -> void:
+	if current_day > 33:
+		return 
+	
+	var lower_id = identifier.to_lower()
+	
+	# Record death day if not already recorded
+	if not named_death_days.has(lower_id):
+		named_death_days[lower_id] = current_day
+	
+	# Set alive flag to false
+	set_character_alive(lower_id, false)
+
+func get_memorial_entries() -> Array:
+	var entries: Array = []
+	
+	# Return entries for all dead characters, sorted by day
+	for char_id in named_death_days.keys():
+		var day = named_death_days[char_id]
+		if day > 0:
+			var char_info = CHARACTER_METADATA.get(char_id, {"name": char_id.capitalize(), "role": ""})
+			entries.append({
+				"id": char_id,
+				"name": char_info.get("name", ""),
+				"role": char_info.get("role", ""),
+				"day": day
+			})
+	
+	# Sort by day ascending
+	entries.sort_custom(func(a, b): return a.day < b.day)
+	return entries
+
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
 
@@ -203,7 +317,9 @@ func save_game(filename: String) -> void:
 				"workers": b_data.workers_assigned,
 				"is_upgraded": b_data.is_upgraded,
 				"is_damaged": b_data.is_damaged,
-				"is_shielded": b_data.is_shielded
+				"is_shielded": b_data.is_shielded,
+				"is_shielding": b_data.is_shielding,              
+				"shield_days_accumulated": b_data.shield_days_accumulated 
 			})
 	
 	var day = TimeManager.current_day if TimeManager else current_day
@@ -242,7 +358,10 @@ func save_game(filename: String) -> void:
 			"vasquez_intel_shared": vasquez_intel_shared,
 			"deserters_lockdown_taken": deserters_lockdown_taken,
 			"meridian_trusted": meridian_trusted,
-			"rook_militia_sanctioned": rook_militia_sanctioned
+			"rook_militia_sanctioned": rook_militia_sanctioned,
+			"memorial_wall_built": memorial_wall_built,
+			"memorial_prompt_consumed": memorial_prompt_consumed,
+			"named_death_days": named_death_days
 		},
 		"time_manager": {
 			"current_day": day,
@@ -312,6 +431,9 @@ func load_game(filepath: String) -> void:
 	deserters_lockdown_taken = gm_data.get("deserters_lockdown_taken", false)
 	meridian_trusted = gm_data.get("meridian_trusted", false)
 	rook_militia_sanctioned = gm_data.get("rook_militia_sanctioned", false)
+	memorial_wall_built = gm_data.get("memorial_wall_built", false)
+	memorial_prompt_consumed = gm_data.get("memorial_prompt_consumed", false)
+	named_death_days = gm_data.get("named_death_days", {})
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})
@@ -376,6 +498,8 @@ func load_game(filepath: String) -> void:
 				b_data.is_upgraded = b.get("is_upgraded", false)
 				b_data.is_damaged = b.get("is_damaged", false)
 				b_data.is_shielded = b.get("is_shielded", false)
+				b_data.is_shielding = b.get("is_shielding", false)                       
+				b_data.shield_days_accumulated = b.get("shield_days_accumulated", 0)      
 				
 				if b_data.is_damaged:
 					building_sys.set_building_damaged(pos, true)

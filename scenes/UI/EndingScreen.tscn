@@ -1,0 +1,204 @@
+[gd_scene format=3 uid="uid://dm3b4ntev3nd"]
+
+[ext_resource type="Script" uid="uid://dax8va0hnduas" path="res://scripts/ui/EndingScreen.gd" id="1_ending_screen_script"]
+[ext_resource type="Script" uid="uid://vhi88rnmbp7p" path="res://scripts/ui/CreditsRoll.gd" id="2_credits_roll_script"]
+[ext_resource type="Texture2D" uid="uid://c5fspo3wdom0w" path="res://assets/ui/main_menu/title.png" id="3_title_texture"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_continue_normal"]
+bg_color = Color(0, 0, 0, 0.35)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_continue_hover"]
+bg_color = Color(0.1, 0.1, 0.1, 0.55)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
+bg_color = Color(0.95, 0.95, 0.95, 0.95)
+
+[node name="EndingScreen" type="Control" unique_id=699497666]
+z_index = 100
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_ending_screen_script")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=305904585]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="EndingVideo" type="VideoStreamPlayer" parent="." unique_id=511390350]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SkipPrompt" type="Label" parent="." unique_id=88739135]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 332.0
+offset_top = -38.0
+offset_right = 672.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_font_sizes/font_size = 22
+text = "PRESS [SPACE] TO SKIP"
+horizontal_alignment = 1
+
+[node name="EndCard" type="Control" parent="." unique_id=1978394222]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="EndCardBackdrop" type="ColorRect" parent="EndCard" unique_id=110115812]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.92)
+
+[node name="EndCardText" type="Label" parent="EndCard" unique_id=640775708]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -24.0
+offset_right = 460.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.97, 0.97, 0.97, 1)
+theme_override_font_sizes/font_size = 26
+text = "You have unlocked Ending 1 out of 7 endings"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="EndCard" unique_id=1638444833]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -70.0
+offset_right = -40.0
+offset_bottom = -30.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_continue_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_continue_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_continue_hover")
+text = "Continue"
+
+[node name="CreditsRoll" type="Control" parent="." unique_id=1719737937]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_credits_roll_script")
+
+[node name="CreditsBackdrop" type="ColorRect" parent="CreditsRoll" unique_id=244872657]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="CreditsContent" type="Control" parent="CreditsRoll" unique_id=203275987]
+anchors_preset = 0
+
+[node name="CreditsColumn" type="VBoxContainer" parent="CreditsRoll/CreditsContent" unique_id=1877715528]
+layout_mode = 0
+size_flags_horizontal = 4
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="CreditsTitle" type="Panel" parent="CreditsRoll/CreditsContent/CreditsColumn" unique_id=604005745]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
+
+[node name="TitleImage" type="TextureRect" parent="CreditsRoll/CreditsContent/CreditsColumn/CreditsTitle" unique_id=604005746]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_title_texture")
+stretch_mode = 3
+
+[node name="CreditsText" type="RichTextLabel" parent="CreditsRoll/CreditsContent/CreditsColumn" unique_id=927619508]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_active = false
+horizontal_alignment = 1
+
+[node name="SpeedHint" type="Label" parent="CreditsRoll" unique_id=38370592]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -360.0
+offset_top = -48.0
+offset_right = -24.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_font_sizes/font_size = 18
+text = "Hold [SPACE] To Speed Up"
+horizontal_alignment = 2

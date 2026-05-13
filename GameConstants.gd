@@ -14,7 +14,7 @@ const MAX_WORKERS_LATE_GAME: int       = 85   # worker pool grows slowly to this
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DAY_LENGTH_SECONDS: float        = 90.0   # real seconds per game day at 1× speed
-const DAY_LENGTH_FAST: float           = 10.0   # real seconds per game day at 2× speed
+const DAY_LENGTH_FAST: float           = 1.0   # real seconds per game day at 2× speed
 const TOTAL_DAYS: int                  = 35
 const STORM_START_DAY: int             = 26     # Storm Warning fires — Act III begins
 const STORM_HIT_DAY: int               = 35     # storm lands, game ends
@@ -109,7 +109,7 @@ const SHELTER_CAPACITY_T2: int                  = 280
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DISEASE_SICK_MIN: int                     = 10
-const DISEASE_SICK_MAX: int                     = 25
+const DISEASE_SICK_MAX: int                     = 20
 const DISEASE_DEATH_RATE_MIN: int               = 1    # sick die per day if untreated
 const DISEASE_DEATH_RATE_MAX: int               = 3
 const DISEASE_TREATMENT_RATE: int               = 5    # sick cured per day by staffed Med Clinic
@@ -177,6 +177,23 @@ const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia san
 const UPGRADE_COST_BASE: int                    = 25  # base materials cost for T1→T2 upgrade
 const UPGRADE_COST_HIGH: int                    = 40  # For critical buildings like Water Recycler/Med Clinic
 const REPAIR_COST_BASE: int                     = 10  # base materials cost to repair a damaged building
+const STORM_SHIELD_COST: int                    = 15   # materials to begin shielding a building
+const STORM_SHIELD_WORKER_DAYS: int             = 2    # worker-days required to complete shielding
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BUILDING PLACEMENT COSTS  (Materials deducted when player places a building)
+# ══════════════════════════════════════════════════════════════════════════════
+const BUILD_COST_COAL_GENERATOR: int  = 20
+const BUILD_COST_GEOTHERMAL_TAP: int  = 35
+const BUILD_COST_RELAY_HUB: int       = 15
+const BUILD_COST_HYDROPONIC_BAY: int  = 20
+const BUILD_COST_RATION_STORE: int    = 15
+const BUILD_COST_WATER_RECYCLER: int  = 20
+const BUILD_COST_MED_CLINIC: int      = 30
+const BUILD_COST_SHELTER_BLOCK: int   = 25
+const BUILD_COST_ARCHIVE_HALL: int    = 45
+const BUILD_COST_MEMORIAL_WALL: int   = 0   # Free — it is a monument, not infrastructure
+const BUILD_COST_DECORATION: int      = 0   # Decoration tiles are always free
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -198,6 +215,17 @@ const VASQUEZ_DEATH_DAY: int                    = 30
 const VASQUEZ_DEATH_SURVIVAL_THRESHOLD: float   = 0.50
 const ROOK_RECONCILIATION_DEADLINE: int         = 32
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NPC SETTINGS
+# ══════════════════════════════════════════════════════════════════════════════
+
+const NPC_MAX_AMOUNT: int               = 15      # Target amount of visual NPCs to spawn
+const NPC_BEHAVIOR_CHANGE_TIME: float   = 10.0    # Seconds before changing state
+const NPC_SCALE_SIZE: Vector2           = Vector2(0.07, 0.08) # Base size scale
+const NPC_WANDER_RADIUS: float          = 150.0   # How far they can pick a random spot
+const NPC_WALK_SPEED: float             = 25.0    # Movement speed
+const NPC_SPAWN_COOLDOWN: float         = 5.0     # Seconds between each NPC spawn
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SPRITE / ASSET SIZES
@@ -230,6 +258,7 @@ const BUILDING_UPGRADE_PARTICLE_DURATION: float = 1.5   # smoke burst before spr
 const AMBIENT_FADE_IN: float                    = 0.5   # AudioManager ambient loop fade-in
 const AMBIENT_FADE_OUT: float                   = 1.0   # AudioManager ambient loop fade-out
 const AMBIENT_VOLUME_RATIO: float               = 0.50  # ambient at 50% of music track volume
+const RAIN_VOLUME_RATIO: float                  = 0.40  # rain loop base volume ratio
 
 
 # ══════════════════════════════════════════════════════════════════════════════

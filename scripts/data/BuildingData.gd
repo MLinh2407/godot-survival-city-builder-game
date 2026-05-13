@@ -4,6 +4,7 @@
 class_name BuildingData
 extends Resource
 
+@warning_ignore("unused_signal")
 signal staffing_changed(current: int, capacity: int)
 
 # Building type enum (10 building types)
@@ -66,6 +67,8 @@ var staffing_ratio: float:
 # --- Storm damage state ---
 # Shielded buildings survive Day 35. Unshielded go offline
 @export var is_shielded: bool = false
+@export var is_shielding: bool = false        
+@export var shield_days_accumulated: int = 0  
 @export var is_damaged: bool = false     
 
 # --- Resource Production (base values, before staffing ratio) ---
