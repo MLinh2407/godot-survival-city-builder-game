@@ -14,6 +14,8 @@ var time_elapsed: float = 0.0
 
 var _last_time_str: String = ""
 
+var game_ended: bool = false
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -44,6 +46,11 @@ func get_current_day_length() -> float:
 			return GameConstants.DAY_LENGTH_SECONDS
 
 func _process(delta: float) -> void:
+	if game_ended:          
+		return            
+	if current_speed == GameSpeed.PAUSED:
+		return
+
 	if current_speed == GameSpeed.PAUSED:
 		return
 		

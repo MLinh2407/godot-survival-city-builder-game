@@ -177,6 +177,23 @@ const MATERIALS_ROOK_MILITIA_BONUS: int         = 3   # extra/day if militia san
 const UPGRADE_COST_BASE: int                    = 25  # base materials cost for T1→T2 upgrade
 const UPGRADE_COST_HIGH: int                    = 40  # For critical buildings like Water Recycler/Med Clinic
 const REPAIR_COST_BASE: int                     = 10  # base materials cost to repair a damaged building
+const STORM_SHIELD_COST: int                    = 15   # materials to begin shielding a building
+const STORM_SHIELD_WORKER_DAYS: int             = 2    # worker-days required to complete shielding
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BUILDING PLACEMENT COSTS  (Materials deducted when player places a building)
+# ══════════════════════════════════════════════════════════════════════════════
+const BUILD_COST_COAL_GENERATOR: int  = 20
+const BUILD_COST_GEOTHERMAL_TAP: int  = 35
+const BUILD_COST_RELAY_HUB: int       = 15
+const BUILD_COST_HYDROPONIC_BAY: int  = 20
+const BUILD_COST_RATION_STORE: int    = 15
+const BUILD_COST_WATER_RECYCLER: int  = 20
+const BUILD_COST_MED_CLINIC: int      = 30
+const BUILD_COST_SHELTER_BLOCK: int   = 25
+const BUILD_COST_ARCHIVE_HALL: int    = 45
+const BUILD_COST_MEMORIAL_WALL: int   = 0   # Free — it is a monument, not infrastructure
+const BUILD_COST_DECORATION: int      = 0   # Decoration tiles are always free
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -10,6 +10,8 @@ extends Node
 @onready var btn_settings: Button = $UILayer/HUD/ButtonSettings
 @onready var btn_journal: Button = $UILayer/HUD/ButtonJournal
 @onready var colony_journal: CanvasLayer = $UILayer/ColonyJournal
+@onready var build_menu: CanvasLayer = $BuildMenu
+@onready var btn_build:  Button = $UILayer/HUD/ButtonBuild
 @onready var journal_unread_badge: Panel = $UILayer/HUD/ButtonJournal/JournalUnreadBadge
 @onready var journal_unread_badge_text: Label = $UILayer/HUD/ButtonJournal/JournalUnreadBadge/BadgeText
 @onready var journal_write_prompt: Control = $UILayer/HUD/JournalWritePrompt
@@ -28,6 +30,7 @@ extends Node
 @onready var power_rate_lbl: Label = $UILayer/HUD/PowerRateLabel
 @onready var food_rate_lbl: Label = $UILayer/HUD/FoodRateLabel
 @onready var morale_rate_lbl: Label = $UILayer/HUD/MoraleRateLabel
+@onready var storm_countdown_label: Label = $UILayer/HUD/StormCountdownLabel
 @onready var hope_slider: HSlider = $UILayer/HUD/HopeOrderSlider
 @onready var hope_label: Label = $UILayer/HUD/HopeLabel
 @onready var order_label: Label = $UILayer/HUD/OrderLabel
@@ -44,6 +47,8 @@ extends Node
 @onready var fog_rect: ColorRect = $FogOverlay/FogLayer/FogRect
 @onready var rain_drops: GPUParticles2D = $RainDrops
 @onready var rain_splashs: GPUParticles2D = $RainSplashs
+@onready var shortcut_panel: CanvasLayer = $ShortcutPanel
+@onready var btn_help:       Button      = $UILayer/HUD/ButtonHelp
 
 @export var use_journal_unread_count: bool = true
 @export var journal_prompt_gif_path: String = "res://assets/ui/hud/gifs/writing_gif.gif"
@@ -84,6 +89,7 @@ var _rng := RandomNumberGenerator.new()
 var _is_raining: bool = false
 
 var IntroScene := preload("res://scenes/main/Intro.tscn")
+var meridian_terminal: CanvasLayer
 
 const UI_BAR_TWEEN_DURATION: float = 0.6
 const UI_SLIDER_TWEEN_DURATION: float = 0.45
@@ -94,12 +100,20 @@ const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
 const FOG_DAILY_CHANCE: float = 0.3
 
 # ── Zoom configuration ───────────────────────────────────────────────────────
-const ZOOM_STEPS:     Array[float] = [0.75, 1.0, 1.5, 2.0, 3.0]
-const ZOOM_DEFAULT:   int          = 1    
+const ZOOM_STEPS:     Array[float] = [0.2, 0.3, 0.4, 0.55, 0.75, 1.0, 1.5, 2.0, 3.0]
+const ZOOM_DEFAULT:   int          = 4   
 const ZOOM_LERP_SPEED: float       = 10.0  
+
+# ── Map boundary constants ────────────────────────────────────────────────────
+const MAP_HALF_W: float = 2560.0
+const MAP_HALF_H: float = 1280.0
 
 var _zoom_index:  int   = ZOOM_DEFAULT
 var _zoom_target: float = ZOOM_STEPS[ZOOM_DEFAULT]
+
+# ── Pan state ────────────────────────────────────────────────────────────────
+var _is_panning:      bool    = false
+var _pan_last_mouse:  Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -109,6 +123,10 @@ func _ready() -> void:
 	add_child(settings_ui)
 	if settings_ui and settings_ui.has_signal("load_file_selected"):
 		settings_ui.load_file_selected.connect(_on_settings_load_file_selected)
+
+	meridian_terminal = preload("res://scripts/ui/MeridianTerminal.gd").new()
+	meridian_terminal.name = "MeridianTerminal"
+	add_child(meridian_terminal)
 	
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.time_changed.connect(_on_time_changed)
@@ -116,6 +134,23 @@ func _ready() -> void:
 	ResourceManager.resources_changed.connect(_on_resources_changed)
 	PopulationManager.population_changed.connect(_on_population_changed)
 	GameManager.hope_order_changed.connect(_on_hope_order_changed)
+	
+	# Wire build menu button
+	if btn_build:
+		btn_build.focus_mode = Control.FOCUS_NONE
+		if btn_build.has_signal("gui_input"):
+			btn_build.gui_input.connect(func(ev):
+				if ev is InputEventMouseButton and ev.pressed \
+						and ev.button_index == MOUSE_BUTTON_LEFT:
+					if build_menu:
+						build_menu.toggle()
+			)
+
+	# Refresh Memorial Wall button availability when a character dies
+	if build_menu:
+		GameManager.named_character_died.connect(
+			func(_char_name: String): build_menu.refresh_memorial_button()
+		)
 	
 	if day_label:
 		day_label.text = "DAY " + str(TimeManager.current_day)
@@ -213,9 +248,20 @@ func _ready() -> void:
 		food_bar.get_parent().add_child(_ration_buffer_bar)
 		_ration_buffer_bar.visible = false
 
-	# TEMP VERIFICATION — remove after confirming
-	# GameManager.hope_order_slider = 90.0
-	# print("TEST: Slider forced to 90 — expect Order zone modifiers in next day tick")
+	# Storm shield panel auto-refreshes on day change (connected in its own _ready).
+	# Also refresh when building state changes (e.g. shield complete mid-day).
+	var bs_node = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	var shield_panel = get_node_or_null("StormShieldPanel")
+	if bs_node and shield_panel and bs_node.has_signal("building_state_changed"):
+		bs_node.building_state_changed.connect(func(_pos: Vector2i):
+			if shield_panel.visible:
+				shield_panel._refresh_list(TimeManager.current_day))
+
+	if btn_help:
+		btn_help.text       = "?"
+		btn_help.focus_mode = Control.FOCUS_NONE
+		btn_help.pressed.connect(func():
+			if shortcut_panel: shortcut_panel.toggle())
 
 	if _consume_tree_bool_meta("launch_new_game_flow"):
 		_prepare_new_game_state()
@@ -547,13 +593,44 @@ func _on_population_changed() -> void:
 			disease_label.remove_theme_color_override("font_color")
 
 func _zoom_step(direction: int) -> void:
-	var mouse_world_before: Vector2 = _camera.get_global_transform().affine_inverse() \
-									 * get_viewport().get_mouse_position()
-	_zoom_index  = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
-	_zoom_target = ZOOM_STEPS[_zoom_index]
-	var mouse_world_after: Vector2 = _camera.get_global_transform().affine_inverse() \
-									* get_viewport().get_mouse_position()
-	_camera.position += mouse_world_before - mouse_world_after
+	var old_zoom: float = ZOOM_STEPS[_zoom_index]
+	_zoom_index = clampi(_zoom_index + direction, 0, ZOOM_STEPS.size() - 1)
+	
+	_zoom_index = maxi(_zoom_index, _get_min_zoom_index())
+	
+	var new_zoom: float = ZOOM_STEPS[_zoom_index]
+	_zoom_target = new_zoom
+	if is_equal_approx(old_zoom, new_zoom):
+		return
+	# Zoom toward cursor
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var mouse_screen:  Vector2 = get_viewport().get_mouse_position()
+	var cursor_offset: Vector2 = mouse_screen - viewport_size * 0.5
+	_camera.position += cursor_offset * (1.0 / old_zoom - 1.0 / new_zoom)
+	_clamp_camera_position()
+
+## Returns the minimum zoom index that keeps the full map visible.
+func _get_min_zoom_index() -> int:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var min_zoom_x: float = viewport_size.x / (MAP_HALF_W * 2.0)
+	var min_zoom_y: float = viewport_size.y / (MAP_HALF_H * 2.0)
+	var min_zoom: float = minf(min_zoom_x, min_zoom_y)
+	for i in range(ZOOM_STEPS.size()):
+		if ZOOM_STEPS[i] >= min_zoom:
+			return i
+	return ZOOM_STEPS.size() - 1
+
+## Clamps camera position so the viewport never shows outside the map.
+func _clamp_camera_position() -> void:
+	if not _camera:
+		return
+	var zoom: float = _camera.zoom.x
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var half_vp: Vector2 = (viewport_size * 0.5) / zoom
+	var max_x: float = maxf(0.0, MAP_HALF_W - half_vp.x)
+	var max_y: float = maxf(0.0, MAP_HALF_H - half_vp.y)
+	_camera.position.x = clampf(_camera.position.x, -max_x, max_x)
+	_camera.position.y = clampf(_camera.position.y, -max_y, max_y)
 
 func _process(delta: float) -> void:
 	_update_camera_zoom(delta)
@@ -590,6 +667,11 @@ func _process(delta: float) -> void:
 		top_sweep_line.color = Color(0.58, 1.0, 1.0, sweep_alpha)
 
 func _update_camera_zoom(delta: float) -> void:
+	# Safety: if middle mouse was released outside the window, clear pan state
+	if _is_panning and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		_is_panning = false
+		Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+
 	if not _camera:
 		return
 	var current: float = _camera.zoom.x
@@ -598,6 +680,7 @@ func _update_camera_zoom(delta: float) -> void:
 		_camera.zoom = Vector2(next_zoom, next_zoom)
 	else:
 		_camera.zoom = Vector2(_zoom_target, _zoom_target)
+	_clamp_camera_position()
 
 func _update_rates() -> void:
 	if power_rate_lbl:
@@ -671,27 +754,76 @@ func _unhandled_input(event: InputEvent) -> void:
 	var ending_screen := get_node_or_null("UILayer/EndingScreen")
 	if ending_screen and ending_screen.visible:
 		return
+	# ── Keyboard shortcuts ────────────────────────────────────────────────────
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE: toggle_pause()
 			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
-			KEY_J:	   colony_journal.toggle()
-			
-			# Keyboard zoom shortcuts 
-			KEY_EQUAL, KEY_KP_ADD:      _zoom_step(+1)   # '+'  key zooms in
-			KEY_MINUS, KEY_KP_SUBTRACT: _zoom_step(-1)   # '-'  key zooms out
+			KEY_J:     colony_journal.toggle()
+			KEY_B:
+				if build_menu:
+					build_menu.toggle()
+			KEY_EQUAL, KEY_KP_ADD:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.assign_worker()
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
+				if bs and bs.has_selected_building:
+					bs.remove_worker(bs.current_selected_grid_pos)
+			KEY_ESCAPE:
+				# ESC priority chain (highest to lowest):
+				# 1. Close shortcut panel if open
+				# 2. Close journal if open
+				# 3. Cancel active build/decoration mode
+				# 4. Close build menu if open
+				# 5. Toggle settings (original ESC behaviour)
+				if shortcut_panel and shortcut_panel.visible:
+					shortcut_panel.hide_panel()
+				elif colony_journal and colony_journal.is_open:
+					colony_journal.close()
+				elif build_menu and build_menu._active_type != "":
+					build_menu._deactivate()
+				elif build_menu and build_menu.is_open:
+					build_menu.close()
+				else:
+					if settings_ui and settings_ui.has_method("toggle_menu"):
+						settings_ui.toggle_menu()
 
-	# ── mouse-wheel zoom ──
-	if event is InputEventMouseButton and event.pressed:
+	# ── Mouse wheel zoom ──────────────────────────────────────────────────────
+	if event is InputEventMouseButton:
 		match event.button_index:
-			MOUSE_BUTTON_WHEEL_UP:   _zoom_step(+1)
-			MOUSE_BUTTON_WHEEL_DOWN: _zoom_step(-1)
+			MOUSE_BUTTON_WHEEL_UP:
+				_zoom_step(+1)
+				get_viewport().set_input_as_handled()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_step(-1)
+				get_viewport().set_input_as_handled()
+			# ── Middle mouse pan — press to start, release to stop ────────────
+			MOUSE_BUTTON_MIDDLE:
+				if event.pressed:
+					_is_panning     = true
+					_pan_last_mouse = event.position
+					Input.set_default_cursor_shape(Input.CURSOR_DRAG)
+				else:
+					_is_panning = false
+					Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+				get_viewport().set_input_as_handled()
+
+	# ── Mouse motion: pan when middle button is held ──────────────────────────
+	if event is InputEventMouseMotion and _is_panning:
+		var delta: Vector2 = event.position - _pan_last_mouse
+		_pan_last_mouse    = event.position
+		_camera.position  -= delta / _camera.zoom.x
+		_clamp_camera_position()
+		get_viewport().set_input_as_handled()
 
 func _on_day_changed(new_day: int) -> void:
 	if day_label:
 		day_label.text = "DAY " + str(new_day)
 	_apply_daily_weather(new_day)
+	_update_storm_countdown(new_day)
 
 func _apply_daily_weather(_day: int) -> void:
 	var should_rain := _rng.randf() < FOG_DAILY_CHANCE
@@ -730,6 +862,21 @@ func _update_fog_layout() -> void:
 
 func _on_viewport_size_changed() -> void:
 	_update_fog_layout()
+
+func _update_storm_countdown(current_day: int) -> void:
+	if not storm_countdown_label:
+		return
+	if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
+		var days_remaining: int = GameConstants.STORM_HIT_DAY - current_day
+		storm_countdown_label.text = "⚡ STORM IN " + str(days_remaining) + " DAYS"
+		storm_countdown_label.visible = true
+		# Pulse red as deadline approaches
+		if days_remaining <= 3:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_CRITICAL)
+		else:
+			storm_countdown_label.add_theme_color_override("font_color", GameConstants.UI_COLOR_WARNING)
+	else:
+		storm_countdown_label.visible = false
 
 func _on_time_changed(time_string: String) -> void:
 	if time_label:

@@ -17,6 +17,8 @@ config/features=PackedStringArray("4.6", "Forward Plus")
 [autoload]
 
 GameConstants="*uid://btfjwpe1a7qls"
+TileRegistry="*uid://0jf0gnw3n6b4"
+TilePainter="*uid://r54mv2ycvkle"
 GameManager="*uid://dknkmc4mhbmrf"
 ResourceManager="*uid://dwh6slo30k3e8"
 PopulationManager="*uid://d3voqymr74q5n"
