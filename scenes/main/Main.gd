@@ -680,6 +680,7 @@ func _update_camera_zoom(delta: float) -> void:
 		_camera.zoom = Vector2(next_zoom, next_zoom)
 	else:
 		_camera.zoom = Vector2(_zoom_target, _zoom_target)
+	_update_fog_layout()
 	_clamp_camera_position()
 
 func _update_rates() -> void:
@@ -854,11 +855,15 @@ func _update_fog_layout() -> void:
 	if not fog_layer or not fog_rect:
 		return
 	var view_size := get_viewport().get_visible_rect().size
-	fog_layer.motion_mirroring = view_size
+	var zoom := 1.0
+	if _camera:
+		zoom = _camera.zoom.x
+	var world_view := view_size / maxf(zoom, 0.001)
+	fog_layer.motion_mirroring = world_view
 	fog_rect.offset_left = 0.0
 	fog_rect.offset_top = 0.0
-	fog_rect.offset_right = view_size.x
-	fog_rect.offset_bottom = view_size.y
+	fog_rect.offset_right = world_view.x
+	fog_rect.offset_bottom = world_view.y
 
 func _on_viewport_size_changed() -> void:
 	_update_fog_layout()

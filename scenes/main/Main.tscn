@@ -26,24 +26,23 @@
 [ext_resource type="Script" uid="uid://bj7o6svi0fqgp" path="res://scripts/systems/DialogueEngine.gd" id="13_dialogue_engine"]
 [ext_resource type="PackedScene" uid="uid://cwpk5oxtqdiej" path="res://scenes/buildings/MemorialWall.tscn" id="13_grv7h"]
 [ext_resource type="PackedScene" uid="uid://1r2i00lg87vu" path="res://scenes/UI/ColonyJournal.tscn" id="14_colony_journal"]
+[ext_resource type="Script" uid="uid://dmyrj11qrcfnj" path="res://scripts/ui/BuildMenu.gd" id="15_ilqpp"]
 [ext_resource type="PackedScene" uid="uid://b8d8g5alc8m06" path="res://scenes/UI/MemorialPanel.tscn" id="15_memorial_panel"]
 [ext_resource type="Script" uid="uid://bf2hye37f35fc" path="res://scripts/systems/MemorialWallSystem.gd" id="16_memorial_system"]
 [ext_resource type="PackedScene" uid="uid://dm3b4ntev3nd" path="res://scenes/UI/EndingScreen.tscn" id="17_ending_screen"]
 [ext_resource type="Shader" uid="uid://gbvrdbfto0mh" path="res://assets/shaders/fog_overlay.gdshader" id="18_fog_shader"]
 [ext_resource type="Texture2D" uid="uid://d31kaorgxanxt" path="res://assets/shaders/fog_noise.tres" id="19_fog_noise"]
 [ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
+[ext_resource type="TileSet" uid="uid://bago6eevk5c46" path="res://floor_tileset.tres" id="25_u7tt4"]
 [ext_resource type="PackedScene" uid="uid://coi1lx2t736jp" path="res://scenes/npc/human_1.tscn" id="28_8dhb5"]
 [ext_resource type="PackedScene" uid="uid://da3j5jpth6v1" path="res://scenes/npc/human_2.tscn" id="29_ew7m7"]
 [ext_resource type="PackedScene" uid="uid://cyvn3pshvjuny" path="res://scenes/npc/human_3.tscn" id="30_fg4ko"]
-[ext_resource type="Texture2D" uid="uid://c3y1yuqosfv1r" path="res://assets/environment/raindrop.png" id="31_04n4k"]
+[ext_resource type="Script" uid="uid://2ultnrgjmwll" path="res://scripts/ui/StormShieldPanel.gd" id="30_ftc2p"]
+[ext_resource type="Script" uid="uid://4ubmq6b1q7hm" path="res://scripts/ui/ShortcutPanel.gd" id="31_04n4k"]
 [ext_resource type="PackedScene" uid="uid://dpevyybil3odx" path="res://scenes/npc/human_4.tscn" id="31_m1khv"]
 [ext_resource type="Texture2D" uid="uid://cuuhiwgj5x28e" path="res://assets/environment/rainsplash.png" id="32_8dhb5"]
 [ext_resource type="PackedScene" uid="uid://bxftbmag6j1ro" path="res://scenes/npc/human_5.tscn" id="32_vs4dm"]
-[ext_resource type="Script" uid="uid://dmyrj11qrcfnj" path="res://scripts/ui/BuildMenu.gd" id="15_ilqpp"]
-[ext_resource type="Texture2D" uid="uid://bdk2jewrtae3g" path="res://assets/environment/tile_ground.png" id="22_j0f7u"]
-[ext_resource type="TileSet" uid="uid://bago6eevk5c46" path="res://floor_tileset.tres" id="25_u7tt4"]
-[ext_resource type="Script" uid="uid://2ultnrgjmwll" path="res://scripts/ui/StormShieldPanel.gd" id="30_ftc2p"]
-[ext_resource type="Script" uid="uid://4ubmq6b1q7hm" path="res://scripts/ui/ShortcutPanel.gd" id="31_04n4k"]
+[ext_resource type="Texture2D" uid="uid://c3y1yuqosfv1r" path="res://assets/environment/raindrop.png" id="35_8gxhd"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_strip"]
 bg_color = Color(0.02, 0.05, 0.09, 0.88)
@@ -281,17 +280,6 @@ shader_parameter/noise_texture = ExtResource("19_fog_noise")
 shader_parameter/density = 0.2
 shader_parameter/speed = Vector2(0.02, 0.01)
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n12rl"]
-texture = ExtResource("22_j0f7u")
-texture_region_size = Vector2i(64, 32)
-0:0/0 = 0
-
-[sub_resource type="TileSet" id="TileSet_dc040"]
-tile_shape = 1
-tile_layout = 5
-tile_size = Vector2i(64, 32)
-sources/1 = SubResource("TileSetAtlasSource_n12rl")
-
 [sub_resource type="Curve" id="Curve_8dhb5"]
 _data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.270073, 0.7186312), 0.0, 0.0, 0, 0, Vector2(0.7469586, 0.7528517), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 4
@@ -304,7 +292,7 @@ lifetime_randomness = 1.0
 particle_flag_disable_z = true
 emission_shape_offset = Vector3(0, -450, 0)
 emission_shape = 3
-emission_box_extents = Vector3(900, 260, 1)
+emission_box_extents = Vector3(3000, 1500, 1)
 angle_min = 10.0000105
 angle_max = 10.0000105
 direction = Vector3(-0.4, 1, 0)
@@ -934,6 +922,7 @@ material = SubResource("ShaderMaterial_fog")
 offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
+
 [node name="BuildMenu" type="CanvasLayer" parent="." unique_id=2089314646]
 layer = 90
 script = ExtResource("15_ilqpp")
@@ -1006,24 +995,25 @@ grid_manager = NodePath("../GameWorld/GridSystem")
 modulate = Color(0.75, 0.8, 0.85, 0.7)
 texture_filter = 1
 position = Vector2(1, 4)
-amount = 550
+amount = 3000
 sub_emitter = NodePath("../RainSplashs")
-texture = ExtResource("31_04n4k")
+texture = ExtResource("35_8gxhd")
 lifetime = 2.0
 randomness = 1.0
-visibility_rect = Rect2(-1000, -1000, 2000, 2000)
+visibility_rect = Rect2(-4000, -4000, 8000, 8000)
 process_material = SubResource("ParticleProcessMaterial_fg4ko")
 
 [node name="RainSplashs" type="GPUParticles2D" parent="." unique_id=2058589139]
 texture_filter = 1
 material = SubResource("CanvasItemMaterial_ew7m7")
 emitting = false
-amount = 250
+amount = 3000
 texture = ExtResource("32_8dhb5")
 lifetime = 1.2
 preprocess = 0.01
 explosiveness = 0.6
 randomness = 0.2
+visibility_rect = Rect2(-4000, -4000, 8000, 8000)
 process_material = SubResource("ParticleProcessMaterial_vs4dm")
 
 [node name="NPC" type="Node" parent="." unique_id=2014251887]
@@ -1037,6 +1027,7 @@ process_material = SubResource("ParticleProcessMaterial_vs4dm")
 [node name="Human4" parent="NPC" unique_id=140118097 instance=ExtResource("31_m1khv")]
 
 [node name="Human5" parent="NPC" unique_id=315405148 instance=ExtResource("32_vs4dm")]
+
 [node name="StormShieldPanel" type="CanvasLayer" parent="." unique_id=1876456300]
 script = ExtResource("30_ftc2p")
 
