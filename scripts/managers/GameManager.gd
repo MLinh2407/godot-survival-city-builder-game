@@ -23,6 +23,7 @@ var available_workers: int = GameConstants.STARTING_WORKERS
 var sick_count: int = 0
 var current_day: int = 1
 var materials: int = GameConstants.STARTING_MATERIALS
+var is_loading_game: bool = false
 
 # Float 0-100. Starts at 50 (Neutral)
 var _hope_order_slider: float = 50.0
@@ -305,7 +306,14 @@ func ensure_saves_dir() -> void:
 func save_game(filename: String) -> void:
 	ensure_saves_dir()
 	
-	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	var main_node = get_tree().root.get_node_or_null("Main")
+	if not main_node:
+		for child in get_tree().root.get_children():
+			if child.has_node("BuildingSystem") and child.has_node("GameWorld/GridSystem"):
+				main_node = child
+				break
+
+	var building_sys = main_node.get_node_or_null("BuildingSystem") if main_node else null
 	var serialized_buildings = []
 	if building_sys:
 		for pos in building_sys.active_buildings:
@@ -396,6 +404,7 @@ func load_game(filepath: String) -> void:
 		print("Save file not found at: ", filepath)
 		return
 		
+	is_loading_game = true
 	var file = FileAccess.open(filepath, FileAccess.READ)
 	var content = file.get_as_text()
 	file.close()
@@ -403,6 +412,7 @@ func load_game(filepath: String) -> void:
 	var json = JSON.new()
 	if json.parse(content) != OK:
 		push_error("Failed to parse JSON file: ", filepath)
+		is_loading_game = false
 		return
 		
 	var data = json.get_data()
@@ -434,6 +444,16 @@ func load_game(filepath: String) -> void:
 	memorial_wall_built = gm_data.get("memorial_wall_built", false)
 	memorial_prompt_consumed = gm_data.get("memorial_prompt_consumed", false)
 	named_death_days = gm_data.get("named_death_days", {})
+	
+	if population_state:
+		population_state.total_population = current_population
+		population_state.available_workers = available_workers
+		population_state.sick_count = sick_count
+	
+	if colonist_yuna: colonist_yuna.is_alive = yuna_alive
+	if colonist_rook: colonist_rook.is_alive = rook_alive
+	if colonist_vasquez: colonist_vasquez.is_alive = vasquez_alive
+	if colonist_meridian: colonist_meridian.is_alive = meridian_alive
 
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})
@@ -458,9 +478,18 @@ func load_game(filepath: String) -> void:
 		ResourceManager.morale = rm_data.get("morale", ResourceManager.morale)
 		ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 
-	# Restore Buildings
-	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
-	var grid_manager = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
+	var main_node = get_tree().root.get_node_or_null("Main")
+	if not main_node:
+		for child in get_tree().root.get_children():
+			if child.has_node("BuildingSystem") and child.has_node("GameWorld/GridSystem"):
+				main_node = child
+				break
+
+	var building_sys = null
+	var grid_manager = null
+	if main_node:
+		building_sys = main_node.get_node_or_null("BuildingSystem")
+		grid_manager = main_node.get_node_or_null("GameWorld/GridSystem")
 	if building_sys and grid_manager:
 		# First clear the board natively
 		grid_manager.clear_grid()
@@ -469,7 +498,7 @@ func load_game(filepath: String) -> void:
 		var b_arr = data.get("buildings", [])
 		for b in b_arr:
 			var pos = Vector2i(b.get("grid_x", 0), b.get("grid_y", 0))
-			var ty = b.get("type", 0)
+			var ty = int(b.get("type", 0))
 			
 			# Map integer BuildingType to string key if required by spawn function
 			var type_map: Dictionary = {
@@ -512,4 +541,5 @@ func load_game(filepath: String) -> void:
 	if journal_node and journal_node.has_method("deserialise"):
 		journal_node.deserialise(journal_data)
 	
+	is_loading_game = false
 	print("Game loaded successfully from: ", filepath)

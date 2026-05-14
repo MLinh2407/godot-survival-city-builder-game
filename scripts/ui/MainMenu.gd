@@ -429,6 +429,8 @@ func _on_settings_pressed() -> void:
 			settings.name = "StandaloneSettingsUI"
 			if settings is CanvasLayer:
 				settings.layer = 300
+			if settings.has_signal("load_file_selected"):
+				settings.load_file_selected.connect(_on_standalone_load_file_selected)
 			add_child(settings)
 			if settings.has_method("toggle_menu"):
 				settings.toggle_menu()

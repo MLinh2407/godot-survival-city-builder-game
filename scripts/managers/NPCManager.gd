@@ -38,7 +38,7 @@ func _spawn_single_npc():
 	var main_node = get_tree().root.get_node_or_null("Main")
 	var parent_node = null
 	if main_node:
-		parent_node = main_node.get_node_or_null("GameWorld/GridManager")
+		parent_node = main_node.get_node_or_null("GameWorld/GridSystem")
 		if parent_node == null:
 			parent_node = main_node
 	else:

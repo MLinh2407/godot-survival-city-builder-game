@@ -338,6 +338,8 @@ func _open_load_game_dialog() -> void:
 func _on_settings_load_file_selected(_path: String) -> void:
 	_dismiss_main_menu()
 	_begin_gameplay()
+	if GameManager and GameManager.has_method("load_game"):
+		GameManager.load_game(_path)
 
 func _dismiss_main_menu() -> void:
 	if main_menu and is_instance_valid(main_menu):
@@ -346,8 +348,6 @@ func _dismiss_main_menu() -> void:
 	if menu_layer and is_instance_valid(menu_layer):
 		menu_layer.queue_free()
 		menu_layer = null
-	if colony_journal:
-		colony_journal.visible = true
 
 func show_main_menu_from_ending() -> void:
 	_dismiss_main_menu()
