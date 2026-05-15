@@ -2,131 +2,131 @@
   "schema_version": "1.0",
   "note": "Sub-event narrative texts. These are spawned by specific crisis event choices. Smaller than crisis events — brief Colony Journal entries or optional dialogue cards only.",
   "sub_events": [
-    {
-      "sub_event_id": "vasquez_late_dialogue",
-      "display_name": "Vasquez Late Dialogue",
-      "spawned_by": "the_vasquez_offer — Option C (counter-offer)",
-      "trigger_condition": "vasquez_late_dialogue_unlocked == true",
-      "trigger_day_range": [
-        28,
-        30
-      ],
-      "location": "Colony Journal — optional read",
-      "mandatory": false,
-      "journal_entry": {
-        "title": "Day 28–30: Vasquez Transmission (Recorded)",
-        "body": "Vasquez came through on channel 7 this afternoon. It was the first time since the counter-offer in Week 2. He said he'd used the eastern tunnel survey data and he didn't say how, but the numbers he cited were specific enough that he'd clearly read the whole thing. He said the coordinates I gave him led his salvage teams to a sealed maintenance corridor that gave Grid-9 access to three functioning water recyclers they'd been cut off from for six months.\n\nHe didn't say thank you, exactly. He said: 'The intelligence was worth more than the workers would have been.' That's as close as Vasquez gets.\n\nHe also said he's been tracking something in the northern broadcast spectrum. He mentioned a coordinate, then I wrote it down and said his communications technician thought it might be a structured response to automated Syndicate emergency signals. He brought it up like it was a minor footnote. I'm not sure he understood what he was giving me.\n\nHe signed off before I could ask more. The coordinate is in the log. MERIDIAN confirmed it matches the signal they detected two days ago."
-      }
-    },
-    {
-      "sub_event_id": "rook_reconciliation",
-      "legacy_sub_event_id": "rook_reconciliation_dialogue",
-      "event_id": "rook_reconciliation",
-      "display_name": "Rook Reconciliation",
-      "spawned_by": "rooks_militia — Option B (stop them)",
-      "trigger_condition": "rook_militia_stopped == true AND rook_reconciliation_taken == false",
-      "trigger_day_range": [
-        25,
-        32
-      ],
-      "location": "Dialogue card + Colony Journal",
-      "mandatory": false,
-      "note": "If taken before Day 33: rook_alive stays TRUE. If not taken before Day 33: rook_alive = FALSE permanently on Day 33.",
-      "setup_text": "You find Rook alone in the mess hall. It's been a few days since you shut down his scavenging operation. The anger is mostly gone now, replaced by a quiet distance. You have a narrow window to say something.",
-      "character_portrait": "rook",
-      "character_name": "Rook",
-      "character_role": "Scout",
-      "choices": [
-        {
-          "id": "option_a",
-          "text": "Pull up a chair. Talk to him as a person, not a Director.",
-          "outcomes": [
-            {
-              "type": "resource",
-              "rook_reconciliation_taken": true
-            },
-            {
-              "type": "narrative",
-              "journal_entry": "I sat with Rook today. I didn't give him a lecture, I just told him why I couldn't live with his blood on my hands. He didn't agree, but he looked me in the eye for the first time in a week. He’s staying. He’s going to work the hydroponics instead. It’s a start.",
-              "hope_order_delta": 5
-            }
-          ]
-        },
-        {
-          "id": "option_b",
-          "text": "Keep walking. Some bridges can't be rebuilt.",
-          "outcomes": [
-            {
-              "type": "resource",
-              "description": "No mechanical effect immediately."
-            },
-            {
-              "type": "narrative",
-              "journal_entry": "I walked past Rook in the mess hall. I gave the order and I stand by it. I didn't owe him an explanation, but seeing him sit there in the dark made the victory feel like a defeat. We're just on completely different pages.",
-              "hope_order_delta": -5
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "sub_event_id": "rook_injury_event",
-      "display_name": "Rook Injury Event",
-      "spawned_by": "rooks_militia — Option A (sanction) + Med Clinic not upgraded before Day 33",
-      "trigger_condition": "rooks_militia_option_a_taken == true AND med_clinic_not_upgraded == true",
-      "trigger_day_range": [
-        30,
-        33
-      ],
-      "trigger_timing": "random within range",
-      "location": "Colony Journal — auto-fires, no choice",
-      "mandatory": true,
-      "mechanical_effect": {
-        "available_workers_delta": -2,
-        "duration_days": 3,
-        "description": "Two militia members injured in a tunnel collapse. Temporarily pulled from available workers. Rook himself is fine.",
-        "rook_alive_flag_change": "none — Rook is uninjured"
-      },
-      "journal_entry": {
-        "title": "Day [30–33]: Tunnel Collapse, East Salvage Corridor",
-        "body": "Two of Rook's team caught a partial tunnel collapse in the east salvage corridor this afternoon — Devi and the older one, Carrow. Rook got them both out. Devi has a broken arm. Carrow has a concussion and two cracked ribs. Neither is critical. Both are out of rotation for three days minimum, which puts available workers down temporarily.\n\nRook came to report it himself. He was covered in dust and he was calm and he gave me the incident breakdown in the same format as the official salvage reports — location, cause, injuries, recovery estimate. He had clearly written it in his head on the walk over. I told him the Med Clinic could handle it. He said he knew. He left.\n\nHe's fine. The two workers will recover. The east corridor is now flagged as unstable. This is what the risk looked like when it happened. It was smaller than I feared and it was still real."
-      }
-    },
-    {
-      "sub_event_id": "meridian_signal_detection",
-      "display_name": "MERIDIAN Signal Detection",
-      "spawned_by": "the_last_broadcast — conditional on Archive Hall built AND MERIDIAN trusted",
-      "trigger_condition": "archive_hall_built == true AND meridian_trusted == true",
-      "trigger_day": 28,
-      "location": "Colony Journal — auto-fires as part of The Last Broadcast event resolution",
-      "mandatory": false,
-      "note": "Required narrative context for The Signal secret ending. Does not display if Archive Hall not built or MERIDIAN not trusted.",
-      "journal_entry": {
-        "title": "Day 28: Signal (Secondary Layer, Last Broadcast)",
-        "body": "MERIDIAN flagged something in the Syndicate broadcast that wasn't in the primary data layer.\n\nStructured signal. Northern origin - direction confirmed, distance not calculable from our position. The signal pattern is deliberate. It responded to the Syndicate broadcast at specific intervals that don't match any automated emergency protocol MERIDIAN has on record. MERIDIAN cross-referenced the entire Syndicate signal library. No match.\n\nThis means something was listening to the broadcast and chose to answer it. The response is not noise. It is not an automated loop. MERIDIAN said that it is 'a signal that knows it is a signal.'\n\nVasquez mentioned a northern coordinate in his last transmission. MERIDIAN confirms the bearing is consistent.\n\nI don't know what to do with this. I've written it in the log because MERIDIAN told me to write things down that might matter later and I think this might matter later. Right now there's a storm in six days and hundreds of people who need the Hydroponic Bays shielded. The signal can wait.\n\nI'm going to remember it's there."
-      }
-    },
-    {
-      "sub_event_id": "unrest_riot",
-      "display_name": "Unrest Riot",
-      "spawned_by": "the_deserters — Option B (lockdown)",
-      "trigger_condition": "deserters_option_b_taken == true AND morale < 30 at lockdown end (Day 10)",
-      "trigger_day": 10,
-      "location": "Colony Journal + HUD notification — auto-fires",
-      "mandatory": true,
-      "mechanical_effect": {
-        "morale_delta": -5,
-        "building_damage": {
-          "type": "random",
-          "count": 1,
-          "damage_level": "shifted to damaged sprite (30% output until repaired)",
-          "repair_mechanic": "player must spend Materials to restore — does not auto-recover"
-        }
-      },
-      "journal_entry": {
-        "title": "Day 10: Unrest in the West Corridor",
-        "body": "The lockdown ended at 06:00 and by 08:00, there was a disturbance in the west corridor. Nobody was killed. Two security personnel injured. One building took damage, equipment pulled from its housing, fixtures broken. The people who did it are back in their section now.\n\nI could write this up in a way that makes it sound more contained than it was. What it was: people who were told they couldn't leave, in a place where the conditions that made them want to leave haven't changed, expressing that in the only way left available to them. The lockdown held the numbers. It did not hold the tension. The tension found its exit anyway.\n\nThe damaged building needs Materials to repair. Morale dropped further. I kept everyone here. I'm not sure everyone being here is the same as everyone being fine."
-      }
-    }
+	{
+	  "sub_event_id": "vasquez_late_dialogue",
+	  "display_name": "Vasquez Late Dialogue",
+	  "spawned_by": "the_vasquez_offer — Option C (counter-offer)",
+	  "trigger_condition": "vasquez_late_dialogue_unlocked == true",
+	  "trigger_day_range": [
+		28,
+		30
+	  ],
+	  "location": "Colony Journal — optional read",
+	  "mandatory": false,
+	  "journal_entry": {
+		"title": "Day 28–30: Vasquez Transmission (Recorded)",
+		"body": "Vasquez came through on channel 7 this afternoon. It was the first time since the counter-offer in Week 2. He said he'd used the eastern tunnel survey data and he didn't say how, but the numbers he cited were specific enough that he'd clearly read the whole thing. He said the coordinates I gave him led his salvage teams to a sealed maintenance corridor that gave Grid-9 access to three functioning water recyclers they'd been cut off from for six months.\n\nHe didn't say thank you, exactly. He said: 'The intelligence was worth more than the workers would have been.' That's as close as Vasquez gets.\n\nHe also said he's been tracking something in the northern broadcast spectrum. He mentioned a coordinate, then I wrote it down and said his communications technician thought it might be a structured response to automated Syndicate emergency signals. He brought it up like it was a minor footnote. I'm not sure he understood what he was giving me.\n\nHe signed off before I could ask more. The coordinate is in the log. MERIDIAN confirmed it matches the signal they detected two days ago."
+	  }
+	},
+	{
+	  "sub_event_id": "rook_reconciliation",
+	  "legacy_sub_event_id": "rook_reconciliation_dialogue",
+	  "event_id": "rook_reconciliation",
+	  "display_name": "Rook Reconciliation",
+	  "spawned_by": "rooks_militia — Option B (stop them)",
+	  "trigger_condition": "rook_militia_stopped == true AND rook_reconciliation_taken == false",
+	  "trigger_day_range": [
+		25,
+		32
+	  ],
+	  "location": "Dialogue card + Colony Journal",
+	  "mandatory": false,
+	  "note": "If taken before Day 33: rook_alive stays TRUE. If not taken before Day 33: rook_alive = FALSE permanently on Day 33.",
+	  "setup_text": "You find Rook alone in the mess hall. It's been a few days since you shut down his scavenging operation. The anger is mostly gone now, replaced by a quiet distance. You have a narrow window to say something.",
+	  "character_portrait": "rook",
+	  "character_name": "Rook",
+	  "character_role": "Scout",
+	  "choices": [
+		{
+		  "id": "option_a",
+		  "text": "Pull up a chair. Talk to him as a person, not a Director.",
+		  "outcomes": [
+			{
+			  "type": "resource",
+			  "rook_reconciliation_taken": true
+			},
+			{
+			  "type": "narrative",
+			  "journal_entry": "I sat with Rook today. I didn't give him a lecture, I just told him why I couldn't live with his blood on my hands. He didn't agree, but he looked me in the eye for the first time in a week. He’s staying. He’s going to work the hydroponics instead. It’s a start.",
+			  "hope_order_delta": 5
+			}
+		  ]
+		},
+		{
+		  "id": "option_b",
+		  "text": "Keep walking. Some bridges can't be rebuilt.",
+		  "outcomes": [
+			{
+			  "type": "resource",
+			  "description": "No mechanical effect immediately."
+			},
+			{
+			  "type": "narrative",
+			  "journal_entry": "I walked past Rook in the mess hall. I gave the order and I stand by it. I didn't owe him an explanation, but seeing him sit there in the dark made the victory feel like a defeat. We're just on completely different pages.",
+			  "hope_order_delta": -5
+			}
+		  ]
+		}
+	  ]
+	},
+	{
+	  "sub_event_id": "rook_injury_event",
+	  "display_name": "Rook Injury Event",
+	  "spawned_by": "rooks_militia — Option A (sanction) + Med Clinic not upgraded before Day 33",
+	  "trigger_condition": "rooks_militia_option_a_taken == true AND med_clinic_not_upgraded == true",
+	  "trigger_day_range": [
+		30,
+		33
+	  ],
+	  "trigger_timing": "random within range",
+	  "location": "Colony Journal — auto-fires, no choice",
+	  "mandatory": true,
+	  "mechanical_effect": {
+		"available_workers_delta": -2,
+		"duration_days": 3,
+		"description": "Two militia members injured in a tunnel collapse. Temporarily pulled from available workers. Rook himself is fine.",
+		"rook_alive_flag_change": "none — Rook is uninjured"
+	  },
+	  "journal_entry": {
+		"title": "Day [30–33]: Tunnel Collapse, East Salvage Corridor",
+		"body": "Two of Rook's team caught a partial tunnel collapse in the east salvage corridor this afternoon — Devi and the older one, Carrow. Rook got them both out. Devi has a broken arm. Carrow has a concussion and two cracked ribs. Neither is critical. Both are out of rotation for three days minimum, which puts available workers down temporarily.\n\nRook came to report it himself. He was covered in dust and he was calm and he gave me the incident breakdown in the same format as the official salvage reports — location, cause, injuries, recovery estimate. He had clearly written it in his head on the walk over. I told him the Med Clinic could handle it. He said he knew. He left.\n\nHe's fine. The two workers will recover. The east corridor is now flagged as unstable. This is what the risk looked like when it happened. It was smaller than I feared and it was still real."
+	  }
+	},
+	{
+	  "sub_event_id": "meridian_signal_detection",
+	  "display_name": "MERIDIAN Signal Detection",
+	  "spawned_by": "the_last_broadcast — conditional on Archive Hall built AND MERIDIAN trusted",
+	  "trigger_condition": "archive_hall_built == true AND meridian_trusted == true",
+	  "trigger_day": 28,
+	  "location": "Colony Journal — auto-fires as part of The Last Broadcast event resolution",
+	  "mandatory": false,
+	  "note": "Required narrative context for The Signal secret ending. Does not display if Archive Hall not built or MERIDIAN not trusted.",
+	  "journal_entry": {
+		"title": "Day 28: Signal (Secondary Layer, Last Broadcast)",
+		"body": "MERIDIAN flagged something in the Syndicate broadcast that wasn't in the primary data layer.\n\nStructured signal. Northern origin - direction confirmed, distance not calculable from our position. The signal pattern is deliberate. It responded to the Syndicate broadcast at specific intervals that don't match any automated emergency protocol MERIDIAN has on record. MERIDIAN cross-referenced the entire Syndicate signal library. No match.\n\nThis means something was listening to the broadcast and chose to answer it. The response is not noise. It is not an automated loop. MERIDIAN said that it is 'a signal that knows it is a signal.'\n\nVasquez mentioned a northern coordinate in his last transmission. MERIDIAN confirms the bearing is consistent.\n\nI don't know what to do with this. I've written it in the log because MERIDIAN told me to write things down that might matter later and I think this might matter later. Right now there's a storm in six days and hundreds of people who need the Hydroponic Bays shielded. The signal can wait.\n\nI'm going to remember it's there."
+	  }
+	},
+	{
+	  "sub_event_id": "unrest_riot",
+	  "display_name": "Unrest Riot",
+	  "spawned_by": "the_deserters — Option B (lockdown)",
+	  "trigger_condition": "deserters_option_b_taken == true AND morale < 30 at lockdown end (Day 10)",
+	  "trigger_day": 10,
+	  "location": "Colony Journal + HUD notification — auto-fires",
+	  "mandatory": true,
+	  "mechanical_effect": {
+		"morale_delta": -5,
+		"building_damage": {
+		  "type": "random",
+		  "count": 1,
+		  "damage_level": "shifted to damaged sprite (30% output until repaired)",
+		  "repair_mechanic": "player must spend Materials to restore — does not auto-recover"
+		}
+	  },
+	  "journal_entry": {
+		"title": "Day 10: Unrest in the West Corridor",
+		"body": "The lockdown ended at 06:00 and by 08:00, there was a disturbance in the west corridor. Nobody was killed. Two security personnel injured. One building took damage, equipment pulled from its housing, fixtures broken. The people who did it are back in their section now.\n\nI could write this up in a way that makes it sound more contained than it was. What it was: people who were told they couldn't leave, in a place where the conditions that made them want to leave haven't changed, expressing that in the only way left available to them. The lockdown held the numbers. It did not hold the tension. The tension found its exit anyway.\n\nThe damaged building needs Materials to repair. Morale dropped further. I kept everyone here. I'm not sure everyone being here is the same as everyone being fine."
+	  }
+	}
   ]
 }

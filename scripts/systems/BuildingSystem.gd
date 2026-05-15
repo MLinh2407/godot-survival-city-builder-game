@@ -232,45 +232,50 @@ func _on_building_deselected() -> void:
 # PLACEMENT & REMOVAL
 # ══════════════════════════════════════════════════════════════════════════════
 func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
+	var is_loading: bool = false
+	if GameManager and "is_loading_game" in GameManager:
+		is_loading = GameManager.is_loading_game
+
 	var new_data: BuildingData = BuildingData.new()
 	new_data.grid_position = grid_pos
 	
-	# Memorial Wall can only be placed after at least one named character has died
-	if b_type == "memorial":
-		if GameManager.memorial_wall_built:
-			if grid_manager:
-				grid_manager.remove_building(grid_pos)
-			print("BuildingSystem: Memorial Wall is unique and already built.")
-			return
-
-		var any_dead: bool = (not GameManager.yuna_alive) or \
-							 (not GameManager.rook_alive) or \
-							 (not GameManager.vasquez_alive) or \
-							 (not GameManager.meridian_alive)
-		if not any_dead:
-			# Undo the GridManager placement immediately
-			if grid_manager:
-				grid_manager.remove_building(grid_pos)
-			print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
-			return
-
-	# Archive Hall: one per colony
-	if b_type == "archive":
-		for _pos in active_buildings:
-			if active_buildings[_pos].building_type == BuildingData.BuildingType.ARCHIVE_HALL:
+	if not is_loading:
+		# Memorial Wall can only be placed after at least one named character has died
+		if b_type == "memorial":
+			if GameManager.memorial_wall_built:
 				if grid_manager:
 					grid_manager.remove_building(grid_pos)
-				spawn_floating_text(grid_pos, "Only one Archive Hall allowed!", Color(1.0, 0.55, 0.2))
+				print("BuildingSystem: Memorial Wall is unique and already built.")
 				return
-		
-	# ── Materials cost check ──────────────────────────────────────────────────
-	var build_cost: int = _get_build_cost(b_type)
-	if build_cost > 0 and not ResourceManager.consume_materials(build_cost):
-		if grid_manager:
-			grid_manager.remove_building(grid_pos)
-		spawn_floating_text(grid_pos, "Not enough materials!", Color(1.0, 0.45, 0.2))
-		print("BuildingSystem: Cannot place [%s] — need %d materials." % [b_type, build_cost])
-		return
+
+			var any_dead: bool = (not GameManager.yuna_alive) or \
+								 (not GameManager.rook_alive) or \
+								 (not GameManager.vasquez_alive) or \
+								 (not GameManager.meridian_alive)
+			if not any_dead:
+				# Undo the GridManager placement immediately
+				if grid_manager:
+					grid_manager.remove_building(grid_pos)
+				print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
+				return
+
+		# Archive Hall: one per colony
+		if b_type == "archive":
+			for _pos in active_buildings:
+				if active_buildings[_pos].building_type == BuildingData.BuildingType.ARCHIVE_HALL:
+					if grid_manager:
+						grid_manager.remove_building(grid_pos)
+					spawn_floating_text(grid_pos, "Only one Archive Hall allowed!", Color(1.0, 0.55, 0.2))
+					return
+			
+		# ── Materials cost check ──────────────────────────────────────────────────
+		var build_cost: int = _get_build_cost(b_type)
+		if build_cost > 0 and not ResourceManager.consume_materials(build_cost):
+			if grid_manager:
+				grid_manager.remove_building(grid_pos)
+			spawn_floating_text(grid_pos, "Not enough materials!", Color(1.0, 0.45, 0.2))
+			print("BuildingSystem: Cannot place [%s] — need %d materials." % [b_type, build_cost])
+			return
 	
 	match b_type:
 		"coal":
@@ -353,7 +358,8 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.worker_capacity       = 0
 			new_data.power_draw            = 0.0
 			new_data.base_passive_morale   = GameConstants.MEMORIAL_WALL_MORALE_DAILY
-			AudioManager.play_build_sfx("memorial_place")
+			if not is_loading:
+				AudioManager.play_build_sfx("memorial_place")
 			GameManager.memorial_wall_built = true  # Mark wall as built for death prompt gating
 			if grid_manager and grid_manager.has_method("exit_build_mode"):
 				grid_manager.exit_build_mode()
@@ -389,19 +395,20 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			elif placed_node.has_method("set_building_state"):
 				placed_node.set_building_state("tier1")
 
-	if b_type != "memorial":
+	if b_type != "memorial" and not is_loading:
 		AudioManager.play_build_sfx("place")
 
 	# Notify TilePainter after successful placement
 	if TilePainter:
 		TilePainter.on_building_placed(b_type, grid_pos)
 
-	# Auto-select the just-placed building so players can assign workers immediately
-	var _auto_sel_pos := grid_pos
-	var _auto_sel_t   := get_tree().create_timer(0.12)
-	_auto_sel_t.timeout.connect(func():
-		if active_buildings.has(_auto_sel_pos):
-			_on_building_selected(_auto_sel_pos))
+	if not is_loading:
+		# Auto-select the just-placed building so players can assign workers immediately
+		var _auto_sel_pos := grid_pos
+		var _auto_sel_t   := get_tree().create_timer(0.12)
+		_auto_sel_t.timeout.connect(func():
+			if active_buildings.has(_auto_sel_pos):
+				_on_building_selected(_auto_sel_pos))
 
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):

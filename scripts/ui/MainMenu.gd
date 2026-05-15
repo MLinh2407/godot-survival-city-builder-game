@@ -392,7 +392,12 @@ func _on_standalone_load_file_selected(path: String) -> void:
 		push_warning("MainMenu: main scene not found at %s" % main_scene_path)
 		return
 	get_tree().set_meta("launch_load_game_path", path)
-	get_tree().change_scene_to_packed(main_scene_packed)
+	call_deferred("_launch_standalone_load_game")
+
+func _launch_standalone_load_game() -> void:
+	var tree := get_tree()
+	if tree:
+		tree.change_scene_to_packed(main_scene_packed)
 
 func _on_settings_pressed() -> void:
 	if not _can_accept_input():
@@ -411,6 +416,8 @@ func _on_settings_pressed() -> void:
 			settings.name = "StandaloneSettingsUI"
 			if settings is CanvasLayer:
 				settings.layer = 300
+			if settings.has_signal("load_file_selected"):
+				settings.load_file_selected.connect(_on_standalone_load_file_selected)
 			add_child(settings)
 			if settings.has_method("toggle_menu"):
 				settings.toggle_menu()
