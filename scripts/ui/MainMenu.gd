@@ -8,14 +8,13 @@ signal exit_game
 @onready var live_bg: TextureRect = $LiveBackground
 @onready var live_bg_node2d: Node2D = $LiveBackgroundNode2D
 
-@onready var title_rect: TextureRect = $LeftColumn/VBox/Title
-@onready var btn_new: TextureButton = $LeftColumn/VBox/Buttons/NewGame
-@onready var btn_credits: TextureButton = $LeftColumn/VBox/Buttons/Credits
-@onready var btn_settings: TextureButton = $LeftColumn/VBox/Buttons/Settings
-@onready var btn_exit: TextureButton = $LeftColumn/VBox/Buttons/Exit
-var _buttons: Array[TextureButton] = []
+@onready var title_rect: TextureRect = $LeftColumn/VBox/TitleHolder/Title
+@onready var btn_new: Button = $LeftColumn/VBox/ButtonsPanel/Buttons/NewGame
+@onready var btn_credits: Button = $LeftColumn/VBox/ButtonsPanel/Buttons/Credits
+@onready var btn_settings: Button = $LeftColumn/VBox/ButtonsPanel/Buttons/Settings
+@onready var btn_exit: Button = $LeftColumn/VBox/ButtonsPanel/Buttons/Exit
+var _buttons: Array[Button] = []
 var _button_tweens: Dictionary = {}
-var _button_blurs: Dictionary = {}
 var _standalone_load_dialog: FileDialog
 var _standalone_credits_screen: Control
 var _blur_shader: Shader
@@ -28,13 +27,14 @@ var _credits_roll_active: bool = false
 var settings_scene_path: String = "res://scenes/main/SettingsUI.tscn"
 var main_scene_path: String = "res://scenes/main/Main.tscn"
 var main_scene_packed: PackedScene = preload("res://scenes/main/Main.tscn")
+const MENU_CURSOR_PATH: String = "res://assets/ui/main_menu/Hand.png"
 
 func _ready() -> void:
 	randomize()
+	_setup_custom_cursor()
 	_connect_buttons()
 	_setup_standalone_load_dialog()
 	_setup_background()
-	btn_new.grab_focus()
 	# Menu music (Track_4) plays
 	if AudioManager and AudioManager.has_method("crossfade_to") and AudioManager.track_4:
 		AudioManager.crossfade_to(AudioManager.track_4, 1.2)
@@ -52,16 +52,51 @@ func _ready() -> void:
 		if b:
 			b.mouse_filter = Control.MOUSE_FILTER_STOP
 			b.pivot_offset = b.size * 0.5
-			_get_or_create_button_blur(b)
-			if b.texture_normal:
-				b.texture_hover = b.texture_normal
-				b.texture_pressed = b.texture_normal
 
 	if initial_input_lock_sec > 0.0:
 		set_input_lock(initial_input_lock_sec)
 
-	_setup_title_blur()
+	_setup_title_outline()
 	mouse_filter = Control.MOUSE_FILTER_PASS
+
+var _title_outline_shader: Shader
+
+func _setup_title_outline() -> void:
+	if title_rect == null:
+		return
+	if title_rect.has_node("TitleOutline"):
+		return
+	if title_rect.texture == null:
+		return
+
+	var outline := TextureRect.new()
+	outline.name = "TitleOutline"
+	outline.texture = title_rect.texture
+	outline.stretch_mode = title_rect.stretch_mode
+	outline.anchor_left = 0.0
+	outline.anchor_top = 0.0
+	outline.anchor_right = 1.0
+	outline.anchor_bottom = 1.0
+	outline.offset_left = -3.0
+	outline.offset_top = -3.0
+	outline.offset_right = 3.0
+	outline.offset_bottom = 3.0
+	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outline.z_index = -2
+
+	var shader_path := "res://assets/shaders/menu_title_text_outline.gdshader"
+	if ResourceLoader.exists(shader_path):
+		var sh := ResourceLoader.load(shader_path)
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		mat.set_shader_parameter("outline_color", Color(0.88, 0.98, 1.0, 1.0))
+		# Thinner border for the title
+		mat.set_shader_parameter("outline_size", 1.0)
+		mat.set_shader_parameter("outline_strength", 1.0)
+		outline.material = mat
+
+	title_rect.add_child(outline)
+	title_rect.move_child(outline, 0)
 
 func set_input_lock(duration_sec: float) -> void:
 	if duration_sec <= 0.0:
@@ -94,8 +129,9 @@ func _attempt_unlock() -> void:
 		return
 	_input_locked_until_msec = 0
 	_set_buttons_enabled(true)
-	if btn_new:
-		btn_new.grab_focus()
+	for b in _buttons:
+		if b:
+			b.release_focus()
 
 func _schedule_unlock_retry() -> void:
 	if _input_lock_retry_timer:
@@ -130,15 +166,15 @@ func _connect_buttons() -> void:
 		btn_exit.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("Exit", btn_exit))
 		btn_exit.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("Exit", btn_exit))
 
-func _on_button_mouse_entered(button_id: String, button: TextureButton) -> void:
+func _on_button_mouse_entered(button_id: String, button: Button) -> void:
 	_animate_button_hover(button, true)
 	if AudioManager and AudioManager.has_method("play_ui_sfx"):
 		AudioManager.play_ui_sfx("hover")
 
-func _on_button_mouse_exited(button_id: String, button: TextureButton) -> void:
+func _on_button_mouse_exited(button_id: String, button: Button) -> void:
 	_animate_button_hover(button, false)
 
-func _animate_button_hover(button: TextureButton, is_hovered: bool) -> void:
+func _animate_button_hover(button: Button, is_hovered: bool) -> void:
 	if button == null:
 		return
 	var tween_key: String = str(button.get_instance_id())
@@ -149,79 +185,27 @@ func _animate_button_hover(button: TextureButton, is_hovered: bool) -> void:
 
 	var target_scale: Vector2 = Vector2.ONE
 	var target_modulate: Color = Color(1.0, 1.0, 1.0, 1.0)
-	var target_blur_alpha: float = 0.42
 	if is_hovered:
 		target_scale = Vector2(1.04, 1.04)
 		target_modulate = Color(1.0, 0.97, 0.9, 1.0)
-		target_blur_alpha = 0.66
 
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_QUAD)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_property(button, "scale", target_scale, 0.12)
 	tween.parallel().tween_property(button, "modulate", target_modulate, 0.12)
-	var blur := _get_or_create_button_blur(button)
-	if blur:
-		tween.parallel().tween_property(blur, "modulate:a", target_blur_alpha, 0.12)
 	_button_tweens[tween_key] = tween
 
-func _get_or_create_button_blur(button: TextureButton) -> TextureRect:
-	if button == null:
-		return null
-	var key := str(button.get_instance_id())
-	if _button_blurs.has(key):
-		return _button_blurs[key]
-
-	if button.texture_normal == null:
-		return null
-
-	var blur := TextureRect.new()
-	blur.name = "BlurSilhouette"
-	blur.texture = button.texture_normal
-	blur.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	blur.anchor_left = 0.0
-	blur.anchor_top = 0.0
-	blur.anchor_right = 1.0
-	blur.anchor_bottom = 1.0
-	blur.offset_left = -16.0
-	blur.offset_top = -10.0
-	blur.offset_right = 16.0
-	blur.offset_bottom = 10.0
-	blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	blur.material = _make_blur_material()
-	blur.modulate = Color(1.0, 1.0, 1.0, 0.42)
-	blur.z_index = -1
-	button.add_child(blur)
-	button.move_child(blur, 0)
-	_button_blurs[key] = blur
-	return blur
-
-func _setup_title_blur() -> void:
-	if title_rect == null:
+func _setup_custom_cursor() -> void:
+	if not ResourceLoader.exists(MENU_CURSOR_PATH):
+		push_warning("MainMenu: cursor not found at %s" % MENU_CURSOR_PATH)
 		return
-	if title_rect.has_node("TitleBlur"):
+	var cursor_texture := ResourceLoader.load(MENU_CURSOR_PATH) as Texture2D
+	if cursor_texture == null:
+		push_warning("MainMenu: failed to load cursor texture at %s" % MENU_CURSOR_PATH)
 		return
-	if title_rect.texture == null:
-		return
-
-	var blur := TextureRect.new()
-	blur.name = "TitleBlur"
-	blur.texture = title_rect.texture
-	blur.stretch_mode = title_rect.stretch_mode
-	blur.anchor_left = 0.0
-	blur.anchor_top = 0.0
-	blur.anchor_right = 1.0
-	blur.anchor_bottom = 1.0
-	blur.offset_left = -18.0
-	blur.offset_top = -12.0
-	blur.offset_right = 18.0
-	blur.offset_bottom = 12.0
-	blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	blur.material = _make_blur_material(2.0, Color(0.6, 0.9, 1.0, 0.95))
-	blur.modulate = Color(1.0, 1.0, 1.0, 0.58)
-	blur.z_index = -1
-	title_rect.add_child(blur)
-	title_rect.move_child(blur, 0)
+	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_ARROW)
+	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_POINTING_HAND)
 
 func _make_blur_material(blur_radius: float = 1.6, tint: Color = Color(0.55, 0.88, 1.0, 0.9)) -> ShaderMaterial:
 	if _blur_shader == null:
@@ -402,8 +386,6 @@ func resume_after_credits() -> void:
 			AudioManager.crossfade_to(AudioManager.track_4, 1.0)
 		elif AudioManager.has_method("play_music"):
 			AudioManager.play_music(AudioManager.track_4)
-	if btn_new:
-		btn_new.grab_focus()
 
 func _on_standalone_load_file_selected(path: String) -> void:
 	if main_scene_packed == null:

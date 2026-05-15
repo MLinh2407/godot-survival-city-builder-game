@@ -191,6 +191,8 @@ func _return_to_main_menu() -> void:
 		continue_button.visible = false
 	_stop_continue_idle_fx()
 	_stop_skip_prompt_fx()
+	if AudioManager and AudioManager.has_method("stop_rain"):
+		AudioManager.stop_rain()
 
 	if get_tree():
 		get_tree().paused = false

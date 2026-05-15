@@ -14,8 +14,13 @@ signal journal_new_entry_notified
 @export_range(0.00, 0.20, 0.005) var flip_min_width: float = 0.04
 @export_range(1.00, 1.10, 0.005) var flip_settle_scale: float = 1.02
 
-const ENTRIES_PER_PAGE: int = 3
 const JOURNAL_CANVAS_LAYER: int = 120
+const PAGE_CONTENT_HEIGHT: float = 430.0
+const BODY_CHARS_PER_LINE: float = 46.0
+const BODY_LINE_HEIGHT: float = 15.0
+const HEADING_LINE_HEIGHT: float = 17.0
+const ENTRY_SEPARATOR_HEIGHT: float = 6.0
+const ENTRY_PADDING_HEIGHT: float = 4.0
 
 const COL_TITLE_DEFAULT := Color(0.42, 0.24, 0.09, 1.0)
 const COL_TITLE_DEATH := Color(0.55, 0.16, 0.10, 1.0)
@@ -199,8 +204,8 @@ func _on_next_pressed() -> void:
 func _max_spread() -> int:
 	if entries.is_empty():
 		return 0
-	var entries_per_spread: int = ENTRIES_PER_PAGE * 2
-	return maxi(0, ceili(float(entries.size()) / float(entries_per_spread)) - 1)
+	var page_count: int = _build_page_groups().size()
+	return maxi(0, ceili(float(page_count) / 2.0) - 1)
 
 func _update_nav_buttons() -> void:
 	if prev_btn:
@@ -215,38 +220,41 @@ func _rebuild_display() -> void:
 		empty_label.visible = entries.is_empty()
 
 func _populate_spread(spread_index: int) -> void:
+	var page_groups := _build_page_groups()
 	var left_page_index: int = spread_index * 2
 	var right_page_index: int = spread_index * 2 + 1
-	_populate_page(left_entries, left_page_index, page_num_left)
-	_populate_page(right_entries, right_page_index, page_num_right)
+	var left_page_entries: Array = page_groups[left_page_index] if left_page_index < page_groups.size() else []
+	var right_page_entries: Array = page_groups[right_page_index] if right_page_index < page_groups.size() else []
+	_populate_page(left_entries, left_page_entries, left_page_index, page_num_left)
+	_populate_page(right_entries, right_page_entries, right_page_index, page_num_right)
 
-func _populate_page(container: VBoxContainer, page_index: int, num_label: Label) -> void:
+func _populate_page(container: VBoxContainer, page_entry_indices: Array, page_index: int, num_label: Label) -> void:
 	for child in container.get_children():
 		child.queue_free()
 
-	var start: int = page_index * ENTRIES_PER_PAGE
-	var end: int = mini(start + ENTRIES_PER_PAGE, entries.size())
-
-	if start >= entries.size():
+	if page_entry_indices.is_empty():
 		if num_label:
 			num_label.text = ""
 		return
 
-	for i in range(start, end):
-		var node := _build_entry_node(entries[i])
+	for entry_index in page_entry_indices:
+		var node := _build_entry_node(entries[entry_index], entry_index)
 		container.add_child(node)
 
 	if num_label:
 		num_label.text = str(page_index + 1)
 
-func _build_entry_node(e) -> VBoxContainer:
+func _build_entry_node(e, entry_index: int = -1) -> VBoxContainer:
 	var container := VBoxContainer.new()
-	container.add_theme_constant_override("separation", 4)
+	container.add_theme_constant_override("separation", 2)
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var sep := HSeparator.new()
-	sep.add_theme_color_override("color", COL_SEPARATOR)
-	container.add_child(sep)
+	var heading_text := _get_entry_heading_text(e, entry_index)
+	var show_heading_row: bool = heading_text != "" or not e.read
+	if show_heading_row:
+		var sep := HSeparator.new()
+		sep.add_theme_color_override("color", COL_SEPARATOR)
+		container.add_child(sep)
 
 	var title_lbl := Label.new()
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -254,20 +262,17 @@ func _build_entry_node(e) -> VBoxContainer:
 	title_lbl.add_theme_font_size_override("font_size", 13)
 	title_lbl.clip_text = false
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title_lbl.text = heading_text
 
 	match e.entry_type:
 		JournalEntryData.EntryType.NAMED_DEATH:
-			title_lbl.text = e.title
 			title_lbl.add_theme_color_override("font_color", COL_TITLE_DEATH)
 			title_lbl.add_theme_font_size_override("font_size", 14)
 		JournalEntryData.EntryType.COLONIST_DEATH:
-			title_lbl.text = "Day %d -" % e.day
 			title_lbl.add_theme_color_override("font_color", COL_TITLE_COLONIST)
 		JournalEntryData.EntryType.ONBOARDING:
-			title_lbl.text = "Day %d -" % e.day
 			title_lbl.add_theme_color_override("font_color", COL_TITLE_ONBOARD)
 		_:
-			title_lbl.text = "Day %d -" % e.day
 			title_lbl.add_theme_color_override("font_color", COL_TITLE_DEFAULT)
 
 	# Title + NEW badge for unread entries
@@ -291,8 +296,11 @@ func _build_entry_node(e) -> VBoxContainer:
 		pulse_timer.timeout.connect(Callable(self, "_on_badge_pulse_timeout").bind(new_lbl))
 		title_row.add_child(pulse_timer)
 
-	title_row.add_child(title_lbl)
-	container.add_child(title_row)
+	if heading_text != "":
+		title_row.add_child(title_lbl)
+		container.add_child(title_row)
+	elif not e.read:
+		container.add_child(title_row)
 
 	var body_lbl := Label.new()
 	body_lbl.text = e.body
@@ -313,6 +321,75 @@ func _build_entry_node(e) -> VBoxContainer:
 	tween.tween_property(container, "modulate:a", 1.0, 0.3)
 
 	return container
+
+func _get_entry_heading_text(e, entry_index: int = -1) -> String:
+	var title_text: String = str(e.title).strip_edges()
+	if not _is_default_day_heading(e):
+		return _strip_day_prefix(title_text, e.day)
+
+	if entry_index >= 0 and _day_heading_already_shown(e.day, entry_index):
+		return ""
+
+	return "Day %d -" % e.day
+
+func _is_default_day_heading(e) -> bool:
+	var title_text: String = str(e.title).strip_edges()
+	var default_day_title := "Day %d" % e.day
+	return title_text.is_empty() or title_text == default_day_title
+
+func _strip_day_prefix(title_text: String, day: int) -> String:
+	var day_prefix := "Day %d" % day
+	if title_text.begins_with(day_prefix):
+		var remainder := title_text.substr(day_prefix.length()).strip_edges()
+		if remainder.begins_with("—") or remainder.begins_with("-"):
+			remainder = remainder.substr(1).strip_edges()
+		return remainder if remainder != "" else day_prefix
+	return title_text
+
+func _day_heading_already_shown(day: int, entry_index: int) -> bool:
+	for i in range(0, entry_index):
+		var prior_entry = entries[i]
+		if prior_entry != null and int(prior_entry.day) == int(day):
+			return true
+	return false
+
+func _build_page_groups() -> Array:
+	var page_groups: Array = []
+	var current_page: Array = []
+	var current_height: float = 0.0
+
+	for i in range(entries.size()):
+		var entry = entries[i]
+		var entry_height: float = _estimate_entry_height(entry, i)
+		if not current_page.is_empty() and current_height + entry_height > PAGE_CONTENT_HEIGHT:
+			page_groups.append(current_page)
+			current_page = []
+			current_height = 0.0
+
+		current_page.append(i)
+		current_height += entry_height
+
+	if not current_page.is_empty():
+		page_groups.append(current_page)
+
+	return page_groups
+
+func _estimate_entry_height(e, entry_index: int) -> float:
+	var heading_text := _get_entry_heading_text(e, entry_index)
+	var has_header_row: bool = heading_text != "" or not bool(e.read)
+	var estimated_height: float = ENTRY_PADDING_HEIGHT
+
+	if has_header_row:
+		estimated_height += ENTRY_SEPARATOR_HEIGHT
+		if heading_text != "":
+			estimated_height += HEADING_LINE_HEIGHT
+		else:
+			estimated_height += 14.0
+
+	var body_text := str(e.body).strip_edges()
+	var body_lines: int = maxi(1, ceili(float(body_text.length()) / BODY_CHARS_PER_LINE))
+	estimated_height += float(body_lines) * BODY_LINE_HEIGHT
+	return estimated_height
 
 func _flip_to(new_spread: int, forward: bool) -> void:
 	if _is_flipping:

@@ -374,7 +374,7 @@ grow_vertical = 2
 
 [node name="EntriesLeft" type="VBoxContainer" parent="BookRoot/LeftPage/MarginContainer" unique_id=1828633526]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="PageNumLeft" type="Label" parent="BookRoot/LeftPage" unique_id=52814133]
 layout_mode = 0
@@ -465,7 +465,7 @@ grow_vertical = 2
 
 [node name="EntriesRight" type="VBoxContainer" parent="BookRoot/RightPage/MarginContainer" unique_id=1883301373]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="PageNumRight" type="Label" parent="BookRoot/RightPage" unique_id=1351324527]
 layout_mode = 0

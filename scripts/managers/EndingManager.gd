@@ -83,11 +83,10 @@ func _on_storm_hit() -> void:
 		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 	if get_tree():
 		get_tree().paused = false   # Un-pause the tree so UI still works
+	if AudioManager and AudioManager.has_method("stop_rain"):
+		AudioManager.stop_rain()
 
-	# Step 4 — Brief delay so the storm SFX and visual shutdown are visible
-	await get_tree().create_timer(2.0).timeout
-
-	# Step 5 — Determine and fire the ending
+	# Step 4 — Determine and fire the ending immediately on Day 35
 	determine_ending()
 
 # ══════════════════════════════════════════════════════════════════════════════

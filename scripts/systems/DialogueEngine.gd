@@ -25,6 +25,7 @@ var _button_style_pressed: StyleBox
 var _button_font_color: Color = Color(0.84, 0.95, 1.0, 1.0)
 var _text_default_left: float = 0.0
 var _choices_default_left: float = 0.0
+var _last_card_shown_time: int = 0
 
 const _PORTRAIT_LAYOUT_SHIFT: float = 200.0
 const _SPEAKER_LABEL_LEFT: float = 232.0
@@ -237,6 +238,15 @@ func show_event(event_id: String) -> void:
 func has_event(event_id: String) -> bool:
 	return _events_by_id.has(event_id)
 
+func is_intro_card_active() -> bool:
+	if not _dialogue_root:
+		return false
+	if not _dialogue_root.visible:
+		return false
+	if typeof(_active_event_id) != TYPE_STRING:
+		return false
+	return str(_active_event_id).begins_with("intro_")
+
 func _build_card(event_data: Dictionary) -> void:
 	_pause_game()
 	var setup_text = str(event_data.get("setup_text", ""))
@@ -285,6 +295,7 @@ func _build_card(event_data: Dictionary) -> void:
 		var min_bottom = _card_panel.offset_top + 240.0
 		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
 	_set_card_visible(true)
+	_last_card_shown_time = Time.get_ticks_msec()
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()
 	_play_event_specific_sfx(_active_event_id)
@@ -376,6 +387,15 @@ func _create_choice_button(choice_text: String) -> Button:
 	return button
 
 func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictionary) -> void:
+	if get_tree() and get_tree().has_meta("input_lock_until_msec"):
+		var until = int(get_tree().get_meta("input_lock_until_msec"))
+		if Time.get_ticks_msec() < until:
+			print("DialogueEngine: Ignoring input due to global input lock")
+			return
+
+	if Time.get_ticks_msec() - _last_card_shown_time < 200:
+		print("DialogueEngine: Ignoring rapid choice activation")
+		return
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
 	print("%s/%s" % [event_id, choice_id])
@@ -412,7 +432,8 @@ func _dismiss_card() -> void:
 	card_dismissed.emit()
 	await get_tree().process_frame
 	_resume_game()
-	if should_force_unpause:
+	
+	if should_force_unpause and not is_intro_card_active():
 		get_tree().paused = false
 		TimeManager.set_game_speed(TimeManager.GameSpeed.NORMAL)
 	if _dialogue_root and _dialogue_root.visible:
@@ -429,7 +450,7 @@ func _pause_game() -> void:
 	if _dialogue_pause_depth == 0:
 		_was_tree_paused = get_tree().paused
 		_previous_speed = TimeManager.current_speed
-		_dialogue_pause_depth = 1
+	_dialogue_pause_depth += 1
 	get_tree().paused = true
 	TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 

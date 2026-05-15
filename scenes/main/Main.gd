@@ -75,6 +75,7 @@ var _cached_intro_stream: VideoStream
 var _returning_to_menu_from_ending: bool = false
 var _menu_accept_enabled_at_msec: int = 0
 const INTRO_VIDEO_PATH: String = "res://assets/ui/main_menu/intro_video.ogv"
+const MENU_CURSOR_PATH: String = "res://assets/ui/main_menu/Hand.png"
 const MENU_RETURN_INPUT_LOCK_SEC: float = 0.6
 var _journal_prompt_serial: int = 0
 var _last_journal_prompt_msec: int = -10000
@@ -118,6 +119,7 @@ var _pan_last_mouse:  Vector2 = Vector2.ZERO
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_rng.randomize()
+	_setup_custom_cursor()
 	
 	settings_ui = preload("res://scenes/main/SettingsUI.tscn").instantiate()
 	add_child(settings_ui)
@@ -289,6 +291,17 @@ func _ready() -> void:
 	_show_main_menu_overlay()
 	call_deferred("_preload_intro_stream")
 
+func _setup_custom_cursor() -> void:
+	if not ResourceLoader.exists(MENU_CURSOR_PATH):
+		push_warning("Main: cursor not found at %s" % MENU_CURSOR_PATH)
+		return
+	var cursor_texture := ResourceLoader.load(MENU_CURSOR_PATH) as Texture2D
+	if cursor_texture == null:
+		push_warning("Main: failed to load cursor texture at %s" % MENU_CURSOR_PATH)
+		return
+	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_ARROW)
+	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_POINTING_HAND)
+
 func _on_menu_start_new_game() -> void:
 	if _menu_accept_enabled_at_msec > 0 and Time.get_ticks_msec() < _menu_accept_enabled_at_msec:
 		return
@@ -305,12 +318,19 @@ func _on_intro_finished() -> void:
 	if intro_layer and is_instance_valid(intro_layer):
 		intro_layer.queue_free()
 		intro_layer = null
+	
+	if get_tree():
+		get_tree().set_meta("input_lock_until_msec", Time.get_ticks_msec() + 250)
 	_begin_gameplay()
 
 func _on_menu_credits() -> void:
 	show_credits_roll_from_menu()
 
 func _on_menu_credits_finished() -> void:
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = false
+	if menu_layer and is_instance_valid(menu_layer):
+		menu_layer.visible = true
 	if main_menu and is_instance_valid(main_menu) and main_menu.has_method("resume_after_credits"):
 		main_menu.call("resume_after_credits")
 
@@ -404,11 +424,19 @@ func show_credits_roll_from_menu() -> void:
 	if ending_screen == null:
 		push_warning("Main: EndingScreen node not found for credits roll")
 		return
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = true
+	if menu_layer and is_instance_valid(menu_layer):
+		menu_layer.visible = false
 	if ending_screen.has_signal("credits_finished") and not ending_screen.is_connected("credits_finished", Callable(self, "_on_menu_credits_finished")):
 		ending_screen.connect("credits_finished", Callable(self, "_on_menu_credits_finished"))
 	if ending_screen.has_method("start_credits_roll"):
 		ending_screen.call("start_credits_roll", false)
 	else:
+		if ui_layer and is_instance_valid(ui_layer):
+			ui_layer.visible = false
+		if menu_layer and is_instance_valid(menu_layer):
+			menu_layer.visible = true
 		push_warning("Main: EndingScreen cannot start credits roll")
 
 func _get_ending_screen() -> Control:
@@ -483,17 +511,22 @@ func _begin_gameplay() -> void:
 	_set_gameplay_visible(true)
 	if colony_journal and colony_journal.has_method("close_silent"):
 		colony_journal.close_silent()
-	_unfreeze_time_after_menu()
-	get_tree().paused = false
-	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+	var skip_unpause: bool = false
+	if dialogue_engine and dialogue_engine is Node and dialogue_engine.has_method("is_intro_card_active"):
+		skip_unpause = dialogue_engine.call("is_intro_card_active")
+	if skip_unpause:
+		if dialogue_engine and dialogue_engine.has_signal("card_dismissed") and not dialogue_engine.is_connected("card_dismissed", Callable(self, "_on_intro_card_dismissed_after_new_game")):
+			dialogue_engine.connect("card_dismissed", Callable(self, "_on_intro_card_dismissed_after_new_game"), CONNECT_ONE_SHOT)
+	else:
+		_unfreeze_time_after_menu()
+		get_tree().paused = false
+		set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 	if AudioManager and AudioManager.has_method("set_menu_music_locked"):
 		AudioManager.set_menu_music_locked(false)
 	if AudioManager and AudioManager.has_method("crossfade_to") and AudioManager.track_1:
 		AudioManager.crossfade_to(AudioManager.track_1, 0.6)
 	elif AudioManager and AudioManager.has_method("play_music") and AudioManager.track_1:
 		AudioManager.play_music(AudioManager.track_1)
-	if dialogue_engine:
-		dialogue_engine.call_deferred("show_event", "cold_night")
 
 func _consume_tree_bool_meta(key: StringName) -> bool:
 	if not get_tree().has_meta(key):
@@ -571,6 +604,9 @@ func _unfreeze_time_after_menu() -> void:
 			_speed_before_menu = TimeManager.GameSpeed.NORMAL
 		TimeManager.set_game_speed(_speed_before_menu)
 	_was_time_frozen_by_menu = false
+
+func _on_intro_card_dismissed_after_new_game() -> void:
+	_unfreeze_time_after_menu()
 
 func _set_gameplay_visible(is_visible: bool) -> void:
 	if ui_layer and is_instance_valid(ui_layer):

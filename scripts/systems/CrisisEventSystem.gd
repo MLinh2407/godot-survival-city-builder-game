@@ -200,7 +200,15 @@ func _fire_event_once(event_id: String) -> void:
 		if _dialogue_engine.has_method("has_event") and not _dialogue_engine.has_event(event_id):
 			return
 		_fired_events[event_id] = true
-		_dialogue_engine.show_event(event_id)
+		if str(event_id).begins_with("intro_"):
+			if get_tree():
+				get_tree().paused = true
+			if TimeManager:
+				TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+		if _dialogue_engine.has_method("show_event"):
+			_dialogue_engine.show_event(event_id)
+		else:
+			push_warning("CrisisEventSystem: dialogue engine lacks show_event method; event '%s' not shown" % event_id)
 
 func _fire_journal(_slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
