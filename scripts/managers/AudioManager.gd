@@ -71,6 +71,17 @@ var _music_fade_tween: Tween
 
 const STARTUP_MUSIC_DELAY_SEC: float = 2.2
 
+func reset_for_new_game() -> void:
+	stop_rain()
+	_menu_music_locked = false
+	if _startup_music_timer:
+		_startup_music_timer.stop()
+		_startup_music_timer.queue_free()
+		_startup_music_timer = null
+	if _music_fade_tween:
+		_music_fade_tween.kill()
+		_music_fade_tween = null
+
 func play_build_sfx(type: String) -> void:
 	var stream: AudioStream = null
 	match type:

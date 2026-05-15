@@ -238,6 +238,26 @@ func show_event(event_id: String) -> void:
 func has_event(event_id: String) -> bool:
 	return _events_by_id.has(event_id)
 
+func reset_for_new_game() -> void:
+	_active_event_id = ""
+	_was_tree_paused = false
+	_previous_speed = TimeManager.GameSpeed.NORMAL
+	_dialogue_pause_depth = 0
+	_last_card_shown_time = 0
+	_set_portrait_for_event({})
+	_clear_choices()
+	_set_card_visible(false)
+	if _dialogue_root:
+		_dialogue_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _backdrop:
+		_backdrop.visible = false
+	if _card_panel:
+		_card_panel.visible = false
+	if _text_label:
+		_text_label.visible = false
+	if _choices_box:
+		_choices_box.visible = false
+
 func is_intro_card_active() -> bool:
 	if not _dialogue_root:
 		return false

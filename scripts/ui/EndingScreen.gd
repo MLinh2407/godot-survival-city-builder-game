@@ -32,6 +32,29 @@ var _continue_hover_tween: Tween
 var _fade_tween: Tween
 var return_to_main_menu_after_credits: bool = true
 
+func reset_for_menu_credits() -> void:
+	visible = true
+	_ending_key = ""
+	_rook_alive = false
+	_elapsed = 0.0
+	_skip_enabled = false
+	_stop_skip_prompt_fx()
+	_stop_continue_idle_fx()
+	if video_player:
+		video_player.stop()
+		video_player.visible = false
+	if end_card:
+		end_card.visible = false
+	if continue_button:
+		continue_button.visible = false
+	if credits_roll and credits_roll.has_method("reset_roll"):
+		credits_roll.call("reset_roll")
+	if credits_roll:
+		credits_roll.visible = false
+	if _fade_layer:
+		_fade_layer.visible = false
+		_fade_layer.modulate.a = 0.0
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process(true)
@@ -157,16 +180,10 @@ func _on_continue_pressed() -> void:
 		AudioManager.play_music(AudioManager.track_3)
 
 func start_credits_roll(return_to_menu: bool = true) -> void:
+	reset_for_menu_credits()
 	return_to_main_menu_after_credits = return_to_menu
-	visible = true
-	if video_player:
-		video_player.visible = false
-	if end_card:
-		end_card.visible = false
-	if continue_button:
-		continue_button.visible = false
-	_stop_continue_idle_fx()
 	if credits_roll and credits_roll.has_method("start_roll"):
+		visible = true
 		credits_roll.visible = true
 		credits_roll.call("start_roll")
 	if AudioManager and AudioManager.track_3:

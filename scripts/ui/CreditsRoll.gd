@@ -39,6 +39,13 @@ func start_roll() -> void:
 	_scrolling = true
 	call_deferred("_reset_scroll")
 
+func reset_roll() -> void:
+	_scrolling = false
+	_end_y = 0.0
+	if visible:
+		visible = false
+	_stop_hint_fx()
+
 func _process(delta: float) -> void:
 	if not _scrolling:
 		return

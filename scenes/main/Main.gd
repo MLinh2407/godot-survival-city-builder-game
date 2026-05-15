@@ -306,6 +306,7 @@ func _on_menu_start_new_game() -> void:
 	if _menu_accept_enabled_at_msec > 0 and Time.get_ticks_msec() < _menu_accept_enabled_at_msec:
 		return
 	_menu_accept_enabled_at_msec = 0
+	_reset_loop_state_for_new_run()
 	if colony_journal and colony_journal.has_method("close_silent"):
 		colony_journal.close_silent()
 	_prepare_new_game_state()
@@ -357,6 +358,7 @@ func _open_load_game_dialog() -> void:
 
 func _on_settings_load_file_selected(_path: String) -> void:
 	_dismiss_main_menu()
+	_reset_loop_state_for_new_run()
 	_begin_gameplay()
 
 func _dismiss_main_menu() -> void:
@@ -371,6 +373,7 @@ func _dismiss_main_menu() -> void:
 
 func show_main_menu_from_ending() -> void:
 	_dismiss_main_menu()
+	_reset_loop_state_for_return_to_menu()
 	_set_gameplay_visible(false)
 	_clear_launch_meta_flags()
 	_returning_to_menu_from_ending = true
@@ -419,6 +422,40 @@ func _show_main_menu_overlay() -> void:
 	main_menu.connect("open_settings", Callable(self, "_on_menu_open_settings"))
 	main_menu.connect("exit_game", Callable(self, "_on_menu_exit"))
 
+func _reset_loop_state_for_new_run() -> void:
+	_returning_to_menu_from_ending = false
+	_menu_accept_enabled_at_msec = 0
+	_has_started_gameplay = false
+	if intro_layer and is_instance_valid(intro_layer):
+		intro_layer.queue_free()
+		intro_layer = null
+	if dialogue_engine and dialogue_engine.has_method("reset_for_new_game"):
+		dialogue_engine.reset_for_new_game()
+	if EndingManager and EndingManager.has_method("reset_for_new_game"):
+		EndingManager.reset_for_new_game()
+	if AudioManager and AudioManager.has_method("reset_for_new_game"):
+		AudioManager.reset_for_new_game()
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = true
+	if menu_layer and is_instance_valid(menu_layer):
+		menu_layer.visible = false
+
+func _reset_loop_state_for_return_to_menu() -> void:
+	_returning_to_menu_from_ending = false
+	_has_started_gameplay = false
+	_menu_accept_enabled_at_msec = 0
+	if intro_layer and is_instance_valid(intro_layer):
+		intro_layer.queue_free()
+		intro_layer = null
+	if dialogue_engine and dialogue_engine.has_method("reset_for_new_game"):
+		dialogue_engine.reset_for_new_game()
+	if EndingManager and EndingManager.has_method("reset_for_new_game"):
+		EndingManager.reset_for_new_game()
+	if AudioManager and AudioManager.has_method("reset_for_new_game"):
+		AudioManager.reset_for_new_game()
+	if ui_layer and is_instance_valid(ui_layer):
+		ui_layer.visible = true
+
 func show_credits_roll_from_menu() -> void:
 	var ending_screen := _get_ending_screen()
 	if ending_screen == null:
@@ -428,6 +465,8 @@ func show_credits_roll_from_menu() -> void:
 		ui_layer.visible = true
 	if menu_layer and is_instance_valid(menu_layer):
 		menu_layer.visible = false
+	if ending_screen.has_method("reset_for_menu_credits"):
+		ending_screen.call("reset_for_menu_credits")
 	if ending_screen.has_signal("credits_finished") and not ending_screen.is_connected("credits_finished", Callable(self, "_on_menu_credits_finished")):
 		ending_screen.connect("credits_finished", Callable(self, "_on_menu_credits_finished"))
 	if ending_screen.has_method("start_credits_roll"):
@@ -447,6 +486,8 @@ func _get_ending_screen() -> Control:
 func _play_intro_sequence() -> void:
 	if AudioManager and AudioManager.has_method("silence_music"):
 		AudioManager.silence_music(0.45)
+	if AudioManager and AudioManager.has_method("stop_rain"):
+		AudioManager.stop_rain()
 
 	if intro_layer == null or not is_instance_valid(intro_layer):
 		_on_intro_finished()
@@ -528,6 +569,10 @@ func _begin_gameplay() -> void:
 	elif AudioManager and AudioManager.has_method("play_music") and AudioManager.track_1:
 		AudioManager.play_music(AudioManager.track_1)
 
+	# If rain visuals are active, restart ambient rain SFX now that gameplay begins
+	if _is_raining and AudioManager and AudioManager.has_method("start_rain"):
+		AudioManager.start_rain()
+
 func _consume_tree_bool_meta(key: StringName) -> bool:
 	if not get_tree().has_meta(key):
 		return false
@@ -581,6 +626,8 @@ func _prepare_new_game_state() -> void:
 			gs.reset_for_new_game()
 	if CrisisEventSystem and CrisisEventSystem.has_method("reset_for_new_game"):
 		CrisisEventSystem.reset_for_new_game()
+	if dialogue_engine and dialogue_engine.has_method("reset_for_new_game"):
+		dialogue_engine.reset_for_new_game()
 	if EndingManager and EndingManager.has_method("reset_for_new_game"):
 		EndingManager.reset_for_new_game()
 	if colony_journal and colony_journal.has_method("reset_for_new_game"):
