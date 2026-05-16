@@ -18,6 +18,8 @@ func _ready() -> void:
 	master_slider.value_changed.connect(_on_master_changed)
 	music_slider.value_changed.connect(_on_music_changed)
 	sfx_slider.value_changed.connect(_on_sfx_changed)
+
+	_setup_tutorial_toggle()
 	
 	file_dialog = FileDialog.new()
 	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -110,3 +112,40 @@ func _on_sfx_changed(value: float) -> void:
 
 func _on_close_button_pressed() -> void:
 	toggle_menu()
+
+func _setup_tutorial_toggle() -> void:
+	# Create toggle dynamically — adds below the volume sliders
+	var container := get_node_or_null("%SFXSlider")
+	if not container:
+		return
+	var parent: Control = container.get_parent()
+	if not parent:
+		return
+
+	var sep := HSeparator.new()
+	parent.add_child(sep)
+
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+
+	var lbl := Label.new()
+	lbl.text = "Show Tutorial"
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.add_theme_color_override("font_color", Color(0.82, 0.88, 0.92, 1.0))
+	row.add_child(lbl)
+
+	var toggle := CheckButton.new()
+	toggle.button_pressed = TutorialManager.tutorial_enabled if TutorialManager else true
+	toggle.toggled.connect(func(pressed: bool):
+		if TutorialManager:
+			TutorialManager.tutorial_enabled = pressed
+			TutorialManager.save_config()
+	)
+	row.add_child(toggle)
+
+	var hint := Label.new()
+	hint.text = "Disable to hide all coach marks and tutorial notes.\nStory journal entries still appear normally."
+	hint.add_theme_font_size_override("font_size", 10)
+	hint.add_theme_color_override("font_color", Color(0.50, 0.55, 0.60, 0.80))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	parent.add_child(hint)
