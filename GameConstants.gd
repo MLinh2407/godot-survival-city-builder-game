@@ -58,7 +58,6 @@ const GEOTHERMAL_POWER_T1: float       = 8.0    # kW — passive, no workers req
 const GEOTHERMAL_POWER_T2: float       = 14.0
 const GEOTHERMAL_WORKER_SLOTS: int     = 0
 
-const RELAY_HUB_POWER_DRAW: float      = 1.0    # kW consumed by each Relay Hub
 const HYDROPONIC_POWER_DRAW: float     = 4.0    # High draw for LED grow lights
 const WATER_RECYCLER_POWER_DRAW: float = 3.0    # Pumps and filtration
 const MED_CLINIC_POWER_DRAW: float     = 2.0    # Medical equipment and lighting
@@ -156,7 +155,6 @@ const MERIDIAN_MORALE_DRAIN: float              = 1.0   # −Morale/day ongoing
 
 const COAL_GENERATOR_SLOTS: int                 = 6
 const GEOTHERMAL_TAP_SLOTS: int                 = 0    # passive
-const RELAY_HUB_SLOTS: int                      = 8
 const HYDROPONIC_BAY_SLOTS: int                 = 10
 const RATION_STORE_SLOTS: int                   = 0    # passive
 const WATER_RECYCLER_SLOTS: int                 = 12
@@ -185,7 +183,6 @@ const STORM_SHIELD_WORKER_DAYS: int             = 2    # worker-days required to
 # ══════════════════════════════════════════════════════════════════════════════
 const BUILD_COST_COAL_GENERATOR: int  = 20
 const BUILD_COST_GEOTHERMAL_TAP: int  = 35
-const BUILD_COST_RELAY_HUB: int       = 15
 const BUILD_COST_HYDROPONIC_BAY: int  = 20
 const BUILD_COST_RATION_STORE: int    = 15
 const BUILD_COST_WATER_RECYCLER: int  = 20

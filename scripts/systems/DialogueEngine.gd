@@ -513,12 +513,12 @@ func _set_card_visible(is_visible: bool) -> void:
 		_choices_box.visible = is_visible
 	# When visible, ensure the card grabs focus so keyboard and input target the card
 	if is_visible:
-		if _card_panel:
+		if _card_panel and _card_panel.focus_mode != Control.FOCUS_NONE:
 			_card_panel.grab_focus()
-			# Prefer focusing the first choice button
 			if _choices_box and _choices_box.get_child_count() > 0:
 				var first_btn = _choices_box.get_child(0)
-				if first_btn and first_btn.has_method("grab_focus"):
+				if first_btn and first_btn.has_method("grab_focus") \
+						and first_btn.focus_mode != Control.FOCUS_NONE:
 					first_btn.grab_focus()
 
 func _play_event_specific_sfx(event_id: String) -> void:

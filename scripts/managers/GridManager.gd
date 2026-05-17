@@ -10,7 +10,6 @@ signal building_deselected()
 const BUILDING_FOOTPRINTS: Dictionary = {
 	"coal":       Vector2i(2, 2),
 	"geothermal": Vector2i(2, 2),   
-	"relay":      Vector2i(1, 1),
 	"hydro":      Vector2i(2, 2),
 	"ration":     Vector2i(2, 2),
 	"water":      Vector2i(2, 2),
@@ -25,6 +24,8 @@ const GRID_BOUNDS_MAX = Vector2i(40,  40)
 
 const BUILDING_GROUND_FACTOR: float = 0.25    
 const BUILDING_PLACE_FACTOR:  float = 0.18  
+
+const VOID_FILL_RADIUS: int = 200   
 
 var occupied_cells:  Dictionary = {}   
 var cell_to_anchor:  Dictionary = {}   
@@ -153,9 +154,6 @@ func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> voi
 			lines.append("⚡ +%d kW" % GameConstants.COAL_POWER_T1)
 		"geothermal":
 			lines.append("⚡ +%d kW (passive)" % GameConstants.GEOTHERMAL_POWER_T1)
-		"relay":
-			lines.append("⚡ −%.0f kW draw" % GameConstants.RELAY_HUB_POWER_DRAW)
-			lines.append("Extends power radius")
 		"hydro":
 			lines.append("🍲 +%d food/day" % GameConstants.BASE_FOOD_RATE)
 			lines.append("Requires %d workers" % GameConstants.HYDROPONIC_BAY_SLOTS)
@@ -189,7 +187,7 @@ func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> voi
 		var mat: int = GameManager.materials
 		var affordable: bool = mat >= cost
 		var cost_col: String = "[ok]" if affordable else "[low]"
-		lines.append("%s Cost: %d mat (have %d)" % [cost_col, cost, mat])
+		lines.append("%s Cost: %d materials (have %d)" % [cost_col, cost, mat])
 
 	_place_preview_label.text = "\n".join(lines)
 
@@ -227,18 +225,18 @@ func _prefill_void() -> void:
 	if not void_layer:
 		push_warning("GridManager: $VoidLayer not found — skipping void pre-fill.")
 		return
-	var pad: int = 4
-	var min_c: Vector2i = GRID_BOUNDS_MIN - Vector2i(pad, pad)
-	var max_c: Vector2i = GRID_BOUNDS_MAX + Vector2i(pad, pad)
-	for x in range(min_c.x, max_c.x + 1):
-		for y in range(min_c.y, max_c.y + 1):
+
+	var filled: int = 0
+	for x in range(-VOID_FILL_RADIUS, VOID_FILL_RADIUS + 1):
+		for y in range(-VOID_FILL_RADIUS, VOID_FILL_RADIUS + 1):
 			void_layer.set_cell(
 				Vector2i(x, y),
 				TileRegistry.FLOOR_SOURCE_ID,
 				TileRegistry.M8_VOID
 			)
-	print("GridManager: Void pre-fill complete — %d cells." \
-		% ((max_c.x - min_c.x + 1) * (max_c.y - min_c.y + 1)))
+			filled += 1
+
+	print("GridManager: Void pre-fill complete — %d cells." % filled)
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
@@ -609,16 +607,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif current_decoration_type != "":
 				exit_decoration_mode()
 			return
-		var keys = building_scenes.keys()
-		if event.keycode == KEY_1 and keys.size() > 0: enter_build_mode(keys[0])
-		if event.keycode == KEY_2 and keys.size() > 1: enter_build_mode(keys[1])
-		if event.keycode == KEY_3 and keys.size() > 2: enter_build_mode(keys[2])
-		if event.keycode == KEY_4 and keys.size() > 3: enter_build_mode(keys[3])
-		if event.keycode == KEY_5 and keys.size() > 4: enter_build_mode(keys[4])
-		if event.keycode == KEY_6 and keys.size() > 5: enter_build_mode(keys[5])
-		if event.keycode == KEY_7 and keys.size() > 6: enter_build_mode(keys[6])
-		if event.keycode == KEY_8 and keys.size() > 7: enter_build_mode(keys[7])
-		if event.keycode == KEY_9 and keys.size() > 8: enter_build_mode(keys[8])
 
 # ── Placement & removal ────────────────────────────────────────────────────────
 func place_building(anchor: Vector2i) -> void:

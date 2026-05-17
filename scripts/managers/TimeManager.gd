@@ -72,8 +72,8 @@ func _process(delta: float) -> void:
 		
 	var fraction_elapsed = clamp(time_elapsed / current_day_length, 0.0, 1.0)
 	var total_ingame_minutes = int(fraction_elapsed * 24.0 * 60.0)
-	var h = total_ingame_minutes / 60
-	var m = total_ingame_minutes % 60
+	var h: int = total_ingame_minutes / 60
+	var m: int = total_ingame_minutes % 60
 	var time_str = "%02d:%02d" % [h, m]
 	
 	if time_str != _last_time_str:

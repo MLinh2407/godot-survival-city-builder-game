@@ -141,7 +141,7 @@ func _on_day_changed(new_day: int) -> void:
 
 # ── ResourceManager.resources_changed ────────────────────────────────────────
 
-func _on_resources_changed(power: float, food: float, morale: float,
+func _on_resources_changed(_power: float, food: float, morale: float,
 		_materials: int) -> void:
 	if not tutorial_enabled:
 		return
@@ -193,23 +193,24 @@ func _on_outbreak_started(sick_count: int) -> void:
 
 # ── GridManager.building_placed ───────────────────────────────────────────────
 
-func _on_building_placed(b_type: String, _grid_pos: Vector2i) -> void:
+func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	if not tutorial_enabled:
 		return
 
-	# Phase 1.3 — First building placed (general placement explanation)
 	if not _first_building_placed:
 		_first_building_placed = true
 		_beat_1_3_first_placement()
 
-	# Phase 1.7 — Power dependency warning
+		get_tree().create_timer(1.5, false, false, true).timeout.connect(
+			func(): _auto_open_inspector_for_pos(grid_pos)
+		)
+
 	if b_type != "coal" and b_type != "geothermal" \
 			and not _has_shown("power_dependency_warning"):
 		var bs = _get_node("Main/BuildingSystem")
 		if bs and not bs.has_building(BuildingData.BuildingType.COAL_GENERATOR):
 			_beat_1_7_power_dependency()
 
-	# Type-specific placement nudges
 	match b_type:
 		"water":
 			if not _has_shown("water_recycler_placed"):
@@ -230,18 +231,44 @@ func _on_building_placed(b_type: String, _grid_pos: Vector2i) -> void:
 			if not _has_shown("memorial_wall_placed"):
 				_beat_5_7_memorial_built()
 
+# ── _auto_open_inspector_for_pos ─────────────────────────────────────────────
+
+func _auto_open_inspector_for_pos(grid_pos: Vector2i) -> void:
+	if not tutorial_enabled or _first_inspector_opened:
+		return
+
+	_exit_build_mode_safe()
+
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var grid = _get_node("Main/GameWorld/GridSystem")
+	if grid and grid.get("current_build_scene") != null:
+		await get_tree().create_timer(2.0, false, false, true).timeout
+		if _first_inspector_opened:
+			return
+
+	var bs = _get_node("Main/BuildingSystem")
+	if not bs or not bs.active_buildings.has(grid_pos):
+		if bs and not bs.active_buildings.is_empty():
+			grid_pos = bs.active_buildings.keys()[0]
+		else:
+			return
+
+	if grid and grid.has_signal("building_selected"):
+		grid.building_selected.emit(grid_pos)
+
 # ── BuildingSystem.building_selected_data ────────────────────────────────────
 
 func _on_building_selected(b_data: BuildingData) -> void:
 	if not tutorial_enabled or b_data == null:
 		return
 
-	# Phase 1.5 + 1.6 — First time Building Inspector opens
 	if not _first_inspector_opened:
 		_first_inspector_opened = true
 		_beat_1_5_inspector()
 
-	# Phase 5.3 — Shield button explanation (first selection after Day 26)
 	if TimeManager.current_day >= GameConstants.STORM_START_DAY \
 			and not b_data.is_shielded \
 			and not _has_shown("shield_button_explanation"):
@@ -349,30 +376,39 @@ func _beat_1_3_first_placement() -> void:
 	_fire_journal(
 		"first_placement",
 		"Building Placed",
-		"Left-click places. Right-click or Q cancels. " +
-		"Click a placed building to open its control panel and assign workers. " +
-		"Buildings at zero workers for 3 consecutive days become damaged."
+		"Left-click places a building, right-click or Q cancels placement mode. " +
+		"Buildings at zero workers for 3 consecutive days become damaged " +
+		"and lock at 30 percent output until repaired with Materials. " +
+		"The building control panel will open automatically so you can " +
+		"assign workers right now."
 	)
 
 func _beat_1_5_inspector() -> void:
-	var inspector = get_tree().root.find_child("BuildingInspector", true, false)
-	if inspector and inspector is Control:
+	if _has_shown("inspector_opened"):
+		return
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var inspector: Control = _find_inspector()
+
+	if inspector and inspector.visible and inspector.is_inside_tree():
 		_enqueue_mark(
 			"inspector_opened",
-			"",   # path resolved below via direct node reference
-			"This is the building control panel. Assign workers with the " +
-			"+ and - buttons. More workers = more output. " +
-			"You can never staff everything — choose which buildings run at full capacity.",
-			"left"
+			"",
+			"This is the building control panel. " +
+			"Use + and − to assign workers from your available pool. " +
+			"More workers means more output — but you can never staff " +
+			"everything at once. Decide which buildings run at full capacity.",
+			"right",
+			inspector
 		)
-		if not _mark_queue.is_empty():
-			_mark_queue.back()["node_ref"] = inspector
 	else:
 		_fire_journal(
 			"inspector_opened",
-			"Building Inspector",
-			"Click any building to open its control panel. " +
-			"Assign workers with the + and - buttons. " +
+			"Building Control Panel",
+			"Click any placed building to open its control panel. " +
+			"Assign workers with + and − buttons. " +
 			"Partial staffing gives proportional output — " +
 			"5 of 10 workers produces exactly 50 percent output."
 		)
@@ -723,39 +759,46 @@ func _enqueue_mark(id: String, target_path: String, text: String,
 		return
 	_mark_shown(id)
 	_mark_queue.append({
-		"id":        id,
-		"path":      target_path,
-		"text":      text,
-		"dir":       direction,
-		"node_ref":  node_ref  
+		"id":       id,
+		"path":     target_path,
+		"text":     text,
+		"dir":      direction,
+		"node_ref": node_ref
 	})
 	_try_show_next()
 
 func _try_show_next() -> void:
 	if _active_mark and is_instance_valid(_active_mark):
-		return   
+		return
 	if _mark_queue.is_empty():
 		return
+
+	_exit_build_mode_safe()
 
 	var data: Dictionary = _mark_queue.pop_front()
 	var mark = load("res://scripts/ui/CoachMark.gd").new()
 	get_tree().root.add_child(mark)
 	mark.process_mode = Node.PROCESS_MODE_ALWAYS
 
-	# Resolve target: direct node ref takes priority over path string
-	var target: Control = data.get("node_ref", null)
-	if not target and data.path != "":
+	var target: Control = null
+	var stored_ref = data.get("node_ref", null)
+	if stored_ref and is_instance_valid(stored_ref):
+		target = stored_ref as Control
+	elif data.path != "":
 		var n = _get_node(data.path)
-		if n is Control:
+		if n and n is Control:
 			target = n as Control
+
+	if target and not target.is_inside_tree():
+		target = null
 
 	if target:
 		mark.show_for_target(data.id, target, data.text, data.dir)
 	else:
-		# Target not found — try floating mark at screen centre, or skip
-		if data.text != "":
-			var centre: Vector2 = get_viewport().get_visible_rect().size * 0.5
-			mark.show_floating(data.id, centre + Vector2(0, -80), data.text)
+		if not data.text.is_empty():
+			var vp: Vector2 = get_viewport().get_visible_rect().size
+			mark.show_floating(data.id,
+				Vector2(vp.x * 0.5, vp.y * 0.72), data.text)
 		else:
 			mark.queue_free()
 			_try_show_next()
@@ -803,6 +846,40 @@ func _mark_shown(id: String) -> void:
 
 func _get_node(path: String) -> Node:
 	return get_tree().root.get_node_or_null(path)
+
+func _find_inspector() -> Control:
+	var paths := [
+		"Main/UILayer/BuildingInspector",
+		"Main/UILayer/HUD/BuildingInspector",
+		"Main/BuildingInspector"
+	]
+	for p in paths:
+		var n = get_tree().root.get_node_or_null(p)
+		if n and n is Control:
+			return n as Control
+
+	# Fallback: recursive search
+	var found = get_tree().root.find_child("BuildingInspector", true, false)
+	if found and found is Control:
+		return found as Control
+
+	return null
+
+# ── _exit_build_mode_safe ─────────────────────────────────────────────────────
+
+func _exit_build_mode_safe() -> void:
+	var grid = _get_node("Main/GameWorld/GridSystem")
+	if grid:
+		if grid.get("current_build_scene") != null \
+				and grid.has_method("exit_build_mode"):
+			grid.exit_build_mode()
+		if grid.get("current_decoration_type") != "" \
+				and grid.has_method("exit_decoration_mode"):
+			grid.exit_decoration_mode()
+
+	var bm = _get_node("Main/BuildMenu")
+	if bm and bm.get("is_open") == true and bm.has_method("close"):
+		bm.close()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIG 

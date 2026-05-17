@@ -307,13 +307,6 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			new_data.base_production_power = GameConstants.GEOTHERMAL_POWER_T1
 			new_data.power_draw            = 0.0
 
-		"relay":
-			new_data.building_type   = BuildingData.BuildingType.RELAY_HUB
-			new_data.building_name   = "Relay Hub"
-			new_data.category        = BuildingData.BuildingCategory.POWER
-			new_data.worker_capacity = GameConstants.RELAY_HUB_SLOTS
-			new_data.power_draw      = GameConstants.RELAY_HUB_POWER_DRAW
-
 		"ration":
 			new_data.building_type   = BuildingData.BuildingType.RATION_STORE
 			new_data.building_name   = "Ration Store"
@@ -446,7 +439,6 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		var type_to_str: Dictionary = {
 			BuildingData.BuildingType.COAL_GENERATOR:  "coal",
 			BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
-			BuildingData.BuildingType.RELAY_HUB:       "relay",
 			BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
 			BuildingData.BuildingType.RATION_STORE:    "ration",
 			BuildingData.BuildingType.WATER_RECYCLER:  "water",
@@ -525,7 +517,6 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	var type_to_str_map: Dictionary = {
 		BuildingData.BuildingType.COAL_GENERATOR:  "coal",
 		BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
-		BuildingData.BuildingType.RELAY_HUB:       "relay",
 		BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
 		BuildingData.BuildingType.RATION_STORE:    "ration",
 		BuildingData.BuildingType.WATER_RECYCLER:  "water",
@@ -934,7 +925,6 @@ func _get_build_cost(b_type: String) -> int:
 	match b_type:
 		"coal":       return GameConstants.BUILD_COST_COAL_GENERATOR
 		"geothermal": return GameConstants.BUILD_COST_GEOTHERMAL_TAP
-		"relay":      return GameConstants.BUILD_COST_RELAY_HUB
 		"hydro":      return GameConstants.BUILD_COST_HYDROPONIC_BAY
 		"ration":     return GameConstants.BUILD_COST_RATION_STORE
 		"water":      return GameConstants.BUILD_COST_WATER_RECYCLER

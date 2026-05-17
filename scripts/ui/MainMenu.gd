@@ -59,8 +59,6 @@ func _ready() -> void:
 	_setup_title_outline()
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
-var _title_outline_shader: Shader
-
 func _setup_title_outline() -> void:
 	if title_rect == null:
 		return
@@ -166,12 +164,12 @@ func _connect_buttons() -> void:
 		btn_exit.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("Exit", btn_exit))
 		btn_exit.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("Exit", btn_exit))
 
-func _on_button_mouse_entered(button_id: String, button: Button) -> void:
+func _on_button_mouse_entered(_button_id: String, button: Button) -> void:
 	_animate_button_hover(button, true)
 	if AudioManager and AudioManager.has_method("play_ui_sfx"):
 		AudioManager.play_ui_sfx("hover")
 
-func _on_button_mouse_exited(button_id: String, button: Button) -> void:
+func _on_button_mouse_exited(_button_id: String, button: Button) -> void:
 	_animate_button_hover(button, false)
 
 func _animate_button_hover(button: Button, is_hovered: bool) -> void:
@@ -214,13 +212,12 @@ func _make_blur_material(blur_radius: float = 1.6, tint: Color = Color(0.55, 0.8
 			_blur_shader = ResourceLoader.load(shader_path)
 		else:
 			push_warning("MainMenu: shader not found at %s" % shader_path)
-
-	var material := ShaderMaterial.new()
+	var blur_mat := ShaderMaterial.new()   
 	if _blur_shader:
-		material.shader = _blur_shader
-		material.set_shader_parameter("blur_radius", blur_radius)
-		material.set_shader_parameter("tint", tint)
-	return material
+		blur_mat.shader = _blur_shader
+		blur_mat.set_shader_parameter("blur_radius", blur_radius)
+		blur_mat.set_shader_parameter("tint", tint)
+	return blur_mat
 
 func _setup_standalone_load_dialog() -> void:
 	if _standalone_load_dialog:

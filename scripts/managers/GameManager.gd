@@ -512,7 +512,6 @@ func load_game(filepath: String) -> void:
 			var type_map: Dictionary = {
 				BuildingData.BuildingType.COAL_GENERATOR:  "coal",
 				BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
-				BuildingData.BuildingType.RELAY_HUB:       "relay",
 				BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
 				BuildingData.BuildingType.RATION_STORE:    "ration",
 				BuildingData.BuildingType.WATER_RECYCLER:  "water",

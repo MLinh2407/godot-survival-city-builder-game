@@ -29,6 +29,8 @@ var _confirm_dialog:    ConfirmationDialog  = null
 
 var _terminal_btn: Button = null
 
+var _repositioning: bool = false
+
 func _ready() -> void:
 	# Hide the panel by default
 	visible = false
@@ -326,6 +328,26 @@ func _on_terminal_pressed() -> void:
 	else:
 		push_warning("BuildingInspector: MeridianTerminal not found at Main/MeridianTerminal")
 
+func _reposition_for_content() -> void:
+	if _repositioning or not visible:
+		return
+	_repositioning = true
+	await get_tree().process_frame
+	_repositioning = false
+
+	var vp_size: Vector2  = get_viewport_rect().size
+	var panel_h: float    = size.y if size.y > 20.0 else get_combined_minimum_size().y
+	var panel_w: float    = size.x if size.x > 20.0 else get_combined_minimum_size().x
+
+	if global_position.y + panel_h > vp_size.y - 8.0:
+		global_position.y = maxf(8.0, vp_size.y - panel_h - 8.0)
+
+	if global_position.y < 8.0:
+		global_position.y = 8.0
+
+	if global_position.x + panel_w > vp_size.x - 8.0:
+		global_position.x = maxf(8.0, vp_size.x - panel_w - 8.0)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SELECTION HANDLING
 # ══════════════════════════════════════════════════════════════════════════════
@@ -529,6 +551,8 @@ func _refresh_ui_text() -> void:
 			_terminal_btn.text = "◈  MERIDIAN Terminal" if trusted \
 				else "◈  MERIDIAN Terminal  [limited]"
 
+	call_deferred("_reposition_for_content")
+
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears
 	if current_building and current_building.grid_position == grid_pos:
@@ -539,9 +563,10 @@ func _on_building_state_changed(grid_pos: Vector2i) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 func _show_panel() -> void:
 	visible = true
-	# A tiny Tween makes the UI fade in smoothly instead of snapping aggressively
+	modulate.a = 0.0
 	var tween = create_tween()
 	tween.tween_property(self, "modulate:a", 1.0, 0.15)
+	call_deferred("_reposition_for_content")
 
 func _hide_panel() -> void:
 	var tween = create_tween()

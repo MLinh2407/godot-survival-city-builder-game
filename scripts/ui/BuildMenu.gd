@@ -23,11 +23,11 @@ const C_SEP     := Color(0.00, 0.96, 1.00, 0.18)
 
 # ── Sizing ────────────────────────────────────────────────────────────────────
 const BAR_FRAC : float = 0.36   # fraction of viewport height the bar occupies
-const CARD_W   : float = 88.0
-const CARD_H   : float = 98.0
-const IMG_H    : float = 50.0
-const TIER_W   : float = 46.0
-const HEAD_H   : float = 26.0
+const CARD_W   : float = 108.0   
+const CARD_H   : float = 122.0   
+const IMG_H    : float = 72.0    
+const TIER_W   : float = 46.0    
+const HEAD_H   : float = 26.0    
 
 # ── Sprite paths (T1 images shown in menu) ───────────────────────────────────
 const SPRITE_PATHS : Dictionary = {
@@ -53,6 +53,10 @@ const TIER_LABEL : Dictionary = {
 	"ready"      : "BUILD\nREADY",
 	"decoration" : "DECO\nRATION",
 }
+
+var _cost_labels: Dictionary   = {}   
+var _icon_rects:  Array        = []   
+var _mat_icon_tex: Texture2D   = null
 
 # ── State ─────────────────────────────────────────────────────────────────────
 var _defs         : Array  = []
@@ -81,7 +85,6 @@ func _init_defs() -> void:
 		["Shelter Block",  "shelter",    0,  GameConstants.BUILD_COST_SHELTER_BLOCK,   "first",      false],
 		["Med Clinic",     "med",        14, GameConstants.BUILD_COST_MED_CLINIC,      "stable",     false],
 		["Ration Store",   "ration",     0,  GameConstants.BUILD_COST_RATION_STORE,    "stable",     false],
-		["Relay Hub",      "relay",      8,  GameConstants.BUILD_COST_RELAY_HUB,       "stable",     false],
 		["Geothermal Tap", "geothermal", 0,  GameConstants.BUILD_COST_GEOTHERMAL_TAP,  "stable",     false],
 		["Archive Hall",   "archive",    12, GameConstants.BUILD_COST_ARCHIVE_HALL,    "ready",      false],
 		["Memorial Wall",  "memorial",   0,  GameConstants.BUILD_COST_MEMORIAL_WALL,   "ready",      false],
@@ -96,14 +99,28 @@ func _connect_gm() -> void:
 	if not _grid_manager:
 		push_warning("BuildMenu: GridManager not found at Main/GameWorld/GridSystem")
 		return
+
 	if _grid_manager.has_signal("building_placed"):
 		_grid_manager.building_placed.connect(
 			func(_t: String, _p: Vector2i): _on_placed_externally())
-	# Update card affordability whenever materials change
+
 	await get_tree().process_frame
+
+	var icon_node = get_tree().root.get_node_or_null("Main/UILayer/HUD/MaterialsIcon")
+	if icon_node is TextureRect:
+		_mat_icon_tex = (icon_node as TextureRect).texture
+	elif icon_node is Sprite2D:
+		_mat_icon_tex = (icon_node as Sprite2D).texture
+
+	if _mat_icon_tex:
+		for ir in _icon_rects:
+			if is_instance_valid(ir):
+				(ir as TextureRect).texture = _mat_icon_tex
+
 	if ResourceManager:
 		ResourceManager.resources_changed.connect(
 			func(_p, _f, _m, _mat: int): _refresh_affordability())
+
 	_refresh_affordability()
 
 # ── UI construction ───────────────────────────────────────────────────────────
@@ -254,7 +271,7 @@ func _add_tier_label(parent: HBoxContainer, tier: String) -> void:
 
 # ── Individual building card ──────────────────────────────────────────────────
 func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
-		slots: int, cost: int, is_deco: bool) -> void:
+		_slots: int, cost: int, is_deco: bool) -> void:
 
 	var card := Panel.new()
 	card.name                 = "Card_%s" % b_type
@@ -267,22 +284,22 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 	var vb := VBoxContainer.new()
 	vb.anchor_right  = 1.0
 	vb.anchor_bottom = 1.0
-	vb.offset_left   = 3.0
-	vb.offset_right  = -3.0
-	vb.offset_top    = 3.0
-	vb.offset_bottom = -3.0
-	vb.add_theme_constant_override("separation", 2)
+	vb.offset_left   = 4.0
+	vb.offset_right  = -4.0
+	vb.offset_top    = 4.0
+	vb.offset_bottom = -4.0
+	vb.add_theme_constant_override("separation", 3)
 	vb.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	card.add_child(vb)
 
-	# Image
+	# ── Building image ────────────────────────────────────────────────────────
 	var img_holder := Control.new()
 	img_holder.custom_minimum_size   = Vector2(0.0, IMG_H)
 	img_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	img_holder.mouse_filter          = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(img_holder)
 
-	var sprite_path : String = SPRITE_PATHS.get(b_type, "")
+	var sprite_path: String = SPRITE_PATHS.get(b_type, "")
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		var tex := load(sprite_path) as Texture2D
 		if tex:
@@ -298,7 +315,7 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 		var icon := Label.new()
 		icon.text = "◇" if is_deco else "□"
 		icon.add_theme_color_override("font_color", Color(0.0, 0.75, 0.85, 0.55))
-		icon.add_theme_font_size_override("font_size", 24)
+		icon.add_theme_font_size_override("font_size", 28)
 		icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		icon.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 		icon.anchor_right  = 1.0
@@ -306,7 +323,7 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 		icon.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 		img_holder.add_child(icon)
 
-	# Name
+	# ── Building name ─────────────────────────────────────────────────────────
 	var name_lbl := Label.new()
 	name_lbl.text               = display_name
 	name_lbl.add_theme_color_override("font_color", C_NAME)
@@ -316,26 +333,47 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 	name_lbl.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(name_lbl)
 
-	# Cost
-	var cost_lbl := Label.new()
-	cost_lbl.text = "Free" if cost == 0 else ("%d mat" % cost)
-	cost_lbl.add_theme_color_override("font_color", C_FREE if cost == 0 else C_COST)
-	cost_lbl.add_theme_font_size_override("font_size", 9)
-	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost_lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(cost_lbl)
+	# ── Cost row — material icon + number, or "Free" ──────────────────────────
+	var cost_row := HBoxContainer.new()
+	cost_row.alignment            = BoxContainer.ALIGNMENT_CENTER
+	cost_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cost_row.add_theme_constant_override("separation", 3)
+	cost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(cost_row)
 
-	# Workers / Passive
-	if not is_deco:
-		var wk := Label.new()
-		wk.text = ("%d slots" % slots) if slots > 0 else "passive"
-		wk.add_theme_color_override("font_color", C_WRK if slots > 0 else C_PSV)
-		wk.add_theme_font_size_override("font_size", 9)
-		wk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		wk.mouse_filter         = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(wk)
+	if cost == 0 or is_deco:
+		var free_lbl := Label.new()
+		free_lbl.text = "Free"
+		free_lbl.add_theme_color_override("font_color", C_FREE)
+		free_lbl.add_theme_font_size_override("font_size", 9)
+		free_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		free_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cost_row.add_child(free_lbl)
+		_cost_labels[b_type] = null
+	else:
+		var icon_rect := TextureRect.new()
+		icon_rect.custom_minimum_size = Vector2(13.0, 13.0)
+		icon_rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon_rect.mouse_filter        = Control.MOUSE_FILTER_IGNORE
+		if _mat_icon_tex:
+			icon_rect.texture = _mat_icon_tex
+		cost_row.add_child(icon_rect)
+		_icon_rects.append(icon_rect)
 
-	# Input
+		var cost_lbl := Label.new()
+		cost_lbl.text = str(cost)
+		cost_lbl.add_theme_color_override("font_color", C_COST)
+		cost_lbl.add_theme_font_size_override("font_size", 9)
+		cost_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cost_row.add_child(cost_lbl)
+		_cost_labels[b_type] = cost_lbl
+
+	# NOTE: Worker slots label intentionally removed per design decision.
+
+	# ── Input ─────────────────────────────────────────────────────────────────
 	card.gui_input.connect(func(ev: InputEvent): _on_card_input(ev, b_type, is_deco))
 	card.mouse_entered.connect(func(): _on_card_hover(b_type, true))
 	card.mouse_exited.connect(func():  _on_card_hover(b_type, false))
@@ -481,37 +519,29 @@ func refresh_memorial_button() -> void:
 func _refresh_affordability() -> void:
 	var current_mat: int = GameManager.materials
 	for def in _defs:
-		var b_type : String = def[1]
-		var cost   : int    = def[3]
+		var b_type:  String = def[1]
+		var cost:    int    = def[3]
 		var is_deco: bool   = def[5]
+
 		if not _cards.has(b_type):
 			continue
-		if b_type == _active_type:
-			continue   # never dim the one being actively placed
-		if b_type == "memorial":
-			continue   # memorial has its own locked logic
+		if b_type == _active_type or b_type == "memorial":
+			continue
 		if is_deco or cost == 0:
 			_cards[b_type].modulate = Color.WHITE
 			continue
-		if current_mat < cost:
-			# Cannot afford — dim to 55% and tint slightly red
-			_cards[b_type].modulate = Color(0.90, 0.65, 0.65, 0.55)
-		else:
-			_cards[b_type].modulate = Color.WHITE
-		
-		# Tint the cost label red/normal inside the card
-		var card_vb: VBoxContainer = _cards[b_type].get_node_or_null("VBoxContainer")
-		if card_vb:
-			for child in card_vb.get_children():
-				if child is Label:
-					var lbl: Label = child as Label
-					# Cost label contains "mat" in its text
-					if "mat" in lbl.text:
-						if current_mat < cost:
-							lbl.add_theme_color_override("font_color",
-								Color(1.0, 0.40, 0.40, 1.0))
-						else:
-							lbl.add_theme_color_override("font_color", C_COST)
+
+		var can_afford: bool = current_mat >= cost
+		_cards[b_type].modulate = Color.WHITE if can_afford \
+			else Color(0.90, 0.65, 0.65, 0.55)
+
+		# Update cost label colour
+		var lbl_ref = _cost_labels.get(b_type, null)
+		if lbl_ref and is_instance_valid(lbl_ref):
+			(lbl_ref as Label).add_theme_color_override(
+				"font_color",
+				C_COST if can_afford else Color(1.0, 0.40, 0.40, 1.0)
+			)
 
 # ── Open / Close / Toggle ─────────────────────────────────────────────────────
 func open() -> void:
