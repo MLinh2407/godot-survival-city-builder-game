@@ -362,6 +362,10 @@ func _on_settings_load_file_selected(_path: String) -> void:
 	_begin_gameplay()
 	if GameManager and GameManager.has_method("load_game"):
 		GameManager.load_game(_path)
+	
+	if TutorialManager:
+		TutorialManager._intro_done = true   
+		TutorialManager._try_connect_scene_signals()
 
 func _dismiss_main_menu() -> void:
 	if main_menu and is_instance_valid(main_menu):
@@ -634,6 +638,9 @@ func _prepare_new_game_state() -> void:
 		colony_journal.reset_for_new_game()
 	if TimeManager and TimeManager.has_method("reset_for_new_game"):
 		TimeManager.reset_for_new_game()
+
+	if TutorialManager and TutorialManager.has_method("reset_for_new_game"):
+		TutorialManager.reset_for_new_game()
 
 func _freeze_time_for_menu() -> void:
 	if _was_time_frozen_by_menu:

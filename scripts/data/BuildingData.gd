@@ -7,18 +7,17 @@ extends Resource
 @warning_ignore("unused_signal")
 signal staffing_changed(current: int, capacity: int)
 
-# Building type enum (10 building types)
+# Building type enum 
 enum BuildingType {
-    COAL_GENERATOR,
-    GEOTHERMAL_TAP,
-    RELAY_HUB,
-    HYDROPONIC_BAY,
-    RATION_STORE,
-    WATER_RECYCLER,
-    MED_CLINIC,
-    SHELTER_BLOCK,
-    ARCHIVE_HALL,
-    MEMORIAL_WALL
+	COAL_GENERATOR,   # 0
+	GEOTHERMAL_TAP,   # 1
+	HYDROPONIC_BAY,   # 2
+	RATION_STORE,     # 3
+	WATER_RECYCLER,   # 4
+	MED_CLINIC,       # 5
+	SHELTER_BLOCK,    # 6
+	ARCHIVE_HALL,     # 7
+	MEMORIAL_WALL     # 8
 }
 
 # Category enum (for build menu tier grouping)

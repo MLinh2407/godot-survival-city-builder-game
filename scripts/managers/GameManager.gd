@@ -387,7 +387,8 @@ func save_game(filename: String) -> void:
 			"morale": mor
 		},
 		"buildings": serialized_buildings,
-		"journal_entries": journal_entries_data
+		"journal_entries": journal_entries_data,
+		"tutorial_shown_flags": TutorialManager.shown_flags if TutorialManager else {},
 	}
 	
 	var file_path = SAVES_DIR + filename
@@ -455,6 +456,13 @@ func load_game(filepath: String) -> void:
 	if colonist_vasquez: colonist_vasquez.is_alive = vasquez_alive
 	if colonist_meridian: colonist_meridian.is_alive = meridian_alive
 
+	if TutorialManager:
+		var tutorial_flags = data.get("tutorial_shown_flags", {})
+		TutorialManager.shown_flags = tutorial_flags
+		TutorialManager._intro_done = true
+		TutorialManager._first_building_placed = \
+			not tutorial_flags.get("first_placement", false) == false
+
 	# Restore TimeManager
 	var tm_data = data.get("time_manager", {})
 	if TimeManager:
@@ -504,7 +512,6 @@ func load_game(filepath: String) -> void:
 			var type_map: Dictionary = {
 				BuildingData.BuildingType.COAL_GENERATOR:  "coal",
 				BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
-				BuildingData.BuildingType.RELAY_HUB:       "relay",
 				BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
 				BuildingData.BuildingType.RATION_STORE:    "ration",
 				BuildingData.BuildingType.WATER_RECYCLER:  "water",

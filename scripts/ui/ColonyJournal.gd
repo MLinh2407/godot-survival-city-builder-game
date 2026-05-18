@@ -138,7 +138,7 @@ func toggle() -> void:
 	else:
 		open()
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if not is_open:
 		return
 	if Input.is_action_just_pressed("ui_left"):
@@ -556,7 +556,7 @@ func deserialise(data: Variant) -> void:
 		e.day = int(d.get("day", 1))
 		e.title = str(d.get("title", ""))
 		e.body = str(d.get("body", ""))
-		e.entry_type = int(d.get("type", JournalEntryData.EntryType.NARRATIVE))
+		e.entry_type = int(d.get("type", 0)) as JournalEntry.EntryType
 		e.read = bool(d.get("read", true))
 		entries.append(e)
 
