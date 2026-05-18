@@ -19,6 +19,11 @@ func _ready() -> void:
 	music_slider.value_changed.connect(_on_music_changed)
 	sfx_slider.value_changed.connect(_on_sfx_changed)
 	
+	var return_btn = $PanelContainer/VBoxContainer/HBoxContainer/ReturnToMenuButton
+	if name == "StandaloneSettingsUI":
+		return_btn.hide()
+
+	
 	file_dialog = FileDialog.new()
 	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	file_dialog.access = FileDialog.ACCESS_USERDATA
@@ -110,3 +115,14 @@ func _on_sfx_changed(value: float) -> void:
 
 func _on_close_button_pressed() -> void:
 	toggle_menu()
+
+func _on_return_to_menu_pressed() -> void:
+	toggle_menu()
+	var main_scene = get_tree().root.get_node_or_null("Main")
+	if not main_scene:
+		main_scene = get_tree().root.find_child("Main", true, false)
+	
+	if main_scene and main_scene.has_method("show_main_menu_from_ending"):
+		main_scene.call("show_main_menu_from_ending")
+	else:
+		get_tree().reload_current_scene()
