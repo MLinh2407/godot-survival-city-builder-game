@@ -604,13 +604,18 @@ offset_bottom = 126.0
 mouse_filter = 2
 
 [node name="PromptWritingGif" type="AnimatedSprite2D" parent="UILayer/HUD/JournalWritePrompt" unique_id=160468532]
-position = Vector2(204, 578.50006)
+position = Vector2(197, 572.50006)
 scale = Vector2(0.22000012, 0.22000012)
 sprite_frames = ExtResource("8_0cxqb")
 animation = &"gif"
 
 [node name="PromptText" type="Label" parent="UILayer/HUD/JournalWritePrompt" unique_id=1251098322]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -4.1923075
+anchor_top = -2.6470587
+anchor_right = -4.1923075
+anchor_bottom = -2.6470587
 offset_left = 1097.0
 offset_top = 693.0
 offset_right = 1288.0
@@ -618,6 +623,7 @@ offset_bottom = 711.0
 theme_override_colors/font_color = Color(0.92, 0.95, 0.98, 0.96)
 theme_override_font_sizes/font_size = 13
 text = "The pages feel heavier..."
+metadata/_edit_use_anchors_ = true
 
 [node name="PowerLabel" type="Label" parent="UILayer/HUD" unique_id=987654323]
 offset_left = 549.0
