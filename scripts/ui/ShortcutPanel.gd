@@ -106,7 +106,7 @@ func _build_ui() -> void:
 	var close_btn := Button.new()
 	close_btn.text        = "Close"
 	close_btn.focus_mode  = Control.FOCUS_NONE
-	close_btn.custom_minimum_size = Vector2(72, 28)
+	close_btn.custom_minimum_size = Vector2(64, 24)
 	close_btn.add_theme_color_override("font_color", Color(0.96, 0.99, 1.0, 1.0))
 	close_btn.add_theme_color_override("font_hover_color", Color(0.0, 0.96, 1.0, 1.0))
 	close_btn.add_theme_color_override("font_pressed_color", Color(0.75, 0.95, 1.0, 1.0))
@@ -116,6 +116,7 @@ func _build_ui() -> void:
 	btn_normal.border_color = Color(0.0, 0.96, 1.0, 0.55)
 	btn_normal.set_border_width_all(1)
 	btn_normal.set_corner_radius_all(4)
+	btn_normal.set_content_margin_all(6)
 	close_btn.add_theme_stylebox_override("normal", btn_normal)
 
 	var btn_hover := StyleBoxFlat.new()
@@ -123,6 +124,7 @@ func _build_ui() -> void:
 	btn_hover.border_color = Color(0.0, 0.96, 1.0, 0.85)
 	btn_hover.set_border_width_all(1)
 	btn_hover.set_corner_radius_all(4)
+	btn_hover.set_content_margin_all(6)
 	close_btn.add_theme_stylebox_override("hover", btn_hover)
 
 	var btn_pressed := StyleBoxFlat.new()
@@ -130,6 +132,7 @@ func _build_ui() -> void:
 	btn_pressed.border_color = Color(0.0, 0.96, 1.0, 1.0)
 	btn_pressed.set_border_width_all(1)
 	btn_pressed.set_corner_radius_all(4)
+	btn_pressed.set_content_margin_all(6)
 	close_btn.add_theme_stylebox_override("pressed", btn_pressed)
 	close_btn.add_theme_stylebox_override("focus", btn_hover)
 	close_btn.pressed.connect(hide_panel)
