@@ -11,6 +11,21 @@ var file_dialog: FileDialog
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Ensure menu runs while game is paused
 	visible = false
+
+	# Apply neon border and padding to the panel
+	var pc := $PanelContainer
+	if pc:
+		var sb := StyleBoxFlat.new()
+		# subtle dark background
+		sb.bg_color = Color(0.03, 0.03, 0.06, 0.92)
+		# neon cyan border 
+		sb.border_color = Color(0.0, 0.75, 0.85, 0.95)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(6)
+		# content margin 
+		sb.set_content_margin_all(18)
+		# horizontal padding 
+		pc.add_theme_stylebox_override("panel", sb)
 	
 	# Initialize sliders to current AudioServer state (assuming GameManager handled defaults)
 	_sync_sliders_from_audio_server()

@@ -13,6 +13,7 @@ config_version=5
 config/name="LookForTheLight"
 run/main_scene="res://scenes/UI/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="uid://br4lhjhjs8iqo"
 
 [autoload]
 
