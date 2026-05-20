@@ -611,10 +611,10 @@ animation = &"gif"
 
 [node name="PromptText" type="Label" parent="UILayer/HUD/JournalWritePrompt" unique_id=1251098322]
 layout_mode = 0
-offset_left = 123.0
-offset_top = 606.0
-offset_right = 314.0
-offset_bottom = 624.0
+offset_left = 1097.0
+offset_top = 693.0
+offset_right = 1288.0
+offset_bottom = 711.0
 theme_override_colors/font_color = Color(0.92, 0.95, 0.98, 0.96)
 theme_override_font_sizes/font_size = 13
 text = "The pages feel heavier..."
