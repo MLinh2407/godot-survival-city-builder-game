@@ -120,13 +120,18 @@ func _build_ui() -> void:
 	_scroll.mouse_filter           = Control.MOUSE_FILTER_PASS
 	vb.add_child(_scroll)
 
+	var margin_box = MarginContainer.new()
+	margin_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin_box.add_theme_constant_override("margin_bottom", 24) # Adds safe padding!
+	_scroll.add_child(margin_box)
+
 	_body_lbl = Label.new()
 	_body_lbl.autowrap_mode         = TextServer.AUTOWRAP_WORD
 	_body_lbl.size_flags_horizontal  = Control.SIZE_EXPAND_FILL
 	_body_lbl.add_theme_color_override("font_color", Color(0.80, 0.86, 0.90, 0.90))
 	_body_lbl.add_theme_font_size_override("font_size", 11)
 	_body_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_scroll.add_child(_body_lbl)
+	margin_box.add_child(_body_lbl) # Change this from _scroll.add_child
 
 	var sep2 := HSeparator.new()
 	sep2.add_theme_color_override("color", Color(0.61, 0.35, 1.0, 0.22))

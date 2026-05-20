@@ -22,9 +22,6 @@ const MAX_M2_COVERAGE:     float    = 0.15
 # ── M4: Revert map — stores previous atlas before M4 overwrites ───────────────
 var _m4_revert_map: Dictionary = {}
 
-# ── M6: Currently painted pathway cells ───────────────────────────────────────
-var _m6_cells: Array[Vector2i] = []
-
 # ── M14: Currently placed debris cells ────────────────────────────────────────
 var _m14_cells: Array[Vector2i] = []
 const MAX_M14_COVERAGE: float   = 0.20
@@ -72,7 +69,6 @@ func on_building_placed(b_type: String, anchor: Vector2i) -> void:
 			_place_m2_around_water_recycler(anchor)
 		"coal":
 			_place_m4_coal_exhaust(anchor)
-	recalculate_pathways()
 	_run_debris_pass()
 
 ## Call after any building is removed from the grid.
@@ -83,7 +79,6 @@ func on_building_removed(b_type: String, anchor: Vector2i) -> void:
 	match b_type:
 		"water":
 			_revert_m2_water_recycler(anchor)
-	recalculate_pathways()
 	_run_debris_pass()
 
 ## Call when a building becomes damaged (unstaffed too long).
@@ -107,6 +102,36 @@ func on_unrest_riot() -> void:
 		return
 	_place_m4_riot()
 
+func reset_for_new_game() -> void:
+	_cache_refs()
+	if not _refs_valid(): return
+	
+	# Revert M4
+	for cell in _m4_revert_map.keys():
+		_set_base_tile(cell, _m4_revert_map[cell])
+	_m4_revert_map.clear()
+	
+	# Revert Auto M2
+	for cell in _auto_m2_cells:
+		if _safe_get_base_atlas(cell) == TileRegistry.M2_WET_CONCRETE:
+			_set_base_tile(cell, TileRegistry.M1_DRY_CONCRETE)
+	_auto_m2_cells.clear()
+
+	for anchor in _wr_m2_cells.keys():
+		for cell in _wr_m2_cells[anchor]:
+			if _safe_get_base_atlas(cell) == TileRegistry.M2_WET_CONCRETE:
+				_set_base_tile(cell, TileRegistry.M1_DRY_CONCRETE)
+	_wr_m2_cells.clear()
+	
+	# Revert Debris
+	if _decal_layer:
+		for cell in _m14_cells:
+			if _decal_layer.get_cell_source_id(cell) != -1:
+				_decal_layer.erase_cell(cell)
+	_m14_cells.clear()
+	
+	_wr_m2_cells.clear()
+	_moisture_day_counter = 0
 # ══════════════════════════════════════════════════════════════════════════════
 # M2 — WET CONCRETE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -287,182 +312,6 @@ func _place_m4_riot() -> void:
 		if not _m4_revert_map.has(cell):
 			_m4_revert_map[cell] = _safe_get_base_atlas(cell)
 		_set_base_tile(cell, TileRegistry.M4_CRACKED_CONCRETE)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# M6 — WORN COLONIST PATHWAY
-# ══════════════════════════════════════════════════════════════════════════════
-
-func recalculate_pathways() -> void:
-	var bs = get_tree().root.get_node_or_null("Main/BuildingSystem")
-	if not bs:
-		return
-
-	# Step 1: revert all previous M6 cells that no longer have a building on them
-	for cell in _m6_cells:
-		if not _grid_sys.cell_to_anchor.has(cell):
-			if _safe_get_base_atlas(cell) == TileRegistry.M6_PATHWAY:
-				_set_base_tile(cell, TileRegistry.M1_DRY_CONCRETE)
-	_m6_cells.clear()
-
-	# Step 2: collect priority building pairs
-	var pairs: Array = _get_priority_pairs(bs)
-	if pairs.is_empty():
-		return
-
-	# Step 3: paint paths
-	var painted_set: Dictionary = {}
-	for pair in pairs:
-		var path: Array[Vector2i] = _find_path_between(pair[0], pair[1])
-		for cell in path:
-			if painted_set.has(cell):
-				continue
-			if _grid_sys.cell_to_anchor.has(cell):
-				continue
-			var atlas: Vector2i = _safe_get_base_atlas(cell)
-			# Only paint on M1 or existing M6 — never overwrite M2, M4, M7
-			if atlas != TileRegistry.M1_DRY_CONCRETE \
-					and atlas != TileRegistry.M6_PATHWAY:
-				continue
-			_set_base_tile(cell, TileRegistry.M6_PATHWAY)
-			_m6_cells.append(cell)
-			painted_set[cell] = true
-
-## Collect up to 5 priority building anchor pairs for path generation.
-func _get_priority_pairs(bs: Node) -> Array:
-	var shelters:  Array[Vector2i] = []
-	var hydros:    Array[Vector2i] = []
-	var meds:      Array[Vector2i] = []
-	var waters:    Array[Vector2i] = []
-	var coals:     Array[Vector2i] = []
-
-	for pos in bs.active_buildings:
-		var b: BuildingData = bs.active_buildings[pos]
-		match b.building_type:
-			BuildingData.BuildingType.SHELTER_BLOCK:   shelters.append(pos)
-			BuildingData.BuildingType.HYDROPONIC_BAY:  hydros.append(pos)
-			BuildingData.BuildingType.MED_CLINIC:      meds.append(pos)
-			BuildingData.BuildingType.WATER_RECYCLER:  waters.append(pos)
-			BuildingData.BuildingType.COAL_GENERATOR:  coals.append(pos)
-
-	var pairs: Array = []
-
-	# Priority 1: Shelter → Hydroponic Bay
-	if shelters.size() > 0 and hydros.size() > 0:
-		pairs.append([shelters[0], hydros[0]])
-
-	# Priority 2: Shelter → Med Clinic
-	if shelters.size() > 0 and meds.size() > 0:
-		pairs.append([shelters[0], meds[0]])
-
-	# Priority 3: Hydroponic Bay → Water Recycler
-	if hydros.size() > 0 and waters.size() > 0:
-		pairs.append([hydros[0], waters[0]])
-
-	# Priority 4: Coal Generator → nearest Shelter or Hydro
-	if coals.size() > 0:
-		var target: Vector2i = Vector2i.ZERO
-		var found: bool = false
-		if shelters.size() > 0:
-			target = shelters[0]
-			found  = true
-		elif hydros.size() > 0:
-			target = hydros[0]
-			found  = true
-		if found:
-			pairs.append([coals[0], target])
-
-	# Priority 5: closest remaining pair not already covered
-	if pairs.size() < 5:
-		var all_anchors: Array[Vector2i] = []
-		for pos in bs.active_buildings:
-			all_anchors.append(pos)
-		if all_anchors.size() >= 2:
-			var best_dist: int  = 9999
-			var best_a: Vector2i = all_anchors[0]
-			var best_b: Vector2i = all_anchors[1]
-			for i in range(all_anchors.size()):
-				for j in range(i + 1, all_anchors.size()):
-					var d: int = _manhattan(all_anchors[i], all_anchors[j])
-					if d < best_dist:
-						best_dist = d
-						best_a    = all_anchors[i]
-						best_b    = all_anchors[j]
-			if best_dist < 20:
-				# Only add if this pair isn't already in the list
-				var already_in: bool = false
-				for p in pairs:
-					if (p[0] == best_a and p[1] == best_b) \
-							or (p[0] == best_b and p[1] == best_a):
-						already_in = true
-						break
-				if not already_in:
-					pairs.append([best_a, best_b])
-
-	return pairs
-
-## Greedy Manhattan path between two building footprint edge cells.
-func _find_path_between(from_anchor: Vector2i, to_anchor: Vector2i) -> Array[Vector2i]:
-	var from_type: String = _grid_sys.anchor_to_type.get(from_anchor, "")
-	var to_type:   String = _grid_sys.anchor_to_type.get(to_anchor,   "")
-	if from_type == "" or to_type == "":
-		return []
-
-	var from_fp: Array[Vector2i] = _grid_sys.get_footprint_cells(from_anchor, from_type)
-	var to_fp:   Array[Vector2i] = _grid_sys.get_footprint_cells(to_anchor,   to_type)
-
-	# Find the two closest cells between the footprints to start/end the path
-	var best_dist: int     = 9999
-	var start_cell: Vector2i = from_anchor
-	var end_cell:   Vector2i = to_anchor
-
-	for a in from_fp:
-		for b in to_fp:
-			var d: int = _manhattan(a, b)
-			if d < best_dist:
-				best_dist  = d
-				start_cell = a
-				end_cell   = b
-
-	# Build a set of all footprint cells so we don't path through buildings
-	var all_fp: Dictionary = {}
-	for c in from_fp:
-		all_fp[c] = true
-	for c in to_fp:
-		all_fp[c] = true
-
-	var path: Array[Vector2i] = []
-	var cur: Vector2i = start_cell
-	var max_steps: int = best_dist + 20  
-	var steps: int     = 0
-
-	while cur != end_cell and steps < max_steps:
-		var dx: int = end_cell.x - cur.x
-		var dy: int = end_cell.y - cur.y
-
-		var primary: Vector2i
-		var secondary: Vector2i
-		if abs(dx) >= abs(dy):
-			primary   = cur + Vector2i(sign(dx), 0)
-			secondary = cur + Vector2i(0, sign(dy))
-		else:
-			primary   = cur + Vector2i(0, sign(dy))
-			secondary = cur + Vector2i(sign(dx), 0)
-
-		# Use primary unless it cuts through an occupied building cell
-		var next: Vector2i = primary
-		if _grid_sys.cell_to_anchor.has(primary) and not all_fp.has(primary):
-			next = secondary
-
-		cur = next
-		# Add to path only if not inside either footprint
-		if not all_fp.has(cur):
-			path.append(cur)
-		steps += 1
-
-	return path
-
-func _manhattan(a: Vector2i, b: Vector2i) -> int:
-	return abs(a.x - b.x) + abs(a.y - b.y)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # M14 — DEBRIS SCATTER

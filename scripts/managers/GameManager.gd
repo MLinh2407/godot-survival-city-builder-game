@@ -341,6 +341,10 @@ func save_game(filename: String) -> void:
 	var d_s = ResourceManager.days_starving if ResourceManager else 0
 	var mat = ResourceManager.materials if ResourceManager else materials
 	var mor = ResourceManager.morale if ResourceManager else 100.0
+	var ration_buf = ResourceManager.ration_buffer if ResourceManager else 0.0
+	var ration_buf_max = ResourceManager.ration_buffer_max if ResourceManager else 0.0
+	var ration_exists = ResourceManager.ration_store_exists if ResourceManager else false
+	var auto_ration = ResourceManager.auto_rationing_active if ResourceManager else false
 	var journal_entries_data: Variant = []
 	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal_node and journal_node.has_method("serialise"):
@@ -384,7 +388,11 @@ func save_game(filename: String) -> void:
 			"max_food": max_f,
 			"days_starving": d_s,
 			"materials": mat,
-			"morale": mor
+			"morale": mor,
+			"ration_buffer": ration_buf,
+			"ration_buffer_max": ration_buf_max,
+			"ration_store_exists": ration_exists,
+			"auto_rationing_active": auto_ration
 		},
 		"buildings": serialized_buildings,
 		"journal_entries": journal_entries_data,
@@ -484,6 +492,10 @@ func load_game(filepath: String) -> void:
 		ResourceManager.days_starving = rm_data.get("days_starving", ResourceManager.days_starving)
 		ResourceManager.materials = rm_data.get("materials", ResourceManager.materials)
 		ResourceManager.morale = rm_data.get("morale", ResourceManager.morale)
+		ResourceManager.ration_buffer = rm_data.get("ration_buffer", ResourceManager.ration_buffer)
+		ResourceManager.ration_buffer_max = rm_data.get("ration_buffer_max", ResourceManager.ration_buffer_max)
+		ResourceManager.ration_store_exists = rm_data.get("ration_store_exists", ResourceManager.ration_store_exists)
+		ResourceManager.auto_rationing_active = rm_data.get("auto_rationing_active", ResourceManager.auto_rationing_active)
 		ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
 
 	var main_node = get_tree().root.get_node_or_null("Main")
@@ -541,6 +553,14 @@ func load_game(filepath: String) -> void:
 					building_sys.set_building_damaged(pos, true)
 				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
+
+		# Reconcile ration store capacity with saved values and upgrade state
+		if ResourceManager:
+			var saved_buffer: float = float(rm_data.get("ration_buffer", ResourceManager.ration_buffer))
+			var saved_max: float = float(rm_data.get("ration_buffer_max", ResourceManager.ration_buffer_max))
+			var has_store: bool = building_sys.has_building(BuildingData.BuildingType.RATION_STORE)
+			var is_upgraded: bool = building_sys.is_building_upgraded(BuildingData.BuildingType.RATION_STORE)
+			ResourceManager.restore_ration_store_from_save(saved_buffer, saved_max, has_store, is_upgraded)
 
 	# Restore journal entries after world state is fully restored
 	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")

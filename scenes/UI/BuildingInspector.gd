@@ -30,11 +30,15 @@ var _confirm_dialog:    ConfirmationDialog  = null
 var _terminal_btn: Button = null
 
 var _repositioning: bool = false
+var _mat_icon_tex: Texture2D = null
+var _mat_icon_cache: Dictionary = {}
+var _cost_content: Dictionary = {}
 
 func _ready() -> void:
 	# Hide the panel by default
 	visible = false
 	modulate.a = 0.0 # Make it totally transparent for our fade-in effect
+	z_index = 100
 	
 	if not building_system:
 		building_system = _find_building_system()
@@ -76,6 +80,8 @@ func _ready() -> void:
 	if shield_button:
 		shield_button.pressed.connect(_on_shield_pressed)
 		shield_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	_cache_material_icon()
 
 func _setup_worker_ui() -> void:
 	var vbox = $VBoxContainer
@@ -320,6 +326,114 @@ func _setup_terminal_button() -> void:
 	_terminal_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	vbox.add_child(_terminal_btn)
 
+func _cache_material_icon() -> void:
+	if _mat_icon_tex:
+		return
+	var icon_node = get_tree().root.get_node_or_null("Main/UILayer/HUD/MaterialsIcon")
+	if not icon_node:
+		icon_node = get_tree().root.find_child("MaterialsIcon", true, false)
+	if icon_node is TextureRect:
+		_mat_icon_tex = (icon_node as TextureRect).texture
+	elif icon_node is Sprite2D:
+		_mat_icon_tex = (icon_node as Sprite2D).texture
+	_mat_icon_cache.clear()
+
+func _get_button_font_size(btn: Button) -> int:
+	var size := btn.get_theme_font_size("font_size")
+	if size <= 0:
+		size = 12
+	return size
+
+func _get_scaled_mat_icon(target_h: int) -> Texture2D:
+	if not _mat_icon_tex:
+		return null
+	var h := clampi(target_h, 10, 20)
+	if _mat_icon_cache.has(h):
+		return _mat_icon_cache[h]
+	var img := _mat_icon_tex.get_image()
+	if not img:
+		return _mat_icon_tex
+	var src_h := img.get_height()
+	if src_h <= 0:
+		return _mat_icon_tex
+	var scale := float(h) / float(src_h)
+	var w := maxi(1, int(round(img.get_width() * scale)))
+	var scaled := img.duplicate()
+	scaled.resize(w, h, Image.INTERPOLATE_LANCZOS)
+	var tex := ImageTexture.create_from_image(scaled)
+	_mat_icon_cache[h] = tex
+	return tex
+
+
+func _ensure_cost_content(btn: Button) -> Dictionary:
+	if not btn:
+		return {}
+	if _cost_content.has(btn):
+		return _cost_content[btn]
+
+	btn.text = ""
+
+	var row := HBoxContainer.new()
+	row.name = "CostContent"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 4)
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	btn.add_child(row)
+
+	var lbl := Label.new()
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(lbl)
+
+	var icon := TextureRect.new()
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.visible = false
+	row.add_child(icon)
+
+	_cost_content[btn] = {"label": lbl, "icon": icon, "row": row}
+	_sync_cost_label_style(btn, lbl)
+	return _cost_content[btn]
+
+func _sync_cost_label_style(btn: Button, lbl: Label) -> void:
+	var font_size := _get_button_font_size(btn)
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_color_override("font_color", btn.get_theme_color("font_color"))
+
+func _set_cost_button_text(btn: Button, text: String, show_icon: bool) -> void:
+	if not btn:
+		return
+	var content: Dictionary = _ensure_cost_content(btn)
+	if content.is_empty():
+		return
+	var lbl: Label = content["label"]
+	var icon: TextureRect = content["icon"]
+	var row: HBoxContainer = content["row"]
+	lbl.text = text
+	_sync_cost_label_style(btn, lbl)
+	if show_icon and _mat_icon_tex:
+		var font_size := _get_button_font_size(btn)
+		icon.texture = _get_scaled_mat_icon(int(round(font_size * 0.95)))
+		icon.custom_minimum_size = Vector2(font_size, font_size)
+		icon.visible = true
+	else:
+		icon.texture = null
+		icon.visible = false
+	if row:
+		var content_min := row.get_combined_minimum_size()
+		var pad := Vector2(16, 10)
+		btn.custom_minimum_size = Vector2(
+			maxf(btn.custom_minimum_size.x, content_min.x + pad.x),
+			maxf(btn.custom_minimum_size.y, content_min.y + pad.y)
+		)
+
 
 func _on_terminal_pressed() -> void:
 	var terminal = get_tree().root.get_node_or_null("Main/MeridianTerminal")
@@ -446,16 +560,21 @@ func _refresh_ui_text() -> void:
 		
 		if in_storm_window and not current_building.is_shielded and not current_building.is_shielding:
 			shield_button.visible = true
-			shield_button.text = "Shield Building (%d mat)" % GameConstants.STORM_SHIELD_COST
+			if _mat_icon_tex:
+				_set_cost_button_text(shield_button, "Shield Building %d" % GameConstants.STORM_SHIELD_COST, true)
+			else:
+				_set_cost_button_text(shield_button, "Shield Building (%d mat)" % GameConstants.STORM_SHIELD_COST, false)
 			shield_button.disabled = GameManager.materials < GameConstants.STORM_SHIELD_COST
 		elif in_storm_window and current_building.is_shielding:
 			shield_button.visible = true
-			shield_button.text = "Shielding... (%d/%d days)" \
-				% [current_building.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS]
+			_set_cost_button_text(shield_button,
+				"Shielding... (%d/%d days)" \
+				% [current_building.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS],
+				false)
 			shield_button.disabled = true
 		elif in_storm_window and current_building.is_shielded:
 			shield_button.visible = true
-			shield_button.text = "✓ Shielded"
+			_set_cost_button_text(shield_button, "✓ Shielded", false)
 			shield_button.disabled = true
 		else:
 			shield_button.visible = false
@@ -516,11 +635,21 @@ func _refresh_ui_text() -> void:
 			u_cost = GameConstants.UPGRADE_COST_HIGH
 		var mat: int = GameManager.materials
 		if mat >= u_cost:
-			upgrade_button.text = "Upgrade  (%d mat)" % u_cost
 			upgrade_button.add_theme_color_override("font_color", Color(0.0, 0.95, 0.70, 1.0))
+			if _mat_icon_tex:
+				_set_cost_button_text(upgrade_button, "Upgrade %d" % u_cost, true)
+			else:
+				_set_cost_button_text(upgrade_button, "Upgrade  (%d mat)" % u_cost, false)
 		else:
-			upgrade_button.text = "Upgrade  (%d mat — need %d more)" % [u_cost, u_cost - mat]
 			upgrade_button.add_theme_color_override("font_color", Color(0.80, 0.40, 0.40, 1.0))
+			if _mat_icon_tex:
+				_set_cost_button_text(upgrade_button,
+					"Upgrade %d — need %d more" % [u_cost, u_cost - mat],
+					true)
+			else:
+				_set_cost_button_text(upgrade_button,
+					"Upgrade  (%d mat — need %d more)" % [u_cost, u_cost - mat],
+					false)
 
 	# ── Remove button visibility ───────────────────────────────────────────────
 	var show_remove := current_building != null

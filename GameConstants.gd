@@ -14,7 +14,7 @@ const MAX_WORKERS_LATE_GAME: int       = 85   # worker pool grows slowly to this
 # ══════════════════════════════════════════════════════════════════════════════
 
 const DAY_LENGTH_SECONDS: float        = 90.0   # real seconds per game day at 1× speed
-const DAY_LENGTH_FAST: float           = 1.0   # real seconds per game day at 2× speed
+const DAY_LENGTH_FAST: float           = 10.0   # real seconds per game day at 2× speed
 const TOTAL_DAYS: int                  = 35
 const STORM_START_DAY: int             = 26     # Storm Warning fires — Act III begins
 const STORM_HIT_DAY: int               = 35     # storm lands, game ends
@@ -32,12 +32,12 @@ const CRITICAL_THRESHOLD: float        = 0.10   # 10% → red HUD, critical SFX
 # FOOD
 # ══════════════════════════════════════════════════════════════════════════════
 
-const STARTING_FOOD: float             = 25000.0 
+const STARTING_FOOD: float             = 20000.0 
 const BASE_FOOD_RATE: float            = 8.0    	# Hydroponic Bay T1 at full staff/day
 const UPGRADED_FOOD_RATE: float        = 14.0   	# Hydroponic Bay T2 at full staff/day
 const FOOD_STARVATION_DELAY: int       = 2      	# consecutive days at Food=0 before deaths
-const STARVATION_DEATHS_MIN: int       = 1
-const STARVATION_DEATHS_MAX: int       = 3
+const STARVATION_DEATHS_MIN: int       = 20
+const STARVATION_DEATHS_MAX: int       = 40
 
 const RATION_STORE_BUFFER_T1: int      = 50    	 	# days of emergency reserve at T1
 const RATION_STORE_BUFFER_T2: int      = 100   	 	# days of emergency reserve at T2

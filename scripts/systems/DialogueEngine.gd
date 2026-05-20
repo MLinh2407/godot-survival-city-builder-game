@@ -2,6 +2,7 @@ class_name DialogueEngine
 extends Node
 signal card_dismissed
 signal choice_made(event_id: String, choice_id: String, choice_data: Dictionary)
+signal card_opened(event_id: String)
 
 @export var dialogue_root_path: NodePath = NodePath("../../UILayer/DialogueBox")
 @export var backdrop_path: NodePath = NodePath("../../UILayer/DialogueBox/DialogueBackdrop")
@@ -315,6 +316,7 @@ func _build_card(event_data: Dictionary) -> void:
 		var min_bottom = _card_panel.offset_top + 240.0
 		_card_panel.offset_bottom = max(desired_bottom, min_bottom)
 	_set_card_visible(true)
+	card_opened.emit(_active_event_id)
 	_last_card_shown_time = Time.get_ticks_msec()
 	AudioManager.play_ui_card_sfx("open")
 	AudioManager.on_crisis_card_opened()

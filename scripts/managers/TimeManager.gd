@@ -31,12 +31,21 @@ func reset_for_new_game() -> void:
 func set_game_speed(speed: GameSpeed) -> void:
 	if current_speed == speed:
 		return
+
+	var old_length = get_current_day_length()
+	var fraction = time_elapsed / old_length if old_length > 0 else 0.0
+
 	var previous_speed := current_speed
 	if speed == GameSpeed.PAUSED:
 		AudioManager.play_ui_sfx("pause")
 	elif previous_speed == GameSpeed.PAUSED:
 		AudioManager.play_ui_sfx("unpause")
+	
 	current_speed = speed
+
+	var new_length = get_current_day_length()
+	time_elapsed = fraction * new_length
+
 	speed_changed.emit(previous_speed, current_speed)
 
 func get_current_day_length() -> float:

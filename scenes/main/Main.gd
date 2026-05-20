@@ -99,6 +99,7 @@ const JOURNAL_PROMPT_BURST_WINDOW_MSEC: int = 1400
 const JOURNAL_PROMPT_DOT_INTERVAL_SEC: float = 0.30
 const JOURNAL_PROMPT_BASE_TEXT: String = "The pages feel heavier"
 const FOG_DAILY_CHANCE: float = 0.3
+const RATION_BUFFER_BAR_FRACTION: float = 0.33
 
 # ── Zoom configuration ───────────────────────────────────────────────────────
 const ZOOM_STEPS:     Array[float] = [0.2, 0.3, 0.4, 0.55, 0.75, 1.0, 1.5, 2.0, 3.0]
@@ -233,22 +234,26 @@ func _ready() -> void:
 		if not bs.workers_changed.is_connected(_on_population_changed):
 			bs.workers_changed.connect(_on_population_changed)
 	
-	# Build the Ration Store buffer extension bar programmatically
+	# Build the Ration Store buffer segment inside the food bar
 	if food_bar:
 		_ration_buffer_bar = ProgressBar.new()
+		_ration_buffer_bar.name = "RationBufferBar"
 		_ration_buffer_bar.show_percentage = false
 		_ration_buffer_bar.min_value = 0.0
 		_ration_buffer_bar.max_value = 100.0
 		_ration_buffer_bar.value = 0.0
-		_ration_buffer_bar.custom_minimum_size = Vector2(40, food_bar.size.y if food_bar.size.y > 0 else 12.0)
+		_ration_buffer_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ration_buffer_bar.z_index = 1
+		_ration_buffer_bar.visible = false
+		food_bar.clip_contents = true
+		food_bar.add_child(_ration_buffer_bar)
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.0, 0.35, 0.38, 0.85)
 		_ration_buffer_bar.add_theme_stylebox_override("fill", style)
 		var bg_style = StyleBoxFlat.new()
 		bg_style.bg_color = Color(0.05, 0.05, 0.08, 0.6)
 		_ration_buffer_bar.add_theme_stylebox_override("background", bg_style)
-		food_bar.get_parent().add_child(_ration_buffer_bar)
-		_ration_buffer_bar.visible = false
+
 
 	# Storm shield panel auto-refreshes on day change (connected in its own _ready).
 	# Also refresh when building state changes (e.g. shield complete mid-day).
@@ -638,9 +643,15 @@ func _prepare_new_game_state() -> void:
 		colony_journal.reset_for_new_game()
 	if TimeManager and TimeManager.has_method("reset_for_new_game"):
 		TimeManager.reset_for_new_game()
+	if TilePainter and TilePainter.has_method("reset_for_new_game"):
+		TilePainter.reset_for_new_game()
 
 	if TutorialManager and TutorialManager.has_method("reset_for_new_game"):
 		TutorialManager.reset_for_new_game()
+
+	var shield_panel = get_node_or_null("StormShieldPanel")
+	if shield_panel and shield_panel.has_method("reset_for_new_game"):
+		shield_panel.reset_for_new_game()
 
 func _freeze_time_for_menu() -> void:
 	if _was_time_frozen_by_menu:
@@ -824,6 +835,8 @@ func toggle_pause() -> void:
 			speed_label.text = "PAUSED"
 
 func set_speed(speed: int, text: String) -> void:
+	if get_tree().paused and speed != TimeManager.GameSpeed.PAUSED:
+		return
 	TimeManager.set_game_speed(speed)
 	get_tree().paused = false
 	if btn_pause:
@@ -832,9 +845,11 @@ func set_speed(speed: int, text: String) -> void:
 		speed_label.text = text
 
 func _on_button_1x_pressed() -> void:
+	if get_tree().paused: return
 	set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
 
 func _on_button_2x_pressed() -> void:
+	if get_tree().paused: return 
 	set_speed(TimeManager.GameSpeed.FAST, "SPEED 2x")
 
 func _on_button_settings_pressed() -> void:
@@ -845,12 +860,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	var ending_screen := get_node_or_null("UILayer/EndingScreen")
 	if ending_screen and ending_screen.visible:
 		return
+
+	# Prevent gameplay input during intro
+	if intro_layer and is_instance_valid(intro_layer):
+		return
+
 	# ── Keyboard shortcuts ────────────────────────────────────────────────────
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE: toggle_pause()
-			KEY_1:     set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
-			KEY_2:     set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
+			KEY_1:     if not get_tree().paused:
+					set_speed(TimeManager.GameSpeed.NORMAL, "SPEED 1x")
+			KEY_2:     if not get_tree().paused:
+					set_speed(TimeManager.GameSpeed.FAST,   "SPEED 2x")
 			KEY_J:     colony_journal.toggle()
 			KEY_B:
 				if build_menu:
@@ -1105,17 +1127,20 @@ func _on_resources_changed(p: float, f: float, m: float, _mat: int) -> void:
 		if bar_visible:
 			_ration_buffer_bar.value = clamp((buf / buf_max) * 100.0, 0.0, 100.0)
 
-			var fb_rect: Rect2 = food_bar.get_rect()
-			_ration_buffer_bar.position = Vector2(
-				food_bar.position.x + fb_rect.size.x + 3,
-				food_bar.position.y
-			)
-			_ration_buffer_bar.custom_minimum_size = Vector2(40, fb_rect.size.y if fb_rect.size.y > 0 else 12.0)
+			# Reserve the right third of the food bar for the buffer segment
+			var bar_width = maxf(food_bar.size.x, 1.0)
+			var bar_height = maxf(food_bar.size.y, 1.0)
+			var buffer_width = clampf(bar_width * RATION_BUFFER_BAR_FRACTION, 1.0, bar_width)
+			_ration_buffer_bar.position = Vector2(bar_width - buffer_width, 0.0)
+			_ration_buffer_bar.size = Vector2(buffer_width, bar_height)
 
+			# Setup distinct visual styles for normal vs active-rationing
+			var fill_style = StyleBoxFlat.new()
 			if GameManager.resource_food.auto_rationing_active:
-				_ration_buffer_bar.modulate = Color(1.0, 0.7, 0.2, 1.0)
+				fill_style.bg_color = Color(1.0, 0.7, 0.2, 0.85) # Orange warning
 			else:
-				_ration_buffer_bar.modulate = Color(1.0, 1.0, 1.0, 1.0)
+				fill_style.bg_color = Color(0.2, 0.6, 0.8, 0.85) # Distinct blue
+			_ration_buffer_bar.add_theme_stylebox_override("fill", fill_style)
 
 func _on_hope_order_changed(new_value: float) -> void:
 	_last_hope_order_value = new_value

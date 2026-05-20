@@ -11,6 +11,12 @@ var shown_flags: Dictionary = {}
 var _mark_queue: Array  = []
 var _active_mark: Node  = null
 
+# Tutorial time lock state
+var _tutorial_time_lock: bool = false
+var _was_time_frozen_by_tutorial: bool = false
+var _speed_before_tutorial: int = TimeManager.GameSpeed.NORMAL
+var _suppress_tutorial_speed_change: bool = false
+
 # Connection tracking
 var _scene_signals_connected: bool = false
 var _intro_done: bool = false
@@ -45,6 +51,8 @@ func reset_for_new_game() -> void:
 	_first_build_menu_opened = false
 	_upgrade_nudge_done = false
 	_scene_signals_connected = false
+	_tutorial_time_lock = false
+	_was_time_frozen_by_tutorial = false
 	if _active_mark and is_instance_valid(_active_mark):
 		_active_mark.queue_free()
 		_active_mark = null
@@ -69,6 +77,9 @@ func _try_connect_scene_signals() -> void:
 	if bs and not bs.building_selected_data.is_connected(_on_building_selected):
 		bs.building_selected_data.connect(_on_building_selected)
 
+	if bs and not bs.building_state_changed.is_connected(_on_building_state_changed):
+		bs.building_state_changed.connect(_on_building_state_changed)
+
 	# BuildMenu
 	var bm = _get_node("Main/BuildMenu")
 	if bm and not bm.build_menu_opened.is_connected(_on_build_menu_opened):
@@ -81,6 +92,8 @@ func _try_connect_scene_signals() -> void:
 			de.choice_made.connect(_on_choice_made)
 		if de.has_signal("card_dismissed") and not de.card_dismissed.is_connected(_on_card_dismissed):
 			de.card_dismissed.connect(_on_card_dismissed)
+		if de.has_signal("card_opened") and not de.card_opened.is_connected(_on_card_opened):
+			de.card_opened.connect(_on_card_opened)
 
 	_scene_signals_connected = true
 
@@ -93,8 +106,13 @@ func _try_connect_scene_signals() -> void:
 # to show the HUD explanation marks (Phase 0).
 
 func _on_speed_changed(old_speed: int, new_speed: int) -> void:
-	if not tutorial_enabled:
+	if not tutorial_enabled or not _is_in_gameplay():
 		return
+	if _tutorial_time_lock and not _suppress_tutorial_speed_change \
+			and new_speed != TimeManager.GameSpeed.PAUSED:
+		_suppress_tutorial_speed_change = true
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+		_suppress_tutorial_speed_change = false
 	if old_speed == TimeManager.GameSpeed.PAUSED \
 			and new_speed != TimeManager.GameSpeed.PAUSED:
 		if not _scene_signals_connected:
@@ -104,7 +122,7 @@ func _on_speed_changed(old_speed: int, new_speed: int) -> void:
 # We use this to detect when both intro cards have finished.
 
 func _on_card_dismissed() -> void:
-	if not tutorial_enabled or _intro_done:
+	if not tutorial_enabled or _intro_done or not _is_in_gameplay():
 		return
 
 	var de = _get_node("Main/Events/DialogueEngine")
@@ -119,14 +137,13 @@ func _on_card_dismissed() -> void:
 # ── TimeManager.day_changed ───────────────────────────────────────────────────
 
 func _on_day_changed(new_day: int) -> void:
-	if not tutorial_enabled:
+	if not tutorial_enabled or not _is_in_gameplay():
 		return
 
 	if not _scene_signals_connected:
 		_try_connect_scene_signals()
 
 	match new_day:
-		2:   _beat_2_4_journal_nudge()          # Colony Journal introduction
 		3:   _beat_3_1_after_cold_night()        # Post-crisis slider explanation
 		8:   _beat_4_1_deserters_context()       # Deserters morale context
 		16:  _beat_4_5_fever_context()           # Fever disease context
@@ -324,6 +341,7 @@ func _on_character_died(_char_name: String) -> void:
 
 func _fire_phase_0() -> void:
 	# Queue all Phase 0 marks sequentially
+	_enqueue_mark("phase0_time", "Main/UILayer/HUD/TimeLabel", "This tracks the current day and time. Use 1 and 2 to control game speed, or Space to pause.", "below")
 	_enqueue_mark(
 		"phase0_resource_bars",
 		"Main/UILayer/HUD/TopStripPanel",
@@ -345,6 +363,8 @@ func _fire_phase_0() -> void:
 		"work right now. These are different numbers. Watch both.",
 		"below"
 	)
+
+	_enqueue_mark("phase0_journal", "Main/UILayer/HUD/ButtonJournal", "The Colony Journal records everything — event outcomes, deaths, and story moments. Press J or click here to read it. The badge shows unread entries.", "below")
 	# After Phase 0 clears, queue Phase 1.1 with a delay
 	await _wait_for_queue_empty()
 	await get_tree().create_timer(1.5, false, false, true).timeout
@@ -414,7 +434,7 @@ func _beat_1_5_inspector() -> void:
 		)
 
 func _beat_1_7_power_dependency() -> void:
-	_fire_journal(
+	_enqueue_mark(
 		"power_dependency_warning",
 		"Director's Log",
 		"Buildings need power to operate. Without a Coal Generator running, " +
@@ -441,19 +461,6 @@ func _beat_2_2_hydroponic_bay() -> void:
 		"At 50 percent staff it produces 50 percent food. " +
 		"Watch the Food rate number on the HUD — the plus or minus " +
 		"next to the bar tells you whether you are gaining or losing each day."
-	)
-
-func _beat_2_4_journal_nudge() -> void:
-	if _has_shown("journal_introduction"):
-		return
-	await get_tree().create_timer(3.0, false, false, true).timeout
-	_enqueue_mark(
-		"journal_introduction",
-		"Main/UILayer/HUD/ButtonJournal",
-		"The Colony Journal records everything — event outcomes, deaths, " +
-		"story moments. Press J or click here to read it. " +
-		"The badge shows unread entries.",
-		"above"
 	)
 
 func _beat_2_5_morale_efficiency(current_morale: float) -> void:
@@ -555,14 +562,14 @@ func _beat_4_5_fever_context() -> void:
 	# Fires alongside the Day 16 Fever outbreak
 	pass  
 
-func _beat_4_5_disease_mechanics(sick_count: int) -> void:
+func _beat_4_5_disease_mechanics(_sick_count: int) -> void:
 	_enqueue_mark(
 		"disease_mechanics",
 		"Main/UILayer/HUD/DiseaseLabel",
-		"%d colonists are sick and cannot work. " % sick_count +
-		"A staffed Med Clinic cures 5 per day. " +
-		"Without it, 1 to 3 die each day until the sick pool is empty. " +
-		"The red number here tracks the active outbreak.",
+		"Sick colonists cannot work. " +
+		"A staffed Med Clinic cures them over time. " +
+		"Without it, the sick will die until the outbreak clears. " +
+		"The red value here tracks the active outbreak.",
 		"below"
 	)
 
@@ -771,6 +778,7 @@ func _try_show_next() -> void:
 	if _active_mark and is_instance_valid(_active_mark):
 		return
 	if _mark_queue.is_empty():
+		_stop_tutorial_time_lock()
 		return
 
 	_exit_build_mode_safe()
@@ -793,10 +801,12 @@ func _try_show_next() -> void:
 		target = null
 
 	if target:
+		_start_tutorial_time_lock()
 		mark.show_for_target(data.id, target, data.text, data.dir)
 	else:
 		if not data.text.is_empty():
 			var vp: Vector2 = get_viewport().get_visible_rect().size
+			_start_tutorial_time_lock()
 			mark.show_floating(data.id,
 				Vector2(vp.x * 0.5, vp.y * 0.72), data.text)
 		else:
@@ -809,6 +819,33 @@ func _try_show_next() -> void:
 		_try_show_next()
 	)
 	_active_mark = mark
+
+func _start_tutorial_time_lock() -> void:
+	if _tutorial_time_lock:
+		return
+	_tutorial_time_lock = true
+	if TimeManager:
+		_speed_before_tutorial = TimeManager.current_speed
+		if _speed_before_tutorial != TimeManager.GameSpeed.PAUSED:
+			_suppress_tutorial_speed_change = true
+			TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+			_suppress_tutorial_speed_change = false
+			_was_time_frozen_by_tutorial = true
+		else:
+			_was_time_frozen_by_tutorial = false
+
+func _stop_tutorial_time_lock() -> void:
+	if not _tutorial_time_lock:
+		return
+	_tutorial_time_lock = false
+	if _was_time_frozen_by_tutorial and TimeManager:
+		var restore_speed := _speed_before_tutorial
+		if restore_speed == TimeManager.GameSpeed.PAUSED:
+			restore_speed = TimeManager.GameSpeed.NORMAL
+		_suppress_tutorial_speed_change = true
+		TimeManager.set_game_speed(restore_speed)
+		_suppress_tutorial_speed_change = false
+	_was_time_frozen_by_tutorial = false
 
 ## Await until the mark queue is empty (for sequencing Phase 0 → Phase 1.1)
 func _wait_for_queue_empty() -> void:
@@ -880,6 +917,43 @@ func _exit_build_mode_safe() -> void:
 	var bm = _get_node("Main/BuildMenu")
 	if bm and bm.get("is_open") == true and bm.has_method("close"):
 		bm.close()
+
+func _on_building_state_changed(grid_pos: Vector2i) -> void:
+	if not tutorial_enabled or not _is_in_gameplay():
+		return
+	var bs = _get_node("Main/BuildingSystem")
+	if not bs or not bs.active_buildings.has(grid_pos):
+		return
+	var b = bs.active_buildings[grid_pos]
+	
+	if b.is_damaged and not _has_shown("badge_damaged"):
+		_enqueue_mark("badge_damaged", "", b.building_name + " is DAMAGED (🔴). Output is locked at 30%. Select it and repair.", "below")
+		
+	elif not b.is_powered and b.base_production_power <= 0.0 and b.power_draw > 0.0 and not _has_shown("badge_unpowered"):
+		_enqueue_mark("badge_unpowered", "", b.building_name + " is UNPOWERED (⚫). It produces nothing. Need more power.", "below")
+		
+	elif b.is_shielding and not _has_shown("badge_shielding"):
+		_enqueue_mark("badge_shielding", "", b.building_name + " is SHIELDING (🔷). Assign workers to complete the process.", "below")
+		
+	elif b.is_shielded and not _has_shown("badge_shielded"):
+		_enqueue_mark("badge_shielded", "", b.building_name + " is fully SHIELDED (✅). It will survive the storm.", "below")
+
+func _on_card_opened(event_id: String) -> void:
+	if not tutorial_enabled or not _is_in_gameplay():
+		return
+	if not _has_shown("first_crisis_tooltip") and event_id == "cold_night":
+		_enqueue_mark(
+			"first_crisis_tooltip",
+			"Main/UILayer/DialogueBox/DialogueCard",
+			"A crisis. Time is paused. Read, decide, then press Space to confirm.",
+			"right"
+		)
+
+func _is_in_gameplay() -> bool:
+	var main = _get_node("Main")
+	if main and "_has_started_gameplay" in main:
+		return main.get("_has_started_gameplay")
+	return false
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIG 

@@ -42,16 +42,23 @@ Core Systems
 Game constants and configuration systems
 Balancing values for gameplay mechanics
 System parameter tuning
+Hope/Order slider mechanics
 
 World Systems
 Isometric grid system implementation
 Tile placement logic
 Grid interaction handling
+Core building mechanics, upgrades, and visual state management
 
 Technical Implementation
 Data-driven system setup
 Support for scalable gameplay systems
 Code structure for reusable components
+UI and building audio interaction integration
+
+Technical Art
+Custom pixel art environment tile creation
+Dynamic tile rendering and appearance logic
 
 ---
 

@@ -178,6 +178,12 @@ func _process_food_tick() -> void:
 	if not _has_building_system():
 		return
 
+	var ration_store_is_upgraded: bool = false
+	if ration_store_exists and building_system and building_system.has_method("is_building_upgraded"):
+		ration_store_is_upgraded = building_system.is_building_upgraded(BuildingData.BuildingType.RATION_STORE)
+	if ration_store_exists:
+		_recalculate_ration_store_capacity(ration_store_is_upgraded)
+
 	var food_production: float = 0.0
 	for grid_pos in building_system.active_buildings:
 		var output = building_system.get_effective_output(grid_pos)
@@ -214,17 +220,23 @@ func _process_food_tick() -> void:
 
 	food = maxf(food, 0.0)
 
-	# Auto-rationing state (T2 Ration Store only — check upgrade flag)
-	if ration_store_exists and building_system.is_building_upgraded(BuildingData.BuildingType.RATION_STORE):
+	# Refill the buffer using overflow beyond main storage
+	if ration_store_exists and ration_buffer < ration_buffer_max and max_food > 0.0:
+		var overflow: float = maxf(food - max_food, 0.0)
+		if overflow > 0.0:
+			var refill: float = minf(overflow, ration_buffer_max - ration_buffer)
+			ration_buffer += refill
+			food -= refill
+
+	# Auto-rationing state (T2 Ration Store only)
+	if ration_store_exists and ration_store_is_upgraded:
 		var threshold: float = ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD
 		auto_rationing_active = ration_buffer < threshold and ration_buffer_max > 0.0
 	else:
 		auto_rationing_active = false
 
 	# Sync ResourceData for HUD and save/load
-	GameManager.resource_food.ration_store_buffer  = ration_buffer
-	GameManager.resource_food.ration_store_max     = ration_buffer_max
-	GameManager.resource_food.auto_rationing_active = auto_rationing_active
+	_sync_ration_store_to_game_manager()
 	GameManager.resource_food.production_rate  = food_production
 	GameManager.resource_food.consumption_rate = consumption
 
@@ -315,6 +327,14 @@ func _sync_to_game_manager() -> void:
 	GameManager.resource_food.max_value       = max_food
 	GameManager.resource_morale.current_value = morale
 	GameManager.resource_power.current_value  = net_power
+	_sync_ration_store_to_game_manager()
+
+func _sync_ration_store_to_game_manager() -> void:
+	if not GameManager:
+		return
+	GameManager.resource_food.ration_store_buffer  = ration_buffer
+	GameManager.resource_food.ration_store_max     = ration_buffer_max
+	GameManager.resource_food.auto_rationing_active = auto_rationing_active
 
 func _check_thresholds() -> void:
 	if max_food > 0.0:
@@ -351,23 +371,69 @@ func _print_debug(day: int) -> void:
 			% [ration_buffer, ration_buffer_max, str(auto_rationing_active)])
 
 func on_ration_store_built(is_upgraded: bool) -> void:
+	var was_existing: bool = ration_store_exists
 	ration_store_exists = true
+	_recalculate_ration_store_capacity(is_upgraded)
 
-	# Compute buffer capacity: T1 = 50 days, T2 = 100 days of full-colony consumption
-	var days: int = GameConstants.RATION_STORE_BUFFER_T2 if is_upgraded else GameConstants.RATION_STORE_BUFFER_T1
-	ration_buffer_max = days * GameConstants.STARTING_POPULATION * GameConstants.FOOD_CONSUMPTION_PER_COLONIST
-
-	# Buffer starts full on placement — represents pre-existing colony reserves
-	if ration_buffer == 0.0:
+	# Buffer starts full only on first placement
+	if not was_existing and ration_buffer <= 0.0:
 		ration_buffer = ration_buffer_max
 
-	# Sync to ResourceData so save/load and HUD can read it
-	GameManager.resource_food.ration_store_buffer = ration_buffer
-	GameManager.resource_food.ration_store_max    = ration_buffer_max
+	auto_rationing_active = ration_store_exists and is_upgraded \
+		and ration_buffer_max > 0.0 \
+		and ration_buffer < ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD
 
+	_sync_ration_store_to_game_manager()
 	resources_changed.emit(net_power, food, morale, materials)
 	print("RationStore built | buffer: %.0f / %.0f | auto-ration threshold: %.0f" \
 		% [ration_buffer, ration_buffer_max, ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD])
+
+func on_ration_store_removed() -> void:
+	ration_store_exists = false
+	ration_buffer = 0.0
+	ration_buffer_max = 0.0
+	auto_rationing_active = false
+	_sync_ration_store_to_game_manager()
+	resources_changed.emit(net_power, food, morale, materials)
+
+func restore_ration_store_from_save(saved_buffer: float, saved_max: float, has_store: bool, is_upgraded: bool) -> void:
+	if not has_store:
+		on_ration_store_removed()
+		return
+
+	ration_store_exists = true
+	_recalculate_ration_store_capacity(is_upgraded)
+
+	if saved_max > 0.0:
+		var ratio: float = clampf(saved_buffer / saved_max, 0.0, 1.0)
+		ration_buffer = ratio * ration_buffer_max
+	else:
+		ration_buffer = clampf(saved_buffer, 0.0, ration_buffer_max)
+
+	auto_rationing_active = ration_store_exists and is_upgraded \
+		and ration_buffer_max > 0.0 \
+		and ration_buffer < ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD
+
+	_sync_ration_store_to_game_manager()
+	resources_changed.emit(net_power, food, morale, materials)
+
+func _recalculate_ration_store_capacity(is_upgraded: bool) -> void:
+	var pop: int = _get_ration_store_population()
+	var days: int = GameConstants.RATION_STORE_BUFFER_T2 if is_upgraded else GameConstants.RATION_STORE_BUFFER_T1
+	ration_buffer_max = 0.0
+	if pop > 0:
+		ration_buffer_max = days * float(pop) * GameConstants.FOOD_CONSUMPTION_PER_COLONIST
+	else:
+		ration_buffer_max = 0.0
+	if ration_buffer > ration_buffer_max:
+		ration_buffer = ration_buffer_max
+
+func _get_ration_store_population() -> int:
+	if GameManager and GameManager.population_state:
+		return maxi(GameManager.population_state.total_population, 0)
+	if GameManager:
+		return maxi(GameManager.current_population, 0)
+	return GameConstants.STARTING_POPULATION
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PUBLIC API — called externally by events and building upgrades

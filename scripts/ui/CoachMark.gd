@@ -46,7 +46,7 @@ var _pulse_tw:  Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer = 175
+	layer = 300
 	_build_blur_overlay()   
 	_build_nodes()
 
@@ -234,12 +234,14 @@ func _build_nodes() -> void:
 
 	_text_lbl = Label.new()
 	_text_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_text_lbl.custom_minimum_size = Vector2(BUBBLE_MIN_WIDTH - PADDING * 2, 0)
 	_text_lbl.add_theme_color_override("font_color", C_TEXT)
 	_text_lbl.add_theme_font_size_override("font_size", 12)
 	_text_lbl.add_theme_color_override("font_outline_color", Color.BLACK)
 	_text_lbl.add_theme_constant_override("outline_size", 4)
 	_text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_vbox.add_child(_text_lbl)
 
 	var sep := HSeparator.new()
@@ -316,6 +318,7 @@ func _on_root_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
+		get_viewport().set_input_as_handled() 
 		dismiss()
 
 func _on_bubble_input(event: InputEvent) -> void:
@@ -323,6 +326,7 @@ func _on_bubble_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
+		_bubble.accept_event() 
 		dismiss()
 
 # ── Layout ────────────────────────────────────────────────────────────────────
@@ -371,7 +375,7 @@ func _do_layout() -> void:
 			achar = "▼"
 			bpos  = Vector2(
 				clampf(cx - bw * 0.5, 8.0, vp.x - bw - 8.0),
-				maxf(8.0, tgt_rect.position.y - bh - 26.0 - ARROW_GAP)
+				maxf(8.0, tgt_rect.position.y - bh - 95.0 - ARROW_GAP)
 			)
 			apos  = Vector2(cx - 8.0, bpos.y + bh + 4.0)
 		"right":
@@ -407,7 +411,6 @@ func _do_layout() -> void:
 	_fade_in()
 	_fade_in_blur()
 	_start_pulse()
-	_timer.start()
 
 func _place_bubble_at(screen_pos: Vector2) -> void:
 	var bw: float = BUBBLE_MIN_WIDTH
@@ -430,7 +433,6 @@ func _place_bubble_at(screen_pos: Vector2) -> void:
 	_apply_shadow_and_glow(bpos, bw)
 	_fade_in()
 	_fade_in_blur()
-	_timer.start()
 
 ## Shadow and glow sized from actual rendered bubble height, not estimates
 func _apply_shadow_and_glow(bpos: Vector2, bw: float) -> void:

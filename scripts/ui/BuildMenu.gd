@@ -88,10 +88,6 @@ func _init_defs() -> void:
 		["Geothermal Tap", "geothermal", 0,  GameConstants.BUILD_COST_GEOTHERMAL_TAP,  "stable",     false],
 		["Archive Hall",   "archive",    12, GameConstants.BUILD_COST_ARCHIVE_HALL,    "ready",      false],
 		["Memorial Wall",  "memorial",   0,  GameConstants.BUILD_COST_MEMORIAL_WALL,   "ready",      false],
-		["Neon Inlay H",   "neon_h",     0,  0,                                        "decoration", true],
-		["Neon Inlay D",   "neon_d",     0,  0,                                        "decoration", true],
-		["Cable Run H",    "cable_h",    0,  0,                                        "decoration", true],
-		["Cable Run D",    "cable_d",    0,  0,                                        "decoration", true],
 	]
 
 func _connect_gm() -> void:
@@ -391,6 +387,7 @@ func _on_card_input(ev: InputEvent, b_type: String, is_deco: bool) -> void:
 	if not (ev is InputEventMouseButton and ev.pressed
 			and ev.button_index == MOUSE_BUTTON_LEFT):
 		return
+		
 	if b_type == "memorial" and not _memorial_available():
 		_flash_locked(b_type)
 		return
@@ -437,7 +434,8 @@ func _deactivate() -> void:
 	if _grid_manager:
 		if _grid_manager.current_build_scene != null:
 			_grid_manager.exit_build_mode()
-		if _grid_manager.current_decoration_type != "":
+		var deco = _grid_manager.get("current_decoration_type")
+		if deco != null and str(deco) != "":
 			_grid_manager.exit_decoration_mode()
 	_active_type = ""
 
@@ -459,14 +457,21 @@ func _apply_active(b_type: String) -> void:
 
 func _restore_card(b_type: String) -> void:
 	if not _cards.has(b_type): return
+	
+	var cost: int = 0
+	for def in _defs:
+		if def[1] == b_type:
+			cost = def[3]
+			break
+			
+	var can_afford: bool = (GameManager.materials >= cost)
+
 	if b_type == "memorial" and not _memorial_available():
 		_cards[b_type].modulate = Color(0.48, 0.48, 0.52, 0.55)
-		_cards[b_type].add_theme_stylebox_override(
-			"panel", _card_style(C_CARD_L, Color.TRANSPARENT, 0))
+		_cards[b_type].add_theme_stylebox_override("panel", _card_style(C_CARD_L, Color.TRANSPARENT, 0))
 	else:
-		_cards[b_type].modulate = Color.WHITE
-		_cards[b_type].add_theme_stylebox_override(
-			"panel", _card_style(C_CARD_N, Color.TRANSPARENT, 0))
+		_cards[b_type].modulate = Color.WHITE if can_afford else Color(0.90, 0.65, 0.65, 0.55)
+		_cards[b_type].add_theme_stylebox_override("panel", _card_style(C_CARD_N, Color.TRANSPARENT, 0))
 
 func _flash_locked(b_type: String) -> void:
 	AudioManager.play_build_sfx("invalid")
@@ -489,17 +494,19 @@ func _flash_locked(b_type: String) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_open or not _root or not _root.visible:
 		return
-	if not (event is InputEventMouseButton and event.pressed):
-		return
-	if event.button_index != MOUSE_BUTTON_WHEEL_UP \
-			and event.button_index != MOUSE_BUTTON_WHEEL_DOWN:
-		return
-	# Only intercept when the cursor is physically over the menu bar
-	var mp  : Vector2 = get_viewport().get_mouse_position()
-	var rc  : Rect2   = _root.get_global_rect()
-	if not rc.has_point(mp):
-		return
-	get_viewport().set_input_as_handled()
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			get_viewport().set_input_as_handled()
+			
+			var mp : Vector2 = _root.get_local_mouse_position()
+			var rc : Rect2 = Rect2(Vector2.ZERO, _root.size)
+			
+			if rc.has_point(mp) and _scroll:
+				var scroll_amount = 40
+				if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+					_scroll.scroll_horizontal -= scroll_amount
+				elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+					_scroll.scroll_horizontal += scroll_amount
 
 # ── Memorial availability ─────────────────────────────────────────────────────
 func _memorial_available() -> bool:

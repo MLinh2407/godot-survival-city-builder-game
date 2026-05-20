@@ -14,7 +14,7 @@ var _bs:         Node = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	layer = 88   # below build menu (90)
+	layer = 1   
 	_build_ui()
 	visible = false
 	await get_tree().process_frame
@@ -27,11 +27,11 @@ func _build_ui() -> void:
 	_root.anchor_left   = 0.0
 	_root.anchor_right  = 0.0
 	_root.anchor_top    = 0.0
-	_root.anchor_bottom = 1.0
-	_root.offset_left   = 0.0
-	_root.offset_right  = 220.0
-	_root.offset_top    = 70.0
-	_root.offset_bottom = 0.0
+	_root.anchor_bottom = 0.0  
+	_root.offset_left   = 16.0 
+	_root.offset_right  = 236.0 
+	_root.offset_top    = 120.0 
+	_root.offset_bottom = 420.0 
 	_root.mouse_filter  = Control.MOUSE_FILTER_STOP
 	add_child(_root)
 
@@ -166,3 +166,11 @@ func _refresh_list(current_day: int) -> void:
 			name_lbl.add_theme_color_override("font_color", C_EXPOSED)
 			state_lbl.text = "Exposed"
 			state_lbl.add_theme_color_override("font_color", C_EXPOSED)
+
+func reset_for_new_game() -> void:
+	visible = false
+	if _root:
+		_root.modulate.a = 0.0
+	if _list_vbox:
+		for child in _list_vbox.get_children():
+			child.queue_free()

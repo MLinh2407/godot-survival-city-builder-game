@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bt77b3nsyxrru" path="res://scenes/UI/FloatingText.gd" id="1_v2glu"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_v2glu"]
-font_size = 8
+font_size = 12
 outline_size = 2
 outline_color = Color(0, 0, 0, 1)
 
@@ -11,9 +11,9 @@ outline_color = Color(0, 0, 0, 1)
 script = ExtResource("1_v2glu")
 
 [node name="Label" type="Label" parent="." unique_id=671360841]
-offset_top = -14.0
+offset_top = -18.0
 offset_right = 40.0
-offset_bottom = 9.0
+offset_bottom = 13.0
 label_settings = SubResource("LabelSettings_v2glu")
 horizontal_alignment = 1
 vertical_alignment = 1

@@ -42,7 +42,6 @@ var anchor_to_type:  Dictionary = {}
 
 var current_build_type:  String      = ""
 var current_build_scene: PackedScene = null
-var current_decoration_type: String  = ""   
 
 var _hovered_building_node:  Node2D = null
 var _selected_building_node: Node2D = null
@@ -366,83 +365,6 @@ func exit_build_mode() -> void:
 	if _place_preview_label:
 		_place_preview_label.visible = false
 
-# ── Decoration Mode ────────────────────────────────────────────────────────────
-
-func enter_decoration_mode(dec_type: String) -> void:
-	if not TileRegistry.DECORATION_TILE_MAP.has(dec_type):
-		push_warning("GridManager: Unknown decoration type '%s'" % dec_type)
-		return
-	# Exit build mode if active
-	if current_build_scene != null:
-		exit_build_mode()
-	current_decoration_type = dec_type
-	_last_fp_anchor          = Vector2i(-9999, -9999)
-	ghost_sprite.visible     = false
-	hover_cursor.visible     = false
-	_clear_footprint_overlay()
-	_clear_blocker_highlight()
-
-func exit_decoration_mode() -> void:
-	current_decoration_type = ""
-	_last_fp_anchor          = Vector2i(-9999, -9999)
-	_clear_footprint_overlay()
-	_clear_blocker_highlight()
-
-# Places a decoration tile on DecalLayer. Does not create BuildingData.
-func place_decoration(cell: Vector2i, dec_type: String) -> void:
-	if not decal_layer:
-		push_warning("GridManager: $DecalLayer not found.")
-		return
-	if not TileRegistry.DECORATION_TILE_MAP.has(dec_type):
-		return
-	var atlas_coords: Vector2i = TileRegistry.DECORATION_TILE_MAP[dec_type]
-	decal_layer.set_cell(cell, TileRegistry.FLOOR_SOURCE_ID, atlas_coords)
-	AudioManager.play_build_sfx("place")
-
-# Erases a player-placed decoration tile from DecalLayer.
-# Will NOT erase M15 foundation rings — those are protected.
-func erase_decoration(cell: Vector2i) -> void:
-	if not decal_layer:
-		return
-	var source: int = decal_layer.get_cell_source_id(cell)
-	if source == -1:
-		return   
-	var atlas: Vector2i = decal_layer.get_cell_atlas_coords(cell)
-	# Only erase if the tile at this cell is a known decoration tile
-	for key in TileRegistry.DECORATION_TILE_MAP:
-		if TileRegistry.DECORATION_TILE_MAP[key] == atlas:
-			decal_layer.erase_cell(cell)
-			AudioManager.play_build_sfx("remove")
-			return
-
-# Draws a single-cell cyan diamond highlight for decoration placement cursor.
-func _rebuild_decoration_highlight(cell: Vector2i) -> void:
-	for child in _footprint_node.get_children():
-		child.queue_free()
-	var half_w: float = 32.0
-	var half_h: float = 16.0
-	if base_grid and base_grid.tile_set:
-		half_w = base_grid.tile_set.tile_size.x * 0.5
-		half_h = half_w * 0.5
-	var c: Vector2 = base_grid.map_to_local(cell)
-	var vt := c + Vector2(0.0,    -half_h)
-	var vr := c + Vector2(half_w,  0.0)
-	var vb := c + Vector2(0.0,     half_h)
-	var vl := c + Vector2(-half_w, 0.0)
-
-	var fill := Polygon2D.new()
-	fill.polygon = PackedVector2Array([vt, vr, vb, vl])
-	fill.color   = Color(0.0, 0.85, 1.0, 0.35)
-	_footprint_node.add_child(fill)
-
-	var border := Line2D.new()
-	border.add_point(vt); border.add_point(vr)
-	border.add_point(vb); border.add_point(vl)
-	border.add_point(vt)
-	border.width         = 1.5
-	border.default_color = Color(0.0, 0.95, 1.0, 0.9)
-	_footprint_node.add_child(border)
-
 # ── _process ───────────────────────────────────────────────────────────────────
 func _process(delta: float) -> void:
 	# ── Demolish hold timer ──────────────────────────────────────────────────
@@ -489,17 +411,6 @@ func _process(delta: float) -> void:
 			_last_fp_anchor = snapped_anchor
 			_last_fp_valid  = valid
 			_rebuild_footprint_overlay(snapped_anchor, current_build_type, valid)
-
-	elif current_decoration_type != "":
-		# ── DECORATION MODE ──────────────────────────────────────────────────
-		ghost_sprite.visible  = false
-		hover_cursor.visible  = false
-		_clear_node(_hover_highlight)
-		_clear_node(_selection_outline_node)
-		_clear_blocker_highlight()
-		if map_pos != _last_fp_anchor:
-			_last_fp_anchor = map_pos
-			_rebuild_decoration_highlight(map_pos)
 	
 	else:
 		# ── SELECTION MODE ────────────────────────────────────────────────────
@@ -572,8 +483,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					AudioManager.play_build_sfx("invalid")
 					_shake_ghost()
-			elif current_decoration_type != "":
-				place_decoration(map_pos, current_decoration_type)
 			else:
 				if cell_to_anchor.has(map_pos):
 					building_selected.emit(cell_to_anchor[map_pos])
@@ -583,8 +492,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if current_build_scene != null:
 				exit_build_mode()
-			elif current_decoration_type != "":
-				erase_decoration(map_pos)
 			elif event.pressed:
 				map_pos = base_grid.local_to_map(get_local_mouse_position())
 				if cell_to_anchor.has(map_pos):
@@ -604,8 +511,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_Q:
 			if current_build_scene != null:
 				exit_build_mode()
-			elif current_decoration_type != "":
-				exit_decoration_mode()
 			return
 
 # ── Placement & removal ────────────────────────────────────────────────────────
@@ -659,8 +564,8 @@ func place_building(anchor: Vector2i) -> void:
 	_clear_footprint_overlay()
 	_clear_blocker_highlight()
 
-	building_selected.emit(anchor)  
-
+	if occupied_cells.has(anchor):
+			building_selected.emit(anchor)
 func remove_building(anchor: Vector2i) -> void:
 	if not occupied_cells.has(anchor): return
 
@@ -681,6 +586,10 @@ func remove_building(anchor: Vector2i) -> void:
 		_selected_anchor        = Vector2i(-9999, -9999)
 		_clear_node(_selection_outline_node)
 		building_deselected.emit()   
+
+	if _demolish_arm_label:
+		_demolish_arm_label.visible = false
+	disarm_demolish()
 
 	occupied_cells[anchor].queue_free()
 	occupied_cells.erase(anchor)
@@ -729,6 +638,9 @@ func reset_for_new_game() -> void:
 	hover_cursor.visible = false
 	if not occupied_cells.is_empty():
 		clear_grid()
+
+	if special_floor_layer:
+		special_floor_layer.clear()
 
 func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
 	if not building_scenes.has(b_type):

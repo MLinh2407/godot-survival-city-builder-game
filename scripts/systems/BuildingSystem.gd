@@ -129,6 +129,12 @@ func reset_for_new_game() -> void:
 
 	active_buildings.clear()
 	_prev_powered_states.clear()
+	for pos in _status_badges.keys():
+		var lbl = _status_badges[pos]
+		if is_instance_valid(lbl):
+			lbl.queue_free()
+	_status_badges.clear()
+	
 	building_selected_data.emit(null)
 	workers_changed.emit()
 	_is_resetting = false
@@ -415,6 +421,7 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		return
 		
 	var b_data: BuildingData = active_buildings[grid_pos]
+	var removed_ration_store: bool = b_data.building_type == BuildingData.BuildingType.RATION_STORE
 	
 	if b_data.workers_assigned > 0:
 		GameManager.available_workers                  += b_data.workers_assigned
@@ -449,6 +456,18 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		}
 		removed_type_str = type_to_str.get(b_data.building_type, "")
 		TilePainter.on_building_removed(removed_type_str, grid_pos)
+
+	# Ration Store teardown updates the buffer state if none remain
+	if removed_ration_store and ResourceManager:
+		if not has_building(BuildingData.BuildingType.RATION_STORE):
+			ResourceManager.on_ration_store_removed()
+		else:
+			ResourceManager.restore_ration_store_from_save(
+				ResourceManager.ration_buffer,
+				ResourceManager.ration_buffer_max,
+				true,
+				is_building_upgraded(BuildingData.BuildingType.RATION_STORE)
+			)
 	
 	if current_selected_grid_pos == grid_pos:
 		_on_building_deselected() # Safely clear selection
@@ -821,8 +840,9 @@ func spawn_floating_text(grid_pos: Vector2i, text: String, color: Color) -> void
 	
 	var fct = floating_text_scene.instantiate()
 	
-	grid_manager.add_child(fct)
 	fct.position = grid_manager.base_grid.map_to_local(grid_pos)
+	fct.z_index = 300
+	grid_manager.add_child(fct)
 	fct.setup(text, color)
 
 func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.BuildingType) -> void:
