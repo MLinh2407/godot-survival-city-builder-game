@@ -41,5 +41,3 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 0.92)
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 24
 text = "PRESS [SPACE] TO SKIP"
-horizontal_alignment = 2
-vertical_alignment = 1

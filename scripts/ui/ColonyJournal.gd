@@ -101,7 +101,7 @@ func add_entry(
 	var e := JournalEntryData.new()
 	e.day = day
 	e.body = body.strip_edges()
-	e.entry_type = type
+	e.entry_type = type as JournalEntryData.EntryType
 	e.title = title if title != "" else ("Day %d" % day)
 	e.read = false
 	entries.append(e)

@@ -13,6 +13,11 @@ var _power_sfx_cooldown: float = 0.0
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
 var _is_resetting: bool = false
+var load_ready: bool = false
+var _last_assign_worker_msec: int = -1
+var _last_remove_worker_msec: int = -1
+
+const WORKER_ACTION_DEBOUNCE_MS: int = 75
 
 # Status badge labels — one Label per placed building, keyed by grid_pos
 var _status_badges: Dictionary = {}
@@ -114,6 +119,7 @@ func _ready() -> void:
 							placed_node.set_building_state("tier1")
 				# Ensure centralized tint selection is applied
 				update_building_visual(pos)
+	load_ready = true
 
 func reset_for_new_game() -> void:
 	_is_resetting = true
@@ -144,6 +150,8 @@ func reset_for_new_game() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_day_changed(_day: int) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	for grid_pos in active_buildings:
 		var b: BuildingData = active_buildings[grid_pos]
 
@@ -197,7 +205,7 @@ func _on_day_changed(_day: int) -> void:
 		
 		# ── Storm shielding progress tick ─────────────────────────────────────
 		# Only runs during the preparation window (Days 26–34)
-		var current_day: int = TimeManager.current_day if TimeManager else 0
+		var current_day: int = _day
 		if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
 			for shield_pos in active_buildings:
 				var sb: BuildingData = active_buildings[shield_pos]
@@ -412,14 +420,13 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
-
-	if _is_resetting:
+	if (GameManager and GameManager.is_loading_game) or _is_resetting:
 		AudioManager.remove_ambient(grid_pos)
 		active_buildings.erase(grid_pos)
 		if current_selected_grid_pos == grid_pos:
 			_on_building_deselected()
 		return
-		
+
 	var b_data: BuildingData = active_buildings[grid_pos]
 	var removed_ration_store: bool = b_data.building_type == BuildingData.BuildingType.RATION_STORE
 	
@@ -476,6 +483,11 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 # WORKER ASSIGNMENT
 # ══════════════════════════════════════════════════════════════════════════════
 func assign_worker() -> void:
+	var now_msec := Time.get_ticks_msec()
+	if now_msec - _last_assign_worker_msec < WORKER_ACTION_DEBOUNCE_MS:
+		return
+	_last_assign_worker_msec = now_msec
+
 	if not has_selected_building:
 		return
 	if not active_buildings.has(current_selected_grid_pos):
@@ -505,6 +517,11 @@ func assign_worker() -> void:
 
 # Called by UI +/- buttons to remove a worker
 func remove_worker(grid_pos: Vector2i) -> void:
+	var now_msec := Time.get_ticks_msec()
+	if now_msec - _last_remove_worker_msec < WORKER_ACTION_DEBOUNCE_MS:
+		return
+	_last_remove_worker_msec = now_msec
+
 	if not has_selected_building:
 		return
 	if not active_buildings.has(grid_pos): return
@@ -625,9 +642,6 @@ func get_effective_output(grid_pos: Vector2i) -> Dictionary:
 	if b.is_damaged:
 		efficiency *= GameConstants.BUILDING_DAMAGE_OUTPUT
 		
-	if GameManager.resource_morale.current_value < GameConstants.MORALE_EFFICIENCY_THRESHOLD:
-		efficiency *= GameConstants.MORALE_EFFICIENCY_MULTIPLIER
-		
 	# Buildings must have power (or be a power producer themselves) to operate
 	if b.is_powered or b.base_production_power > 0:
 		result.power  = b.base_production_power * efficiency
@@ -735,7 +749,7 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 		for badge_pos in active_buildings:
 			_refresh_badge(badge_pos)
 
-func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
+func _on_staffing_changed(_current: int, _capacity: int, grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
 	var b: BuildingData = active_buildings[grid_pos]
@@ -1022,14 +1036,11 @@ func refresh_all_badges() -> void:
 	for pos in active_buildings:
 		_refresh_badge(pos)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready
-# ══════════════════════════════════════════════════════════════════════════════
 func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.pressed:
+	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 		
-	if event.keycode == KEY_EQUAL:   # '+' key
+	if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:   # '+' key
 		assign_worker()
-	if event.keycode == KEY_MINUS:   # '-' key
+	elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:   # '-' key
 		remove_worker(current_selected_grid_pos)

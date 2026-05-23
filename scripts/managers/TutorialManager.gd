@@ -211,6 +211,8 @@ func _on_outbreak_started(sick_count: int) -> void:
 # ── GridManager.building_placed ───────────────────────────────────────────────
 
 func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	if not tutorial_enabled:
 		return
 

@@ -339,10 +339,10 @@ func _cache_material_icon() -> void:
 	_mat_icon_cache.clear()
 
 func _get_button_font_size(btn: Button) -> int:
-	var size := btn.get_theme_font_size("font_size")
-	if size <= 0:
-		size = 12
-	return size
+	var font_size := btn.get_theme_font_size("font_size")
+	if font_size <= 0:
+		font_size = 12
+	return font_size
 
 func _get_scaled_mat_icon(target_h: int) -> Texture2D:
 	if not _mat_icon_tex:
@@ -356,8 +356,8 @@ func _get_scaled_mat_icon(target_h: int) -> Texture2D:
 	var src_h := img.get_height()
 	if src_h <= 0:
 		return _mat_icon_tex
-	var scale := float(h) / float(src_h)
-	var w := maxi(1, int(round(img.get_width() * scale)))
+	var target_scale := float(h) / float(src_h)
+	var w := maxi(1, int(round(img.get_width() * target_scale)))
 	var scaled := img.duplicate()
 	scaled.resize(w, h, Image.INTERPOLATE_LANCZOS)
 	var tex := ImageTexture.create_from_image(scaled)
@@ -767,9 +767,9 @@ func _on_repair_pressed() -> void:
 						push_warning("BuildingInspector: Repair failed on child or insufficient materials")
 					break
 			if not found_child:
-				push_warning("BuildingInspector: Selected building instance has no repair() method.")
+				pass
 	else:
-		push_warning("BuildingInspector: Selected building instance has no repair() method.")
+		pass
 
 	if node and not node.has_method("repair"):
 		var cost:int = GameConstants.REPAIR_COST_BASE

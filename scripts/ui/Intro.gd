@@ -14,9 +14,6 @@ func set_preloaded_stream(stream: VideoStream) -> void:
     _preloaded_stream = stream
 
 func _ready() -> void:
-    _fit_fullscreen()
-    if get_viewport():
-        get_viewport().size_changed.connect(_fit_fullscreen)
     set_process(true)
 
 func start_intro() -> void:
@@ -37,16 +34,6 @@ func _play_video() -> void:
 
 func _on_video_finished() -> void:
     _finish_intro()
-
-func _fit_fullscreen() -> void:
-    var view_size: Vector2 = get_viewport_rect().size
-    if view_size.x <= 0.0 or view_size.y <= 0.0:
-        return
-
-    position = Vector2.ZERO
-    size = view_size
-    vp.position = Vector2.ZERO
-    vp.size = view_size
 
 func _process(delta: float) -> void:
     if continue_prompt == null:

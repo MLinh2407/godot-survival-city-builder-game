@@ -56,6 +56,8 @@ func register_building_system(bs) -> void:
 # MAIN TICK (Called by DayNightCycle.gd when a new day starts)
 # ══════════════════════════════════════════════════════════════════════════════
 func process_daily_population_tick(new_day: int) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	print("\n--- PopulationManager: Processing Day ", new_day, " ---")
 	
 	var pop_data = GameManager.population_state

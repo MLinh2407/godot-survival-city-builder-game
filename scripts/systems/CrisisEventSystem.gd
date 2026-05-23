@@ -34,6 +34,15 @@ func reset_for_new_game() -> void:
 	_temporary_effects.clear()
 	_fired_events.clear()
 
+func get_fired_events_state() -> Dictionary:
+	return _fired_events.duplicate(true)
+
+func set_fired_events_state(state: Dictionary) -> void:
+	if typeof(state) != TYPE_DICTIONARY:
+		_fired_events.clear()
+		return
+	_fired_events = state.duplicate(true)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -223,6 +232,8 @@ func _fire_journal(_slug: String, title: String, body: String) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 func _on_day_changed(new_day: int) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	_ensure_dialogue_engine()
 	_process_temporary_effects()
 

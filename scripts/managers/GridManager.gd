@@ -30,6 +30,7 @@ const VOID_FILL_RADIUS: int = 200
 var occupied_cells:  Dictionary = {}   
 var cell_to_anchor:  Dictionary = {}   
 var anchor_to_type:  Dictionary = {}   
+var load_ready: bool = false
 
 @onready var base_grid:          TileMapLayer = $BaseGrid
 @onready var void_layer:          TileMapLayer = $VoidLayer
@@ -236,25 +237,26 @@ func _prefill_void() -> void:
 			filled += 1
 
 	print("GridManager: Void pre-fill complete — %d cells." % filled)
+	load_ready = true
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
-	var size:  Vector2i        = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
+	var footprint_size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
 	var cells: Array[Vector2i] = []
-	for dy in range(size.y):
-		for dx in range(size.x):
+	for dy in range(footprint_size.y):
+		for dx in range(footprint_size.x):
 			cells.append(anchor + Vector2i(dx, dy))
 	return cells
 
 func get_footprint_centre_offset(b_type: String) -> Vector2:
-	var size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
-	if size == Vector2i(1, 1):
+	var footprint_size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
+	if footprint_size == Vector2i(1, 1):
 		return Vector2.ZERO
 	var origin: Vector2 = base_grid.map_to_local(Vector2i(0, 0))
 	var sum:    Vector2 = Vector2.ZERO
 	var count:  int     = 0
-	for dy in range(size.y):
-		for dx in range(size.x):
+	for dy in range(footprint_size.y):
+		for dx in range(footprint_size.x):
 			sum   += base_grid.map_to_local(Vector2i(dx, dy)) - origin
 			count += 1
 	return sum / float(count)

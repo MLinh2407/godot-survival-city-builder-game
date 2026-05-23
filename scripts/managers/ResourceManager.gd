@@ -83,7 +83,9 @@ func _has_building_system() -> bool:
 # DAILY TICK
 # ══════════════════════════════════════════════════════════════════════════════
 
-func _on_day_changed(new_day: int) -> void:
+func _on_day_changed(_new_day: int) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	if not _has_building_system():
 		# No buildings yet — still emit so HUD stays updated
 		resources_changed.emit(net_power, food, morale, materials)
@@ -109,16 +111,9 @@ func _on_day_changed(new_day: int) -> void:
 	else:
 		days_starving = 0
 
-	# Immediate disease morale drain (extra, separate from _process_morale_tick)
-	if GameManager.population_state and GameManager.population_state.outbreak_active:
-		morale -= GameConstants.DISEASE_MORALE_DRAIN
-		morale = max(0.0, morale)
-		print("--- OUTBREAK: Morale drained by ", GameConstants.DISEASE_MORALE_DRAIN)
-
 	_sync_to_game_manager()
 	_check_thresholds()
 	resources_changed.emit(net_power, food, morale, materials)
-	_print_debug(new_day)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. POWER
@@ -159,7 +154,7 @@ func _recalculate_power() -> void:
 	# Pass 3 — set is_powered flag
 	var grid_has_power: bool
 	if power_capacity == 0.0:
-		grid_has_power = true
+		grid_has_power = power_draw == 0.0
 	else:
 		grid_has_power = net_power >= 0.0
 

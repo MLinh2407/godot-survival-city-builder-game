@@ -33,7 +33,7 @@ func set_game_speed(speed: GameSpeed) -> void:
 		return
 
 	var old_length = get_current_day_length()
-	var fraction = time_elapsed / old_length if old_length > 0 else 0.0
+	var fraction = float(time_elapsed) / float(old_length) if old_length > 0 else 0.0
 
 	var previous_speed := current_speed
 	if speed == GameSpeed.PAUSED:
@@ -79,9 +79,9 @@ func _process(delta: float) -> void:
 		elif current_day == GameConstants.STORM_HIT_DAY:
 			storm_hit.emit()
 		
-	var fraction_elapsed = clamp(time_elapsed / current_day_length, 0.0, 1.0)
+	var fraction_elapsed = clamp(float(time_elapsed) / float(current_day_length), 0.0, 1.0)
 	var total_ingame_minutes = int(fraction_elapsed * 24.0 * 60.0)
-	var h: int = total_ingame_minutes / 60
+	var h: int = int(total_ingame_minutes / 60.0)
 	var m: int = total_ingame_minutes % 60
 	var time_str = "%02d:%02d" % [h, m]
 	
