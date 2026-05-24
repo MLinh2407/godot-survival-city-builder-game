@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://c3l33q7yd4w7k"]
+
+[ext_resource type="Script" uid="uid://bt77b3nsyxrru" path="res://scenes/UI/FloatingText.gd" id="1_v2glu"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_v2glu"]
+font_size = 12
+outline_size = 2
+outline_color = Color(0, 0, 0, 1)
+
+[node name="FloatingText" type="Marker2D" unique_id=1323251796]
+script = ExtResource("1_v2glu")
+
+[node name="Label" type="Label" parent="." unique_id=671360841]
+offset_top = -18.0
+offset_right = 40.0
+offset_bottom = 13.0
+label_settings = SubResource("LabelSettings_v2glu")
+horizontal_alignment = 1
+vertical_alignment = 1

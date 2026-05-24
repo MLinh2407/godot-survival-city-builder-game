@@ -1,0 +1,51 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="LookForTheLight"
+run/main_scene="res://scenes/UI/MainMenu.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="uid://br4lhjhjs8iqo"
+
+[autoload]
+
+GameConstants="*uid://btfjwpe1a7qls"
+TileRegistry="*uid://0jf0gnw3n6b4"
+TilePainter="*uid://r54mv2ycvkle"
+GameManager="*uid://dknkmc4mhbmrf"
+TutorialManager="*uid://7xogq3164ksb"
+ResourceManager="*uid://dwh6slo30k3e8"
+PopulationManager="*uid://d3voqymr74q5n"
+AudioManager="*uid://ddhlbd5igyi77"
+TimeManager="*res://scripts/managers/TimeManager.gd"
+CrisisEventSystem="*res://scripts/systems/CrisisEventSystem.gd"
+EndingManager="*uid://dwu6np34ixhan"
+NPCManager="*res://scripts/managers/NPCManager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/mode=3
+window/stretch/mode="canvas_items"
+
+[dotnet]
+
+project/assembly_name="LookForTheLight"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+rendering_device/driver.windows="d3d12"

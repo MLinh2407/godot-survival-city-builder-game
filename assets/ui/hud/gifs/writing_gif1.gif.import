@@ -1,0 +1,15 @@
+[remap]
+
+importer="import_gif_to_sprite_frames"
+type="SpriteFrames"
+uid="uid://b5psj5c03yy57"
+path="res://.godot/imported/writing_gif1.gif-dfad418a98c41eb3633ef7bbe294d8cd.tres"
+
+[deps]
+
+source_file="res://assets/ui/hud/gifs/writing_gif1.gif"
+dest_files=["res://.godot/imported/writing_gif1.gif-dfad418a98c41eb3633ef7bbe294d8cd.tres"]
+
+[params]
+
+frames_per_second=30

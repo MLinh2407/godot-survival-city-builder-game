@@ -1,0 +1,523 @@
+[gd_scene format=3 uid="uid://1r2i00lg87vu"]
+
+[ext_resource type="Script" uid="uid://d4nw4kgxwahcj" path="res://scripts/ui/ColonyJournal.gd" id="1"]
+[ext_resource type="FontFile" uid="uid://3whwi8tcgn08" path="res://assets/ui/fonts/SpecialElite-Regular.ttf" id="2"]
+[ext_resource type="Texture2D" uid="uid://b2yucdolep4nv" path="res://assets/ui/journal/journal_cover.jpg" id="4"]
+[ext_resource type="Texture2D" uid="uid://7lv0hwqw5d1t" path="res://assets/ui/journal/journal_page.jpg" id="5"]
+[ext_resource type="Texture2D" uid="uid://ba5qo2qi5h6r0" path="res://assets/ui/journal/journal_spine.jpg" id="6"]
+
+[sub_resource type="StyleBoxTexture" id="1"]
+texture = ExtResource("4")
+texture_margin_left = 18.0
+texture_margin_top = 18.0
+texture_margin_right = 18.0
+texture_margin_bottom = 18.0
+
+[sub_resource type="Shader" id="5"]
+code = "shader_type canvas_item;
+
+// Cover depth
+uniform float vignette = 0.36;
+uniform float grain = 0.045;
+uniform float edge_round = 1.8;
+uniform float corner_radius = 0.10; 
+uniform float corner_dark = 0.28;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+void fragment() {
+	vec2 c = UV - vec2(0.5, 0.08); // bias slightly toward top for cover pocket
+	float r = length(c * vec2(edge_round, 1.0));
+	float base = smoothstep(0.30, 0.92, r) * vignette;
+	float center_soft = smoothstep(0.0, 0.55, r) * 0.04;
+	float n = (hash(UV * vec2(900.0, 700.0)) - 0.5) * grain;
+	float alpha = clamp(base - center_soft + n * 0.6, 0.0, 1.0);
+
+	// Corner darkening 
+	vec2 uv = UV;
+	float d_tl = length(uv - vec2(corner_radius, 1.0 - corner_radius));
+	float d_tr = length(uv - vec2(1.0 - corner_radius, 1.0 - corner_radius));
+	float d_bl = length(uv - vec2(corner_radius, corner_radius));
+	float d_br = length(uv - vec2(1.0 - corner_radius, corner_radius));
+	float ct = (1.0 - smoothstep(0.0, corner_radius, d_tl));
+	float cr = (1.0 - smoothstep(0.0, corner_radius, d_tr));
+	float cb = (1.0 - smoothstep(0.0, corner_radius, d_bl));
+	float cl = (1.0 - smoothstep(0.0, corner_radius, d_br));
+	float corner_sum = clamp(ct + cr + cb + cl, 0.0, 1.0);
+	float corner_influence = corner_sum * corner_dark * (1.0 - smoothstep(0.0, 0.9, r));
+	alpha = clamp(alpha + corner_influence, 0.0, 1.0);
+
+	COLOR = vec4(0.0, 0.0, 0.0, alpha);
+}"
+
+[sub_resource type="ShaderMaterial" id="6"]
+shader = SubResource("5")
+shader_parameter/vignette = 0.36
+shader_parameter/grain = 0.045
+shader_parameter/edge_round = 1.8
+shader_parameter/corner_radius = 0.1
+shader_parameter/corner_dark = 0.28
+
+[sub_resource type="StyleBoxFlat" id="3"]
+bg_color = Color(0.205, 0.145, 0.09, 0.08)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0.14)
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 20
+
+[sub_resource type="Shader" id="12"]
+code = "shader_type canvas_item;
+
+uniform float strength = 0.78;
+uniform float noise_scale = 360.0;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453);
+}
+
+float lum(vec3 c){
+	return dot(c, vec3(0.299,0.587,0.114));
+}
+
+void fragment(){
+	vec4 s = texture(TEXTURE, UV);
+	float m = lum(s.rgb);
+	// emphasize darker parts of the spine texture as mask
+	m = smoothstep(0.18, 0.82, m);
+	float vy = smoothstep(0.12, 0.95, 1.0 - abs((UV.y - 0.5) * 2.0));
+	float wf = pow(1.0 - abs(UV.x - 0.5) * 2.0, 1.6);
+	float n = (hash(UV * noise_scale) - 0.5) * 0.06;
+	float a = clamp(m * strength * wf * vy + n, 0.0, 1.0);
+	COLOR = vec4(0.0, 0.0, 0.0, a);
+}
+"
+
+[sub_resource type="ShaderMaterial" id="13"]
+shader = SubResource("12")
+shader_parameter/strength = 0.78
+shader_parameter/noise_scale = 360.0
+
+[sub_resource type="StyleBoxTexture" id="2"]
+texture = ExtResource("5")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+
+[sub_resource type="Shader" id="14"]
+code = "shader_type canvas_item;
+
+// Inner ambient occlusion: softer defaults that fade vertically so shadow disappears naturally
+uniform float strength = 0.12;
+uniform float falloff = 2.6;
+uniform float noise_scale = 420.0;
+uniform float side = 1.0; // 1.0 = right gutter, 0.0 = left gutter
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453123);
+}
+
+void fragment(){
+	vec2 u = UV;
+	float d = side > 0.5 ? (1.0 - u.x) : u.x; // distance from gutter side (0..1)
+	// stronger near gutter, softer outward
+	float base = pow(clamp(1.0 - smoothstep(0.0, 1.0, d), 0.0, 1.0), falloff) * strength;
+	float n = (hash(UV * noise_scale) - 0.5) * 0.02;
+	float a = clamp(base + n, 0.0, 1.0);
+	float vy = smoothstep(0.0, 1.0, 1.0 - abs((u.y - 0.5) * 2.0));
+	a *= vy;
+	COLOR = vec4(0.0, 0.0, 0.0, a);
+}
+"
+
+[sub_resource type="ShaderMaterial" id="16"]
+shader = SubResource("14")
+shader_parameter/strength = 0.12
+shader_parameter/falloff = 2.6
+shader_parameter/noise_scale = 420.0
+shader_parameter/side = 0.0
+
+[sub_resource type="Shader" id="7"]
+code = "shader_type canvas_item;
+
+// Gutter/spine depth
+uniform float gutter_pos = 1.0;
+uniform float gutter_dark = 0.22;
+uniform float outer_dark = 0.08;
+uniform float edge_dark = 0.06;
+uniform float noise_scale = 360.0;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453);
+}
+
+void fragment() {
+	float d_center = abs(UV.x - gutter_pos);
+	float dg = exp(-pow(d_center * 14.0, 1.6)) * gutter_dark;
+	float d_outer = exp(-pow(abs(UV.x - (1.0 - gutter_pos)) * 10.5, 1.2)) * outer_dark;
+	float ey = smoothstep(0.0, 1.0, 1.0 - abs((UV.y - 0.5) * 2.0));
+	float de = (ey) * edge_dark * 1.2;
+	float n = (hash(UV * noise_scale) - 0.5) * 0.05;
+	float a = clamp(dg * 1.05 + d_outer * 0.85 + de + n, 0.0, 1.0);
+	// fade the gutter region slightly so it blends into the texture seam
+	a *= smoothstep(0.0, 0.95, 1.0 - d_center * 2.0);
+	COLOR = vec4(0.0, 0.0, 0.0, a);
+}"
+
+[sub_resource type="ShaderMaterial" id="8"]
+shader = SubResource("7")
+
+[sub_resource type="StyleBoxFlat" id="4"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.18, 0.11, 0.16)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="ShaderMaterial" id="15"]
+shader = SubResource("14")
+shader_parameter/strength = 0.12
+shader_parameter/falloff = 2.6
+shader_parameter/noise_scale = 420.0
+shader_parameter/side = 1.0
+
+[sub_resource type="ShaderMaterial" id="9"]
+shader = SubResource("7")
+
+[node name="ColonyJournal" type="CanvasLayer" unique_id=403299451]
+layer = 120
+script = ExtResource("1")
+
+[node name="BookRoot" type="Control" parent="." unique_id=1247690041]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -270.0
+offset_right = 400.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FX_BookShadow" type="ColorRect" parent="BookRoot" unique_id=697410374]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 12.0
+offset_right = 815.0
+offset_bottom = 548.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.3)
+
+[node name="BookBackground" type="Panel" parent="BookRoot" unique_id=1319108783]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -7.0
+offset_top = 9.0
+offset_right = 6.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("1")
+
+[node name="FX_CoverDepth" type="ColorRect" parent="BookRoot" unique_id=149849279]
+material = SubResource("6")
+layout_mode = 0
+offset_left = 1.0
+offset_top = 28.0
+offset_right = 797.0
+offset_bottom = 517.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_CoverPocket" type="Panel" parent="BookRoot" unique_id=1027937199]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 34.0
+offset_right = 792.0
+offset_bottom = 510.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("3")
+
+[node name="SpineLine" type="TextureRect" parent="BookRoot" unique_id=1428088420]
+layout_mode = 0
+offset_left = 396.0
+offset_top = 11.0
+offset_right = 404.0
+offset_bottom = 531.0
+texture = ExtResource("6")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="FX_SpineAOLeft" type="ColorRect" parent="BookRoot" unique_id=1545908704]
+layout_mode = 0
+offset_left = 360.0
+offset_top = 36.0
+offset_right = 395.0
+offset_bottom = 506.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.1)
+
+[node name="FX_SpineAORight" type="ColorRect" parent="BookRoot" unique_id=791376683]
+layout_mode = 0
+offset_left = 405.0
+offset_top = 36.0
+offset_right = 440.0
+offset_bottom = 506.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.08)
+
+[node name="FX_Gutter" type="TextureRect" parent="BookRoot" unique_id=824386427]
+material = SubResource("13")
+layout_mode = 0
+offset_left = 391.0
+offset_top = 36.0
+offset_right = 409.0
+offset_bottom = 506.0
+mouse_filter = 2
+texture = ExtResource("6")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="LeftPage" type="Panel" parent="BookRoot" unique_id=1393227224]
+self_modulate = Color(0.965, 0.93, 0.86, 1)
+layout_mode = 0
+offset_left = 10.0
+offset_top = 36.0
+offset_right = 393.0
+offset_bottom = 506.0
+theme_override_styles/panel = SubResource("2")
+
+[node name="FX_FlipShadow" type="ColorRect" parent="BookRoot/LeftPage" unique_id=1257183134]
+layout_mode = 0
+offset_left = 333.0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.001)
+
+[node name="FX_Noise" type="ColorRect" parent="BookRoot/LeftPage" unique_id=1360523130]
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_InnerAO" type="ColorRect" parent="BookRoot/LeftPage" unique_id=1399975820]
+visible = false
+material = SubResource("16")
+layout_mode = 0
+offset_left = 3.0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Specular" type="ColorRect" parent="BookRoot/LeftPage" unique_id=2064563261]
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Curvature" type="ColorRect" parent="BookRoot/LeftPage" unique_id=1094156922]
+material = SubResource("8")
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Rim" type="ColorRect" parent="BookRoot/LeftPage" unique_id=37526032]
+layout_mode = 0
+offset_left = 381.0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0.95, 0.91, 0.84, 0.08)
+
+[node name="FX_PageFrame" type="Panel" parent="BookRoot/LeftPage" unique_id=310281180]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("4")
+
+[node name="MarginContainer" type="MarginContainer" parent="BookRoot/LeftPage" unique_id=1077099893]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntriesLeft" type="VBoxContainer" parent="BookRoot/LeftPage/MarginContainer" unique_id=1828633526]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PageNumLeft" type="Label" parent="BookRoot/LeftPage" unique_id=52814133]
+layout_mode = 0
+offset_top = 448.0
+offset_right = 383.0
+offset_bottom = 468.0
+theme_override_colors/font_color = Color(0.34902, 0.254902, 0.141176, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+
+[node name="RightPage" type="Panel" parent="BookRoot" unique_id=1305574943]
+self_modulate = Color(0.965, 0.93, 0.86, 1)
+layout_mode = 0
+offset_left = 407.0
+offset_top = 36.0
+offset_right = 790.0
+offset_bottom = 506.0
+pivot_offset = Vector2(0, 235)
+theme_override_styles/panel = SubResource("2")
+
+[node name="FX_FlipShadow" type="ColorRect" parent="BookRoot/RightPage" unique_id=199132483]
+layout_mode = 0
+offset_right = 50.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.001)
+
+[node name="FX_Noise" type="ColorRect" parent="BookRoot/RightPage" unique_id=1222967895]
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_InnerAO" type="ColorRect" parent="BookRoot/RightPage" unique_id=156872820]
+visible = false
+material = SubResource("15")
+layout_mode = 0
+offset_right = 386.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Specular" type="ColorRect" parent="BookRoot/RightPage" unique_id=715798688]
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Curvature" type="ColorRect" parent="BookRoot/RightPage" unique_id=1221245851]
+material = SubResource("9")
+layout_mode = 0
+offset_right = 383.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="FX_Rim" type="ColorRect" parent="BookRoot/RightPage" unique_id=654517612]
+layout_mode = 0
+offset_right = 2.0
+offset_bottom = 470.0
+mouse_filter = 2
+color = Color(0.95, 0.91, 0.84, 0.08)
+
+[node name="FX_PageFrame" type="Panel" parent="BookRoot/RightPage" unique_id=1972413805]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("4")
+
+[node name="MarginContainer" type="MarginContainer" parent="BookRoot/RightPage" unique_id=1542869484]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntriesRight" type="VBoxContainer" parent="BookRoot/RightPage/MarginContainer" unique_id=1883301373]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PageNumRight" type="Label" parent="BookRoot/RightPage" unique_id=1351324527]
+layout_mode = 0
+offset_top = 448.0
+offset_right = 383.0
+offset_bottom = 468.0
+theme_override_colors/font_color = Color(0.34902, 0.254902, 0.141176, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="BookRoot" unique_id=1658512588]
+layout_mode = 0
+offset_left = 778.0
+offset_top = 8.0
+offset_right = 806.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+text = "X"
+
+[node name="PrevButton" type="Button" parent="BookRoot" unique_id=1959715162]
+layout_mode = 0
+offset_left = -8.0
+offset_top = 508.0
+offset_right = 42.0
+offset_bottom = 539.0
+scale = Vector2(0.8, 0.8)
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+disabled = true
+text = "◀"
+
+[node name="NextButton" type="Button" parent="BookRoot" unique_id=1278874066]
+layout_mode = 0
+offset_left = 770.0
+offset_top = 509.0
+offset_right = 815.0
+offset_bottom = 540.0
+scale = Vector2(0.8, 0.8)
+theme_override_colors/font_color = Color(1, 0.701961, 0.419608, 1)
+theme_override_fonts/font = ExtResource("2")
+text = "▶"
+
+[node name="EmptyLabel" type="Label" parent="BookRoot" unique_id=1034046408]
+layout_mode = 0
+offset_left = 108.0
+offset_top = 65.0
+offset_right = 308.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0.258824, 0.188235, 0.105882, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 13
+text = "No entries yet."
+horizontal_alignment = 1

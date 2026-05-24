@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "note": "rook_alive boolean applied inside whichever ending fires. Does not determine which ending fires. The Signal has no Rook dead variant — Rook being alive is a precondition.",
+  "endings": [
+    {
+      "ending_id": "the_signal",
+      "display_name": "The Signal",
+      "condition": "yuna_alive AND rook_alive AND vasquez_alive AND meridian_alive AND survival_rate >= 0.85",
+      "type": "secret",
+      "rook_modifier": false,
+      "variants": [
+        {
+          "variant_id": "the_signal_default",
+          "rook_alive": true,
+          "scene_description": "The storm passes at 0340 on Day 36. MERIDIAN's systems pulse once before going permanently offline. The pulse carries something — a signal, structured and deliberate, not Syndicate noise, from somewhere to the north. Yuna is at the terminal. Rook is already running toward the colony entrance. Vasquez's final transmission, three days ago, mentioned a coordinate. The pieces connect. All four are present in the final scene.",
+          "body_text": "Grid-7 held. Eight hundred and twenty colonists at final count — nearly everyone who was here on Day 1. Yuna saved the ones medicine could save. Rook saved the ones maps could reach. Vasquez, for all his methods, kept Grid-9 stable enough to never become a crisis they had to manage alone. And MERIDIAN — the Helix ghost, the network remnant, the thing that asked to be trusted — saw something in the noise that none of them would have found without it.\n\nThe storm was over. The colony was intact. And now, in the static beyond the shielded walls, something was answering.\n\nKael stood at the colony entrance with the others and did not speak. There was nothing to say that the signal wasn't already saying.\n\nThey had kept the people in the colony alive. They had kept each other alive. And now, for the first time since the Severance, something out there was answering.",
+          "final_line": "They had kept the people in the colony alive. They had kept each other alive. And now, for the first time since the Severance, something out there was answering.",
+          "final_image_description": "All four named characters present at the colony entrance. MERIDIAN's terminal glows faintly in the background before going dark. The entrance tunnel leads upward toward a faint, structured light from the north — not daylight, not Syndicate amber, something new."
+        }
+      ]
+    },
+    {
+      "ending_id": "the_torch",
+      "display_name": "The Torch",
+      "condition": "survival_rate >= 0.65 AND hope_order_slider < 50",
+      "type": "standard",
+      "rook_modifier": true,
+      "variants": [
+        {
+          "variant_id": "the_torch_rook_alive",
+          "rook_alive": true,
+          "scene_description": "The storm passes. The colony has held above 65% survival with a Hope-leaning trajectory — democratic, compassionate, sometimes chaotic, but intact and still itself. Rook stands with Kael at the entrance as the electromagnetic interference clears.",
+          "body_text": "Five hundred and fifty-one colonists, at minimum. More, if the early management held. The colony fractured in places — it was always going to. That was the nature of eight hundred people trying to stay alive in the dark with not enough of everything. But the fractures were honest ones. Choices made in the open, with consequences shared rather than hidden.\n\nYuna said once that the hardest patients to treat aren't the ones in the most pain. They're the ones who've stopped believing treatment is possible. Grid-7 never reached that point. That was not an accident.\n\nRook was already figuring out what came next. Kael could see it — the way he looked at the sealed entrance to the upper tunnels, not with fear but with something more uncomfortable than that. Ambition. Curiosity. The kind of forward-looking that only made sense if you were confident there would be a future.\n\nThe colony had survived. The people who built it were still, mostly, the people who had arrived on Day 1. That felt like something. Maybe it was enough.",
+          "final_line": "Whatever comes next, they face it together.",
+          "final_image_description": "Kael and Rook at the colony entrance, side by side. The memorial wall is visible in the background — names on it, not many, but each one counted. The corridor ahead is lit. The entrance to the upper tunnels is sealed but Rook is looking at it."
+        },
+        {
+          "variant_id": "the_torch_rook_dead",
+          "rook_alive": false,
+          "scene_description": "The storm passes. The colony held above 65% survival with a Hope-leaning trajectory. Rook's name is on the memorial wall. Kael stands alone at the entrance.",
+          "body_text": "Five hundred and fifty-one colonists, at minimum. The colony fractured in places — it was always going to — but the fractures were honest ones. Choices made in the open, consequences shared rather than hidden.\n\nYuna said once that the hardest patients to treat aren't the ones in the most pain. They're the ones who've stopped believing treatment is possible. Grid-7 never reached that point. That was not an accident.\n\nKael stood at the entrance alone. There was light here now — the generators were still running, the shielded buildings were still standing, the colony was going to be all right. It was going to be all right.\n\nThe memorial wall had seventeen names on it. One of them was written in a hand that none of the surviving adults had added. The youth group had put Rook's name there themselves, in the hours after the storm passed, before anyone official had decided what to do about it.\n\nHe would have had something to say about this. Kael didn't know what, exactly. That was the part that didn't get easier.",
+          "final_line": "He would have had something to say about this.",
+          "final_image_description": "Kael alone at the colony entrance. The memorial wall behind them, Rook's name the most recently added. The lit corridor ahead. The upper tunnel entrance sealed. Nobody looking at it."
+        }
+      ]
+    },
+    {
+      "ending_id": "the_necessary_evil",
+      "display_name": "The Necessary Evil",
+      "condition": "survival_rate >= 0.65 AND hope_order_slider >= 50",
+      "type": "standard",
+      "rook_modifier": true,
+      "variants": [
+        {
+          "variant_id": "the_necessary_evil_rook_alive",
+          "rook_alive": true,
+          "scene_description": "The storm passes. The colony held above 65% survival with an Order-leaning trajectory — efficient, disciplined, borderline authoritarian, but intact. Rook is alive but stands apart from Kael. The distance between them is not hostile. It is simply there.",
+          "body_text": "Five hundred and fifty-one colonists, at minimum. The Hydroponic Bays ran at full efficiency. The work rosters held. Nobody starved who wasn't already dying of something else. The infrastructure decisions made in the first ten days turned out to be right — not inspired, not creative, right — and the colony survived them.\n\nKael had made the choices they were equipped to make. Infrastructure engineer. Problem identifier. Resource allocator. The colony had a Director who understood that survival was an engineering problem and had treated it like one and the colonists were alive because of it. That was the job. That was what they came here to do.\n\nRook was somewhere in the colony — not at the entrance, not standing with Kael. He had things to do. He always had things to do. The distance between them since Day 24 had not closed, exactly, but it had not broken into something worse. They would work together because the colony required it.\n\nThe storm was over. The colony was alive. What it had cost was a question for another time.",
+          "final_line": "Kael kept them alive. That was the job.",
+          "final_image_description": "Kael at the entrance, alone. The colony is visible behind them — lit, functional, orderly. Rook somewhere in the background, not at Kael's side, busy with something. The image is efficient. Correct. Lonely."
+        },
+        {
+          "variant_id": "the_necessary_evil_rook_dead",
+          "rook_alive": false,
+          "scene_description": "The storm passes. The colony held above 65% survival with an Order-leaning trajectory. Rook is not here. His name is on the memorial wall.",
+          "body_text": "Five hundred and fifty-one colonists, at minimum. The infrastructure decisions held. The rosters held. The production curves did what production curves do when managed correctly. The colony survived.\n\nKael reviewed the final numbers after the storm: survival rate, resource yields, worker efficiency across the final nine days. All within acceptable parameters. All within the range that a competent Director managing the colony correctly should have produced.\n\nThe memorial wall had names on it. One of them was Rook's. The calculation that led to that outcome — Option B on Day 24, no reconciliation before Day 33 — had seemed correct at the time. Protect the worker from unnecessary risk. Maintain safety standards. Keep the numbers stable.\n\nThe numbers had stayed stable. That much was true.\n\nKael stood at the entrance and looked at the sealed corridor to the upper tunnels and did not wonder what Rook would have done with it. Wondering served no function.",
+          "final_line": "The most efficient outcome still had a name attached to the cost.",
+          "final_image_description": "Kael alone at the entrance. The memorial wall fills the background. Rook's name is the last one, most recently added. The corridor ahead is lit, functional, empty. The image is coldest here."
+        }
+      ]
+    },
+    {
+      "ending_id": "the_quiet",
+      "display_name": "The Quiet",
+      "condition": "survival_rate < 0.65",
+      "type": "standard",
+      "rook_modifier": true,
+      "note": "Fires regardless of Hope/Order slider position. Survival rate is below 65% — at least 297 colonists have not survived.",
+      "variants": [
+        {
+          "variant_id": "the_quiet_rook_alive",
+          "rook_alive": true,
+          "scene_description": "The storm passes. The colony survived — but fewer than 65% of the original 847 are still alive. The colony is still there. It is smaller. Quieter. Rook is still here — that one specific fact registers as something.",
+          "body_text": "Between four hundred and fifty-five and five hundred and fifty colonists, depending on the decisions of the thirty-five days. The colony was supposed to be eight hundred and forty-seven people. It was not, now. It was this number. This smaller, quieter thing that had come through the storm because the buildings that were shielded were shielded and the resources that remained were enough and the people who were here were the people who could still be here.\n\nKael did not write the count in the log that night. They knew the number. They did not need to see it in the log to know it.\n\nRook was here. That specific fact — of the several things that could have gone differently and did not — registered as something. Not redemption. Not absolution. Just the plain fact that he was in the colony and not on the wall and the colony tomorrow would still have him in it.\n\nThe ones who had not made it were in the log too, each one. The log was going to need a lot of paper.\n\nThe colony survived in fragments. The fragments would have to be enough.",
+          "final_line": "Not everyone made it. The ones who did carry the ones who didn't.",
+          "final_image_description": "Kael at the entrance, Rook nearby but not close. The memorial wall is prominent — more names than in other endings. The colony behind them is lit but visibly reduced. Quieter. Smaller."
+        },
+        {
+          "variant_id": "the_quiet_rook_dead",
+          "rook_alive": false,
+          "scene_description": "The storm passes. Below 65% survival. Rook is not here. His name is last on the memorial wall. The final image is the memorial wall and silence.",
+          "body_text": "Between four hundred and fifty-five and five hundred and fifty colonists, depending on how the thirty-five days went. The colony was supposed to be eight hundred and forty-seven. It was not, now.\n\nKael stood at the entrance for a long time after the storm and did not write anything in the log that night. There were names in there already — more than there should be, more than a Director who made better choices would have allowed — and adding to the count that night felt like a thing that could wait until morning.\n\nThe memorial wall had names going back to Day 3. It had names from the Fever and names from the starvation months and names from the tunnel incidents and one name — the last one, the most recent, the one that the youth group had put there in their own handwriting — that was not any of those things. It was a different kind of failure.\n\nThe colony survived. The colony was smaller than it was supposed to be and quieter than it had any right to be and it was going to have to become something else, in the days after this, because what it was before the storm was not entirely intact.\n\nThe ones who made it would carry the ones who didn't. That was all that was left to do.",
+          "final_line": "",
+          "final_image_note": "No final line. The image is the memorial wall — full frame, every name legible. Rook's name is the last one shown. Hold for three seconds. Silence. Fade to black.",
+          "final_image_description": "The memorial wall, full frame. Every name listed. Rook's name is the last one shown, most recently added. No Kael in frame. No corridor, no colony beyond. Just the names and the silence."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://bjeaexhn82idn"]
+
+[ext_resource type="Script" uid="uid://ddrrx1rfosspx" path="res://scripts/ui/Intro.gd" id="1"]
+
+[node name="Intro" type="Control" unique_id=459894162]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="." unique_id=208734191]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 1)
+
+[node name="VideoPlayer" type="VideoStreamPlayer" parent="." unique_id=745725652]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+expand = true
+
+[node name="ContinuePrompt" type="Label" parent="." unique_id=398218285]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -287.0
+offset_top = -37.0
+offset_right = -12.0
+offset_bottom = -3.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.9, 0.97, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.92)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 24
+text = "PRESS [SPACE] TO SKIP"

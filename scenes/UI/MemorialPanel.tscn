@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://b8d8g5alc8m06"]
+
+[ext_resource type="Script" uid="uid://bkkx2xfrmk4do" path="res://scripts/ui/MemorialPanel.gd" id="1_memorial_panel_script"]
+[ext_resource type="Texture2D" uid="uid://coar6vdmtpcve" path="res://assets/environment/gravestone.png" id="2_gravestone"]
+
+[node name="MemorialPanel" type="Panel" unique_id=1924870188]
+z_index = 100
+offset_left = 233.0
+offset_top = 41.0
+offset_right = 993.0
+offset_bottom = 681.0
+mouse_filter = 0
+script = ExtResource("1_memorial_panel_script")
+
+[node name="GravestoneBackground" type="TextureRect" parent="." unique_id=1920410684]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_gravestone")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1673767439]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 111.0
+offset_top = 29.0
+offset_right = -108.0
+offset_bottom = -55.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 28
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer" unique_id=1796338329]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer" unique_id=1999607395]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 28
+text = "In Memory"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer" unique_id=240202287]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer" unique_id=1605611854]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EntryList" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer" unique_id=1604810018]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="HSeparator2" type="HSeparator" parent="MarginContainer/VBoxContainer" unique_id=1951923466]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="MarginContainer/VBoxContainer" unique_id=567528413]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "Close"

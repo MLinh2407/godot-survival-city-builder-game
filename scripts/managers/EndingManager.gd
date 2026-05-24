@@ -1,0 +1,200 @@
+extends Node
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENDING MANAGER
+# Called once on Day 35 when the storm hits.
+# This is the only place in the codebase where ending selection happens.
+# ══════════════════════════════════════════════════════════════════════════════
+
+signal ending_determined(ending_key: String, rook_alive: bool)
+
+# Ending keys — match endings.json
+const ENDING_THE_SIGNAL        := "the_signal"
+const ENDING_THE_TORCH         := "the_torch"
+const ENDING_THE_NECESSARY_EVIL := "the_necessary_evil"
+const ENDING_THE_QUIET         := "the_quiet"
+
+var _ending_fired: bool = false
+
+# Resolve the active BuildingSystem node from the main scene.
+func _get_building_system() -> Node:
+	var main = get_tree().root.get_node_or_null("Main")
+	if main:
+		return main.get_node_or_null("BuildingSystem")
+	return null
+
+# Check whether the Archive Hall exists before secret-ending evaluation.
+func _has_archive_hall() -> bool:
+	var bs = _get_building_system()
+	if not bs or not bs.has_method("has_building"):
+		return false
+	return bs.has_building(BuildingData.BuildingType.ARCHIVE_HALL)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INIT
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Wait for the scene tree, then begin listening for storm-hit events.
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	await get_tree().process_frame
+	if TimeManager:
+		TimeManager.storm_hit.connect(_on_storm_hit)
+
+# Clear the one-shot guard so a new run can determine an ending again.
+func reset_for_new_game() -> void:
+	_ending_fired = false
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STORM HIT — Day 35 trigger
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Handle the Day 35 storm, shut down buildings, and determine the ending.
+func _on_storm_hit() -> void:
+	if _ending_fired:
+		return
+	_ending_fired = true
+
+	# Step 1 — Shut down all unshielded buildings
+	var building_sys = get_tree().root.get_node_or_null("Main/BuildingSystem")
+	if building_sys and building_sys.has_method("shutdown_unshielded_buildings"):
+		building_sys.shutdown_unshielded_buildings()
+
+	# Step 2 — Apply storm-damaged floor tiles to unshielded building footprints
+	var grid_sys = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
+	if grid_sys != null and building_sys != null:
+		var special_layer = grid_sys.get_node_or_null("SpecialFloorLayer")
+		if special_layer and special_layer is TileMapLayer:
+			for grid_pos in building_sys.active_buildings:
+				var b: BuildingData = building_sys.active_buildings[grid_pos]
+				if not b.is_shielded:
+					var b_type_str: String = grid_sys.anchor_to_type.get(grid_pos, "")
+					if b_type_str == "":
+						continue
+					for cell in grid_sys.get_footprint_cells(grid_pos, b_type_str):
+						special_layer.set_cell(
+							cell,
+							TileRegistry.FLOOR_SOURCE_ID,
+							TileRegistry.M5_STORM_DAMAGED
+						)
+		else:
+			push_warning("EndingManager: $SpecialFloorLayer not found — M5 tiles skipped.")
+	
+	# Step 3 — Freeze time permanently
+	if TimeManager:
+		TimeManager.game_ended = true
+		TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
+	if get_tree():
+		get_tree().paused = false   # Un-pause the tree so UI still works
+	if AudioManager and AudioManager.has_method("stop_rain"):
+		AudioManager.stop_rain()
+
+	# Step 4 — Determine and fire the ending immediately on Day 35
+	determine_ending()
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENDING DETERMINATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Evaluate the current state and choose which ending to fire.
+func determine_ending() -> void:
+	var survival_rate: float  = float(GameManager.current_population) / 847.0
+	var slider_value: float   = GameManager.hope_order_slider
+	var rook_alive: bool      = GameManager.rook_alive
+	var yuna_alive: bool      = GameManager.yuna_alive
+	var vasquez_alive: bool   = GameManager.vasquez_alive
+	var meridian_alive: bool  = GameManager.meridian_alive
+	var all_alive: bool       = rook_alive and yuna_alive and vasquez_alive and meridian_alive
+	var meridian_trusted: bool = GameManager.meridian_trusted
+	var archive_hall_built: bool = _has_archive_hall()
+
+	var ending_key: String
+
+	# Step 0 — Secret ending check (highest priority)
+	if all_alive and survival_rate >= GameConstants.ENDING_SIGNAL_RATE and meridian_trusted and archive_hall_built:
+		ending_key = ENDING_THE_SIGNAL
+		_play_ending(ending_key, rook_alive)
+		return
+
+	# Step 1 — Primary gate: survival rate
+	if survival_rate < GameConstants.ENDING_QUIET_RATE:
+		ending_key = ENDING_THE_QUIET
+		_play_ending(ending_key, rook_alive)
+		return
+
+	# Step 2 — Secondary gate: Hope/Order slider
+	if slider_value < GameConstants.ENDING_SLIDER_MID:
+		ending_key = ENDING_THE_TORCH
+	else:
+		ending_key = ENDING_THE_NECESSARY_EVIL
+
+	_play_ending(ending_key, rook_alive)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PLAY ENDING
+# Loads text from endings.json, emits signal, displays ending screen
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Load the selected ending variant, emit the signal, and add the final journal line.
+func _play_ending(key: String, rook_modifier: bool) -> void:
+
+	# Load ending text from endings.json
+	var ending_data: Dictionary = _load_ending_data(key, rook_modifier)
+
+	# Emit signal — EndingScreen UI listens and displays
+	ending_determined.emit(key, rook_modifier)
+
+	# Log ending final line to journal
+	var ending_text: String = ending_data.get("final_line", "")
+
+	if ending_text != "":
+		var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+		if journal and journal.has_method("add_entry"):
+			journal.add_entry(
+				TimeManager.current_day,
+				ending_text,
+				preload("res://scripts/data/JournalEntry.gd").EntryType.NARRATIVE,
+				"Final Entry"
+			)
+
+# Load and resolve the ending data matching the chosen key and rook state.
+func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
+	var file = FileAccess.open("res://data/endings.json", FileAccess.READ)
+	if not file:
+		push_warning("EndingManager: Could not open endings.json")
+		return {}
+
+	var content = file.get_as_text()
+	file.close()
+
+	var parsed = JSON.parse_string(content)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("EndingManager: endings.json has invalid root")
+		return {}
+
+	# endings is an ARRAY — iterate to find the matching ending_id
+	var endings: Array = parsed.get("endings", [])
+	var ending_entry: Dictionary = {}
+
+	for e in endings:
+		if typeof(e) == TYPE_DICTIONARY and e.get("ending_id", "") == key:
+			ending_entry = e
+			break
+
+	if ending_entry.is_empty():
+		push_warning("EndingManager: No ending found for key '%s'" % key)
+		return {}
+
+	# variants is an ARRAY — find the correct rook variant
+	var variants: Array = ending_entry.get("variants", [])
+	for v in variants:
+		if typeof(v) == TYPE_DICTIONARY and v.get("rook_alive", true) == rook_alive:
+			return v
+
+	# Fallback — return first variant if no exact rook match found
+	if not variants.is_empty():
+		push_warning("EndingManager: No exact rook variant for '%s' rook_alive=%s — using first variant" \
+			% [key, str(rook_alive)])
+		return variants[0]
+
+	return {}
