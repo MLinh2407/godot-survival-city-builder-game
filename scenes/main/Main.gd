@@ -529,7 +529,6 @@ func _play_intro_sequence() -> void:
 				intro.connect("intro_finished", Callable(self, "_on_intro_finished"))
 			if intro.has_method("start_intro"):
 				intro.start_intro()
-			print("Main: start_new_game signal received, intro shown")
 			return
 
 	_on_intro_finished()
@@ -1308,7 +1307,6 @@ func _on_journal_unread_state_changed(is_unread: bool) -> void:
 
 # Show the journal prompt when a new entry arrives.
 func _on_journal_new_entry_notified() -> void:
-	print("Main: _on_journal_new_entry_notified() called")
 	var now_msec: int = Time.get_ticks_msec()
 	var in_burst: bool = (now_msec - _last_journal_prompt_msec) <= JOURNAL_PROMPT_BURST_WINDOW_MSEC
 	_last_journal_prompt_msec = now_msec
@@ -1451,5 +1449,4 @@ func _resize_journal_badge(display_text: String) -> void:
 
 # Signal the HUD that a journal entry arrived.
 func notify_journal_entry() -> void:
-	print("Main: notify_journal_entry() invoked")
 	_on_journal_new_entry_notified()

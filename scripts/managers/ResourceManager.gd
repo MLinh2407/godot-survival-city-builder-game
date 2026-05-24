@@ -85,7 +85,6 @@ func reset_for_new_game() -> void:
 # Register the BuildingSystem reference used for daily output queries.
 func register_building_system(bs) -> void:
 	building_system = bs
-	print("ResourceManager: BuildingSystem registered.")
 
 # Validate that the BuildingSystem reference exists and is still valid.
 func _has_building_system() -> bool:
@@ -370,26 +369,7 @@ func _check_thresholds() -> void:
 	elif morale_ratio <= GameConstants.WARNING_THRESHOLD:
 		threshold_warning.emit("Morale", false)
 
-# Print a daily debug summary of resource state.
-func _print_debug(day: int) -> void:
-	print("--- Day %d | Power: %.1f (Cap:%.1f / Draw:%.1f) | Food: %.0f | Morale: %.1f | Mat: %d" \
-		% [day, net_power, power_capacity, power_draw, food, morale, materials])
 
-	# Hope/Order slider verification — prints modifier state every day
-	var slider: float = GameManager.hope_order_slider
-	if slider <= GameConstants.SLIDER_HOPE_UPPER:
-		print("    [SLIDER] Hope zone (%.1f) | Morale decay ×%.2f | Food efficiency ×%.2f" \
-			% [slider, GameConstants.HOPE_MORALE_DECAY_MODIFIER, GameConstants.HOPE_FOOD_EFFICIENCY_MODIFIER])
-	elif slider >= GameConstants.SLIDER_ORDER_LOWER:
-		print("    [SLIDER] Order zone (%.1f) | Morale decay ×%.2f | Food production ×%.2f" \
-			% [slider, GameConstants.ORDER_MORALE_DECAY_MODIFIER, GameConstants.ORDER_FOOD_PRODUCTION_MODIFIER])
-	else:
-		print("    [SLIDER] Neutral zone (%.1f) | No passive modifiers active" % slider)
-
-	# Ration Store buffer state
-	if ration_store_exists:
-		print("    [RATION] Buffer: %.0f / %.0f | Auto-rationing: %s" \
-			% [ration_buffer, ration_buffer_max, str(auto_rationing_active)])
 
 # Handle ration store placement or upgrade and initialize buffer state.
 func on_ration_store_built(is_upgraded: bool) -> void:
@@ -407,8 +387,6 @@ func on_ration_store_built(is_upgraded: bool) -> void:
 
 	_sync_ration_store_to_game_manager()
 	resources_changed.emit(net_power, food, morale, materials)
-	print("RationStore built | buffer: %.0f / %.0f | auto-ration threshold: %.0f" \
-		% [ration_buffer, ration_buffer_max, ration_buffer_max * GameConstants.RATION_AUTO_THRESHOLD])
 
 # Handle ration store removal and clear buffer state.
 func on_ration_store_removed() -> void:

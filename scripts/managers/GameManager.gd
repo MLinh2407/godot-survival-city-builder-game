@@ -107,15 +107,6 @@ func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
 	TimeManager.day_changed.connect(_on_day_changed)
-	
-	print("--- GameManager Initialized ---")
-	print("Current Population: ", current_population)
-	print("Available Workers: ", available_workers)
-	print("Sick Count: ", sick_count)
-	print("Hope/Order Slider: ", hope_order_slider)
-	print("Alive Flags - Yuna: ", yuna_alive, " | Rook: ", rook_alive, " | Vasquez: ", vasquez_alive, " | Meridian: ", meridian_alive)
-	print("Current Day: ", current_day)
-	print("-------------------------------")
 
 ## Reset all game state for a new session
 func reset_for_new_game() -> void:
@@ -429,14 +420,12 @@ func save_game(filename: String) -> void:
 	if file:
 		file.store_string(JSON.stringify(data))
 		file.close()
-		print("Game saved successfully to: ", file_path)
 	else:
 		push_error("Failed to open file for writing: ", file_path)
 
 # Load game state from a save file.
 func load_game(filepath: String) -> void:
 	if not FileAccess.file_exists(filepath):
-		print("Save file not found at: ", filepath)
 		return
 		
 	is_loading_game = true
@@ -538,7 +527,6 @@ func load_game(filepath: String) -> void:
 	if main_node:
 		building_sys = main_node.get_node_or_null("BuildingSystem")
 		grid_manager = main_node.get_node_or_null("GameWorld/GridSystem")
-	print("[LOADDBG] main_node=%s building_sys=%s grid_manager=%s" % [str(main_node), str(building_sys), str(grid_manager)])
 
 	for _i in range(60):
 		var building_ready = building_sys and "load_ready" in building_sys and building_sys.load_ready
@@ -577,13 +565,11 @@ func load_game(filepath: String) -> void:
 
 			# Safely spawn it physically and then rewrite the visual configuration.
 			grid_manager.spawn_building_from_save(b_type_str, pos)
-			print("[LOADDBG] spawned %s at %s | active_before=%s" % [b_type_str, str(pos), str(building_sys.active_buildings.has(pos))])
 
 			# If the placement signal fired before BuildingSystem connected, rebuild the
 			# data entry directly so load restores the colony state deterministically.
 			if not building_sys.active_buildings.has(pos):
 				building_sys._on_building_placed(b_type_str, pos)
-				print("[LOADDBG] fallback placed %s at %s | active_after_fallback=%s" % [b_type_str, str(pos), str(building_sys.active_buildings.has(pos))])
 			
 			if building_sys.active_buildings.has(pos):
 				var b_data = building_sys.active_buildings[pos]
@@ -613,9 +599,6 @@ func load_game(filepath: String) -> void:
 							pass
 				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
-				print("[LOADDBG] finalized %s at %s | upgraded=%s | power=%.2f" % [b_type_str, str(pos), str(b_data.is_upgraded), b_data.base_production_power])
-			else:
-				print("[LOADDBG] building missing after load for %s at %s" % [b_type_str, str(pos)])
 
 		await get_tree().process_frame
 
@@ -693,7 +676,6 @@ func load_game(filepath: String) -> void:
 						pass
 				building_sys.active_buildings[pos] = b_data
 				b_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type_str, Vector2i(1, 1))
-				print("[LOADDBG] manual rebuilt %s at %s" % [b_type_str, str(pos)])
 
 			b_data.workers_assigned = b.get("workers", 0)
 			b_data.is_upgraded = b.get("is_upgraded", false)
@@ -715,7 +697,6 @@ func load_game(filepath: String) -> void:
 					_:
 						pass
 			building_sys.update_building_visual(pos)
-			print("[LOADDBG] reconciled %s at %s | upgraded=%s | power=%.2f" % [b_type_str, str(pos), str(b_data.is_upgraded), b_data.base_production_power])
 
 		# Reconcile ration store capacity with saved values and upgrade state
 		if ResourceManager:
@@ -724,8 +705,6 @@ func load_game(filepath: String) -> void:
 			var has_store: bool = building_sys.has_building(BuildingData.BuildingType.RATION_STORE)
 			var is_upgraded: bool = building_sys.is_building_upgraded(BuildingData.BuildingType.RATION_STORE)
 			ResourceManager.restore_ration_store_from_save(saved_buffer, saved_max, has_store, is_upgraded)
-
-		print("[LOADDBG] restored building count=%d keys=%s" % [building_sys.active_buildings.size(), str(building_sys.active_buildings.keys())])
 
 	# Restore journal entries after world state is fully restored
 	var journal_node = null
@@ -743,4 +722,3 @@ func load_game(filepath: String) -> void:
 		CrisisEventSystem.set_fired_events_state(fired_state)
 	
 	is_loading_game = false
-	print("Game loaded successfully from: ", filepath)

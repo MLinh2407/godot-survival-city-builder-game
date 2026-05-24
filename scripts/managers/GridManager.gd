@@ -251,7 +251,6 @@ func _prefill_void() -> void:
 			)
 			filled += 1
 
-	print("GridManager: Void pre-fill complete — %d cells." % filled)
 	load_ready = true
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
@@ -582,8 +581,6 @@ func place_building(anchor: Vector2i) -> void:
 				TileRegistry.FLOOR_SOURCE_ID,
 				TileRegistry.M7_MEMORIAL_GROUND
 			)
-			print("GridManager: M7 set at cell %s | source %d | atlas %s" \
-				% [cell, TileRegistry.FLOOR_SOURCE_ID, TileRegistry.M7_MEMORIAL_GROUND])  # Debug
 	
 	building_placed.emit(current_build_type, anchor)
 	_clear_footprint_overlay()

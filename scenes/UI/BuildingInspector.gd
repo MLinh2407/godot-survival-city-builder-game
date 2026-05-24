@@ -51,11 +51,9 @@ func _ready() -> void:
 
 	if building_system:
 		building_system.building_selected_data.connect(_on_building_selected)
-		print("BuildingInspector: Connected to BuildingSystem at", building_system)
 		# Refresh UI when building states change (damaged/upgraded/power)
 		if building_system.has_signal("building_state_changed"):
 			building_system.building_state_changed.connect(_on_building_state_changed)
-			print("BuildingInspector: Connected to building_state_changed signal")
 	# Repair button handler
 	if repair_button:
 		repair_button.pressed.connect(_on_repair_pressed)
@@ -152,8 +150,7 @@ func _on_fill_workers_pressed() -> void:
 	if not building_system or not current_building: return
 	var slots_needed: int = current_building.worker_capacity - current_building.workers_assigned
 	var can_assign:   int = mini(slots_needed, GameManager.available_workers)
-	for i in range(can_assign):
-		building_system.assign_worker()
+	building_system.assign_workers(can_assign)
 	if can_assign > 0:
 		_animate_btn(_worker_plus_btn)
 	_refresh_ui_text()
@@ -487,7 +484,6 @@ func _reposition_for_content() -> void:
 # SELECTION HANDLING
 # ══════════════════════════════════════════════════════════════════════════════
 func _on_building_selected(b_data: BuildingData) -> void:
-	print("BuildingInspector: _on_building_selected called with", b_data)
 	# Disconnect from the old building
 	if current_building != null and current_building.staffing_changed.is_connected(_on_staffing_changed):
 		current_building.staffing_changed.disconnect(_on_staffing_changed)
@@ -727,8 +723,6 @@ func _hide_panel() -> void:
 
 # Start a building repair action.
 func _on_repair_pressed() -> void:
-	print("BuildingInspector: Repair button pressed for", current_building)
-
 	var target_building: BuildingData = current_building
 	var gm = building_system
 	if (target_building == null or gm == null) and gm != null:
@@ -736,21 +730,13 @@ func _on_repair_pressed() -> void:
 		var sel_pos: Vector2i = gm.current_selected_grid_pos
 		if gm.has_selected_building and gm.active_buildings.has(sel_pos):
 			target_building = gm.active_buildings[sel_pos]
-			print("BuildingInspector: Fallback found building at", sel_pos, "->", target_building)
 
 	if target_building == null and gm != null and has_last_selected_grid_pos:
 		# Use the last selected pos if current selection cleared due to input ordering
 		if gm.active_buildings.has(last_selected_grid_pos):
 			target_building = gm.active_buildings[last_selected_grid_pos]
-			print("BuildingInspector: Using last_selected_grid_pos fallback ->", last_selected_grid_pos)
 
 	if target_building == null or not gm:
-		print("BuildingInspector: No current building or building_system")
-		if gm:
-			print("BuildingInspector: current_selected_grid_pos", gm.current_selected_grid_pos)
-			print("BuildingInspector: active_buildings keys", gm.active_buildings.keys())
-			if gm.grid_manager:
-				print("BuildingInspector: occupied_cells keys", gm.grid_manager.occupied_cells.keys())
 		return
 
 	# Find the placed scene node for this building
@@ -759,12 +745,9 @@ func _on_repair_pressed() -> void:
 		return
 
 	var node = gm.grid_manager.occupied_cells.get(target_building.grid_position, null)
-	print("BuildingInspector: Found node:", node, "for building data:", target_building)
 	if node:
-		print("BuildingInspector: node class:", node.get_class(), "script:", node.get_script(), "has_method(repair):", node.has_method("repair"))
 		# Prefer calling repair() synchronously
 		if node.has_method("repair"):
-			print("BuildingInspector: Calling repair() for grid", target_building.grid_position)
 			# Play place SFX for user feedback
 			if AudioManager and AudioManager.has_method("play_build_sfx"):
 				AudioManager.play_build_sfx("place")
@@ -772,7 +755,6 @@ func _on_repair_pressed() -> void:
 			# Call directly to obtain success/failure
 			ok = node.repair()
 			if ok:
-				print("BuildingInspector: Repair succeeded for", target_building.grid_position)
 				_refresh_ui_text()
 			else:
 				push_warning("BuildingInspector: Repair failed or insufficient materials")
@@ -781,7 +763,6 @@ func _on_repair_pressed() -> void:
 			for child in node.get_children():
 				if child.has_method("repair"):
 					found_child = true
-					print("BuildingInspector: Calling repair() on child", child)
 					if AudioManager and AudioManager.has_method("play_build_sfx"):
 						AudioManager.play_build_sfx("repair")
 					var child_ok: bool = child.repair()
@@ -797,7 +778,6 @@ func _on_repair_pressed() -> void:
 
 	if node and not node.has_method("repair"):
 		var cost:int = GameConstants.REPAIR_COST_BASE
-		print("BuildingInspector: Fallback repair for", target_building, "cost", cost, "materials", ResourceManager.materials)
 		if AudioManager and AudioManager.has_method("play_build_sfx"):
 			AudioManager.play_build_sfx("repair")
 
@@ -805,7 +785,6 @@ func _on_repair_pressed() -> void:
 		if not ResourceManager.consume_materials(cost):
 			push_warning("Repair failed: insufficient materials")
 			return
-		print("BuildingInspector: Materials after spending", ResourceManager.materials)
 		# Notify building system to clear damaged
 		if building_system and building_system.has_method("set_building_damaged"):
 			building_system.set_building_damaged(target_building.grid_position, false)
@@ -816,8 +795,6 @@ func _on_repair_pressed() -> void:
 
 # Start a building upgrade action.
 func _on_upgrade_pressed() -> void:
-	print("BuildingInspector: Upgrade pressed for", current_building)
-
 	var target_building: BuildingData = current_building
 	var gm = building_system
 	if (target_building == null or gm == null) and gm != null:
@@ -841,14 +818,6 @@ func _on_upgrade_pressed() -> void:
 	var cost:int = GameConstants.UPGRADE_COST_BASE
 	if target_building.building_type == BuildingData.BuildingType.WATER_RECYCLER or target_building.building_type == BuildingData.BuildingType.MED_CLINIC:
 		cost = GameConstants.UPGRADE_COST_HIGH
-
-	print("BuildingInspector: Upgrade cost", cost, "materials", ResourceManager.materials)
-	if ResourceManager:
-		print("[DEBUG] Before upgrade - power_capacity:", ResourceManager.power_capacity, "power_draw:", ResourceManager.power_draw, "net_power:", ResourceManager.net_power)
-		if building_system:
-			for pos in building_system.active_buildings.keys():
-				var b = building_system.active_buildings[pos]
-				print("[DEBUG] Building", b.building_name, "pos", pos, "base_power", b.base_production_power, "is_upgraded", b.is_upgraded, "workers", b.workers_assigned)
 
 	# Play SFX for user feedback
 	if AudioManager and AudioManager.has_method("play_build_sfx"):
@@ -900,15 +869,7 @@ func _on_upgrade_pressed() -> void:
 	if ResourceManager and ResourceManager.has_method("calculate_power"):
 		ResourceManager.calculate_power()
 
-	if ResourceManager:
-		print("[DEBUG] After upgrade - power_capacity:", ResourceManager.power_capacity, "power_draw:", ResourceManager.power_draw, "net_power:", ResourceManager.net_power)
-		if building_system:
-			for pos in building_system.active_buildings.keys():
-				var b2 = building_system.active_buildings[pos]
-				print("[DEBUG] Building", b2.building_name, "pos", pos, "base_power", b2.base_production_power, "is_upgraded", b2.is_upgraded, "workers", b2.workers_assigned)
-
 	_refresh_ui_text()
-	print("BuildingInspector: Upgrade applied to", target_building)
 
 # Toggle the building shield state.
 func _on_shield_pressed() -> void:

@@ -430,15 +430,12 @@ func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictio
 	if get_tree() and get_tree().has_meta("input_lock_until_msec"):
 		var until = int(get_tree().get_meta("input_lock_until_msec"))
 		if Time.get_ticks_msec() < until:
-			print("DialogueEngine: Ignoring input due to global input lock")
 			return
 
 	if Time.get_ticks_msec() - _last_card_shown_time < 200:
-		print("DialogueEngine: Ignoring rapid choice activation")
 		return
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
-	print("%s/%s" % [event_id, choice_id])
 	choice_made.emit(event_id, choice_id, choice_data)
 	_dismiss_card()
 

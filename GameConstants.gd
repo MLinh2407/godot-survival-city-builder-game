@@ -267,22 +267,4 @@ const RAIN_VOLUME_RATIO: float                  = 0.40  # rain loop base volume 
 const WEEKLY_SUMMARY_DAYS: Array[int]           = [7, 14, 21, 28, 35]
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# INITIALIZATION & DEBUG
-# ══════════════════════════════════════════════════════════════════════════════
 
-# func _ready() -> void:
-# 	print("══════════════════════════════════════════════════════════════════════════════")
-# 	print(" INITIALIZING GAME CONSTANTS ")
-# 	print("══════════════════════════════════════════════════════════════════════════════")
-	
-# 	# Dynamically fetch all constants defined in this script
-# 	var constants_map: Dictionary = get_script().get_script_constant_map()
-	
-# 	# Loop through and print each one
-# 	for key in constants_map.keys():
-# 		print(key, ": ", constants_map[key])
-		
-# 	print("══════════════════════════════════════════════════════════════════════════════")
-# 	print(" ALL CONSTANTS LOADED SUCCESSFULLY ")
-# 	print("══════════════════════════════════════════════════════════════════════════════")
