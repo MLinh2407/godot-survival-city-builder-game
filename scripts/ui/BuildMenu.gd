@@ -1,8 +1,11 @@
 extends CanvasLayer
 
+# Emitted when the build menu is opened
 signal build_menu_opened
+# Emitted when the build menu is closed
 signal build_menu_closed
 
+# Color palette used by the build menu UI
 # ── Palette ───────────────────────────────────────────────────────────────────
 const C_BG      := Color(0.03, 0.04, 0.10, 0.97)
 const C_BORDER  := Color(0.00, 0.96, 1.00, 0.65)
@@ -21,6 +24,7 @@ const C_HINT    := Color(0.40, 0.52, 0.65, 0.80)
 const C_WARN    := Color(1.00, 0.72, 0.28, 1.00)
 const C_SEP     := Color(0.00, 0.96, 1.00, 0.18)
 
+# Layout sizing constants for card and header dimensions
 # ── Sizing ────────────────────────────────────────────────────────────────────
 const BAR_FRAC : float = 0.36   # fraction of viewport height the bar occupies
 const CARD_W   : float = 108.0   
@@ -29,6 +33,7 @@ const IMG_H    : float = 72.0
 const TIER_W   : float = 46.0    
 const HEAD_H   : float = 26.0    
 
+# Sprite asset paths for card thumbnails and decorations
 # ── Sprite paths (T1 images shown in menu) ───────────────────────────────────
 const SPRITE_PATHS : Dictionary = {
 	"coal"      : "res://assets/buildings/T1_Buildings/Coal_Generator_T1.png",
@@ -47,6 +52,7 @@ const SPRITE_PATHS : Dictionary = {
 	"cable_d"  : "res://assets/ui/decorations/deco_cable_d.png",
 }
 
+# Localized labels used for tier separators
 const TIER_LABEL : Dictionary = {
 	"first"      : "BUILD\nFIRST",
 	"stable"     : "BUILD\nSTABLE",
@@ -54,10 +60,12 @@ const TIER_LABEL : Dictionary = {
 	"decoration" : "DECO\nRATION",
 }
 
+# Runtime caches for cost labels, icon rects, and material icon texture
 var _cost_labels: Dictionary   = {}   
 var _icon_rects:  Array        = []   
 var _mat_icon_tex: Texture2D   = null
 
+# UI state variables
 # ── State ─────────────────────────────────────────────────────────────────────
 var _defs         : Array  = []
 var is_open       : bool   = false
@@ -77,6 +85,7 @@ func _ready() -> void:
 	visible = false
 	call_deferred("_connect_gm")
 
+# Populate the build definitions used to create cards
 func _init_defs() -> void:
 	_defs = [
 		["Coal Generator", "coal",       6,  GameConstants.BUILD_COST_COAL_GENERATOR,  "first",      false],
@@ -90,6 +99,7 @@ func _init_defs() -> void:
 		["Memorial Wall",  "memorial",   0,  GameConstants.BUILD_COST_MEMORIAL_WALL,   "ready",      false],
 	]
 
+# Connect to GridManager signals and resource updates
 func _connect_gm() -> void:
 	_grid_manager = get_tree().root.get_node_or_null("Main/GameWorld/GridSystem")
 	if not _grid_manager:
@@ -267,7 +277,7 @@ func _add_tier_label(parent: HBoxContainer, tier: String) -> void:
 
 # ── Individual building card ──────────────────────────────────────────────────
 func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
-		_slots: int, cost: int, is_deco: bool) -> void:
+	_slots: int, cost: int, is_deco: bool) -> void:
 
 	var card := Panel.new()
 	card.name                 = "Card_%s" % b_type
@@ -374,6 +384,7 @@ func _add_card(parent: HBoxContainer, display_name: String, b_type: String,
 	card.mouse_entered.connect(func(): _on_card_hover(b_type, true))
 	card.mouse_exited.connect(func():  _on_card_hover(b_type, false))
 
+# Helper to create a styled panel background for a card
 func _card_style(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -406,6 +417,7 @@ func _on_card_input(ev: InputEvent, b_type: String, is_deco: bool) -> void:
 	else:
 		_grid_manager.enter_build_mode(b_type)
 
+# Show hover visual and play SFX when entering/exiting a card
 func _on_card_hover(b_type: String, entering: bool) -> void:
 	if b_type == _active_type:
 		return
@@ -417,6 +429,7 @@ func _on_card_hover(b_type: String, entering: bool) -> void:
 	else:
 		_restore_card(b_type)
 
+# Called when a building is placed by the GridManager externally
 func _on_placed_externally() -> void:
 	if _active_type == "":
 		return
@@ -425,6 +438,7 @@ func _on_placed_externally() -> void:
 	if _hint_lbl:
 		_hint_lbl.text = "Select a building to place"
 
+# Deactivate the current selection and exit build modes
 func _deactivate() -> void:
 	if _active_type == "":
 		return
@@ -439,6 +453,7 @@ func _deactivate() -> void:
 			_grid_manager.exit_decoration_mode()
 	_active_type = ""
 
+# Update hint text depending on whether placing decoration or building
 func _set_hint(_b_type: String, is_deco: bool) -> void:
 	if not _hint_lbl:
 		return
@@ -455,6 +470,7 @@ func _apply_active(b_type: String) -> void:
 	_cards[b_type].add_theme_stylebox_override(
 		"panel", _card_style(C_CARD_A, C_BORDER, 1))
 
+# Restore card to its normal visual state based on affordability
 func _restore_card(b_type: String) -> void:
 	if not _cards.has(b_type): return
 	
@@ -473,6 +489,7 @@ func _restore_card(b_type: String) -> void:
 		_cards[b_type].modulate = Color.WHITE if can_afford else Color(0.90, 0.65, 0.65, 0.55)
 		_cards[b_type].add_theme_stylebox_override("panel", _card_style(C_CARD_N, Color.TRANSPARENT, 0))
 
+# Flash the card UI to indicate a locked state (memorial unavailable)
 func _flash_locked(b_type: String) -> void:
 	AudioManager.play_build_sfx("invalid")
 	if _hint_lbl:
@@ -515,14 +532,15 @@ func _memorial_available() -> bool:
 		   (not GameManager.vasquez_alive) or \
 		   (not GameManager.meridian_alive)
 
+# Refresh the memorial card availability.
 func _refresh_memorial() -> void:
 	_restore_card("memorial")
 
+# Re-evaluate the memorial card state for the UI.
 func refresh_memorial_button() -> void:
 	_refresh_memorial()
 
 # ── Affordability ─────────────────────────────────────────────────────────────
-# Called every time materials change. Dims cards the player cannot afford.
 func _refresh_affordability() -> void:
 	var current_mat: int = GameManager.materials
 	for def in _defs:
@@ -562,6 +580,7 @@ func open() -> void:
 		var t := create_tween()
 		t.tween_property(_root, "modulate:a", 1.0, 0.14)
 
+# Hide the build menu.
 func close() -> void:
 	if not is_open: return
 	is_open = false
@@ -572,6 +591,7 @@ func close() -> void:
 		t.tween_property(_root, "modulate:a", 0.0, 0.12)
 		t.tween_callback(func(): visible = false)
 
+# Toggle the build menu visibility.
 func toggle() -> void:
 	if is_open: close()
 	else:        open()

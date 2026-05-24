@@ -1,7 +1,9 @@
 extends CanvasLayer
 
+ # Emitted after a coach mark is dismissed
 signal coach_mark_dismissed(mark_id: String)
 
+# Configuration constants for bubble, blur and visuals
 # ── Configuration ─────────────────────────────────────────────────────────────
 const AUTO_DISMISS_SEC:  float = 9.0
 const BUBBLE_MIN_WIDTH:  float = 270.0
@@ -18,6 +20,7 @@ const C_SHADOW := Color(0.0,  0.0,  0.0,  0.80)
 const C_TEXT   := Color(0.92, 0.96, 1.00, 1.00)
 const C_HINT   := Color(0.45, 0.55, 0.62, 0.90)
 
+# Runtime state
 # ── State ─────────────────────────────────────────────────────────────────────
 var mark_id:        String  = ""
 var _direction:     String  = "below"
@@ -25,10 +28,12 @@ var _target:        Control = null
 var _target_rect:   Rect2   = Rect2()   
 var _is_dismissing: bool    = false
 
+# Blur overlay nodes and shader rect
 # ── Blur overlay ──────────────────────────────────────────────────────────────
 var _blur_layer: CanvasLayer = null
 var _blur_rect:  ColorRect   = null
 
+# UI node references created during _build_nodes
 # ── Nodes ─────────────────────────────────────────────────────────────────────
 var _root:      Control
 var _shadow:    Panel
@@ -44,6 +49,7 @@ var _pulse_tw:  Tween
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+ # Initialize blur overlay and UI nodes
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 300
@@ -52,6 +58,7 @@ func _ready() -> void:
 
 # ── Blur overlay  ───────────────────────────────────────────────────────────────
 
+# Create a fullscreen blur shader rect used behind the bubble
 func _build_blur_overlay() -> void:
 	_blur_layer = CanvasLayer.new()
 	_blur_layer.layer        = 174
@@ -111,6 +118,7 @@ void fragment() {
 	_blur_rect.material = mat
 	_blur_layer.add_child(_blur_rect)
 
+# Update the shader cutout area to keep the target region sharp
 func _update_blur_cutout(screen_rect: Rect2) -> void:
 	if not _blur_rect or not is_instance_valid(_blur_rect):
 		return
@@ -134,6 +142,7 @@ func _update_blur_cutout(screen_rect: Rect2) -> void:
 		(screen_rect.position.y + screen_rect.size.y + expand_amount) / vp.y
 	))
 
+# Fade in the blur overlay
 func _fade_in_blur() -> void:
 	if not _blur_rect or not is_instance_valid(_blur_rect):
 		return
@@ -141,6 +150,7 @@ func _fade_in_blur() -> void:
 	t.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	t.tween_property(_blur_rect, "modulate:a", 1.0, BLUR_FADE_IN_SEC)
 
+# Fade out and free the blur overlay resources
 func _fade_out_and_free_blur() -> void:
 	if not _blur_rect or not is_instance_valid(_blur_rect):
 		return
@@ -156,6 +166,7 @@ func _fade_out_and_free_blur() -> void:
 
 # ── Main node construction ────────────────────────────────────────────────────
 
+# Construct the visible coach mark nodes (bubble, arrow, highlight)
 func _build_nodes() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -268,8 +279,9 @@ func _build_nodes() -> void:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+# Show a coach mark attached to a target control
 func show_for_target(id: String, target: Control, text: String,
-		direction: String = "below") -> void:
+	direction: String = "below") -> void:
 	mark_id            = id
 	_target            = target
 	_direction         = direction
@@ -277,6 +289,7 @@ func show_for_target(id: String, target: Control, text: String,
 	_highlight.visible = true
 	call_deferred("_do_layout")
 
+# Show a floating coach mark at a screen position
 func show_floating(id: String, screen_pos: Vector2, text: String) -> void:
 	mark_id            = id
 	_target            = null
@@ -287,6 +300,7 @@ func show_floating(id: String, screen_pos: Vector2, text: String) -> void:
 	_update_blur_cutout(Rect2())
 	call_deferred("_place_bubble_at", screen_pos)
 
+# Dismiss the coach mark and free the node
 func dismiss() -> void:
 	if _is_dismissing:
 		return
@@ -305,6 +319,7 @@ func dismiss() -> void:
 
 # ── Input handling ────────────────────────────────────────────────────────────
 
+# Global key input handling (ESC to dismiss)
 func _input(event: InputEvent) -> void:
 	if _is_dismissing:
 		return
@@ -313,6 +328,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			dismiss()
 
+# Click outside bubble dismiss handler
 func _on_root_input(event: InputEvent) -> void:
 	if _is_dismissing:
 		return
@@ -321,6 +337,7 @@ func _on_root_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled() 
 		dismiss()
 
+# Click inside bubble consumes input and dismisses
 func _on_bubble_input(event: InputEvent) -> void:
 	if _is_dismissing:
 		return
@@ -331,6 +348,7 @@ func _on_bubble_input(event: InputEvent) -> void:
 
 # ── Layout ────────────────────────────────────────────────────────────────────
 
+# Compute bubble position relative to target and animate in
 func _do_layout() -> void:
 	if not _target or not _target.is_inside_tree():
 		_highlight.visible = false
@@ -412,6 +430,7 @@ func _do_layout() -> void:
 	_fade_in_blur()
 	_start_pulse()
 
+# Place and show bubble at an absolute screen coordinate
 func _place_bubble_at(screen_pos: Vector2) -> void:
 	var bw: float = BUBBLE_MIN_WIDTH
 	_bubble.custom_minimum_size = Vector2(bw, 0.0)
@@ -448,12 +467,14 @@ func _apply_shadow_and_glow(bpos: Vector2, bw: float) -> void:
 
 # ── Animations ────────────────────────────────────────────────────────────────
 
+# Fade in animation for the entire coach mark root
 func _fade_in() -> void:
 	_root.modulate.a = 0.0
 	var t := create_tween()
 	t.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	t.tween_property(_root, "modulate:a", 1.0, 0.22)
 
+# Start pulsing highlight animation
 func _start_pulse() -> void:
 	if _pulse_tw:
 		_pulse_tw.kill()

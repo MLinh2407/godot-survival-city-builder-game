@@ -67,6 +67,8 @@ const _PORTRAIT_ROLES_BY_KEY: Dictionary = {
 @onready var _portrait_name_label: Label = get_node_or_null(portrait_name_label_path)
 @onready var _portrait_role_label: Label = get_node_or_null(portrait_role_label_path)
 
+
+# Initialize dialogue state, cache styles, and hide the card.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_text_default_left = _text_label.offset_left
@@ -77,6 +79,7 @@ func _ready() -> void:
 	_set_portrait_for_event({})
 	_set_card_visible(false)
 
+# Create or reflow the portrait name and role labels.
 func _ensure_portrait_labels() -> void:
 	if not _dialogue_root:
 		return
@@ -142,6 +145,7 @@ func _ensure_portrait_labels() -> void:
 		_portrait_role_label.add_theme_font_size_override("font_size", 12)
 		_portrait_role_label.add_theme_color_override("font_color", Color(0.72, 0.75, 0.79, 0.92))
 
+# Cache the pause button styles for dialogue choices.
 func _cache_button_styles() -> void:
 	if not button_style_source_path:
 		return
@@ -154,11 +158,13 @@ func _cache_button_styles() -> void:
 	if source_button.has_theme_color_override("font_color"):
 		_button_font_color = source_button.get_theme_color("font_color")
 
+# Load all dialogue event data from disk.
 func _load_events() -> void:
 	_events_by_id.clear()
 	_load_events_from_file("res://data/events.json", "events", false)
 	_load_events_from_file("res://data/sub_events.json", "sub_events", true)
 
+# Load and validate a single dialogue JSON file.
 func _load_events_from_file(path: String, root_key: String, is_sub_event_file: bool) -> void:
 	var file = FileAccess.open(path, FileAccess.READ)
 	if not file:
@@ -192,6 +198,7 @@ func _load_events_from_file(path: String, root_key: String, is_sub_event_file: b
 			continue
 		_events_by_id[event_id] = event_data
 
+# Convert a sub-event payload into dialogue card data.
 func _adapt_sub_event_for_dialogue(sub_event: Dictionary) -> Dictionary:
 	var event_id = str(sub_event.get("event_id", sub_event.get("sub_event_id", ""))).strip_edges()
 	if event_id == "":
@@ -229,6 +236,7 @@ func _adapt_sub_event_for_dialogue(sub_event: Dictionary) -> Dictionary:
 		"choices": adapted_choices,
 	}
 
+# Open a dialogue card for the requested event.
 func show_event(event_id: String) -> void:
 	if not _events_by_id.has(event_id):
 		push_warning("DialogueEngine: Unknown event_id: %s" % event_id)
@@ -236,9 +244,11 @@ func show_event(event_id: String) -> void:
 	_active_event_id = event_id
 	_build_card(_events_by_id[event_id])
 
+# Check whether a dialogue event exists.
 func has_event(event_id: String) -> bool:
 	return _events_by_id.has(event_id)
 
+# Clear dialogue state for a fresh run.
 func reset_for_new_game() -> void:
 	_active_event_id = ""
 	_was_tree_paused = false
@@ -259,6 +269,7 @@ func reset_for_new_game() -> void:
 	if _choices_box:
 		_choices_box.visible = false
 
+# Report whether the intro card is currently open.
 func is_intro_card_active() -> bool:
 	if not _dialogue_root:
 		return false
@@ -268,6 +279,7 @@ func is_intro_card_active() -> bool:
 		return false
 	return str(_active_event_id).begins_with("intro_")
 
+# Populate the dialogue card UI from event data.
 func _build_card(event_data: Dictionary) -> void:
 	_pause_game()
 	var setup_text = str(event_data.get("setup_text", ""))
@@ -322,6 +334,7 @@ func _build_card(event_data: Dictionary) -> void:
 	AudioManager.on_crisis_card_opened()
 	_play_event_specific_sfx(_active_event_id)
 
+# Update the portrait area to match the current event.
 func _set_portrait_for_event(event_data: Dictionary) -> void:
 	if not _portrait_frame or not _portrait_image:
 		_apply_portrait_layout(false)
@@ -356,6 +369,7 @@ func _set_portrait_for_event(event_data: Dictionary) -> void:
 	_set_portrait_identity(character_name, character_role)
 	_apply_portrait_layout(true)
 
+# Resolve the speaker name and role for a portrait.
 func _resolve_character_display(event_data: Dictionary, portrait_key: String) -> Dictionary:
 	var explicit_name = str(event_data.get("character_name", "")).strip_edges()
 	var explicit_role = str(event_data.get("character_role", "")).strip_edges()
@@ -370,6 +384,7 @@ func _resolve_character_display(event_data: Dictionary, portrait_key: String) ->
 		"role": resolved_role,
 	}
 
+# Apply the resolved portrait labels.
 func _set_portrait_identity(name_text: String, role_text: String) -> void:
 	if not _portrait_name_label:
 		return
@@ -381,6 +396,7 @@ func _set_portrait_identity(name_text: String, role_text: String) -> void:
 		_portrait_role_label.text = role_text
 		_portrait_role_label.visible = has_role
 
+# Adjust the dialogue layout for portrait visibility.
 func _apply_portrait_layout(has_portrait: bool) -> void:
 	if not _text_label or not _choices_box:
 		return
@@ -391,6 +407,7 @@ func _apply_portrait_layout(has_portrait: bool) -> void:
 		_text_label.offset_left = _text_default_left
 		_choices_box.offset_left = _choices_default_left
 
+# Build a styled button for one dialogue choice.
 func _create_choice_button(choice_text: String) -> Button:
 	var button = Button.new()
 	button.text = choice_text
@@ -408,22 +425,21 @@ func _create_choice_button(choice_text: String) -> Button:
 	button.set_script(load("res://scripts/ui/UI_Button.gd"))
 	return button
 
+# Handle a dialogue choice and apply its outcomes.
 func _on_choice_pressed(event_id: String, choice_id: String, choice_data: Dictionary) -> void:
 	if get_tree() and get_tree().has_meta("input_lock_until_msec"):
 		var until = int(get_tree().get_meta("input_lock_until_msec"))
 		if Time.get_ticks_msec() < until:
-			print("DialogueEngine: Ignoring input due to global input lock")
 			return
 
 	if Time.get_ticks_msec() - _last_card_shown_time < 200:
-		print("DialogueEngine: Ignoring rapid choice activation")
 		return
 	var delta = _extract_hope_order_delta(choice_data)
 	GameManager.apply_hope_order_delta(delta)
-	print("%s/%s" % [event_id, choice_id])
 	choice_made.emit(event_id, choice_id, choice_data)
 	_dismiss_card()
 
+# Read any hope/order delta attached to a choice.
 func _extract_hope_order_delta(choice_data: Dictionary) -> float:
 	var outcomes: Array = choice_data.get("outcomes", [])
 	for outcome in outcomes:
@@ -433,6 +449,7 @@ func _extract_hope_order_delta(choice_data: Dictionary) -> float:
 			return float(outcome["hope_order_delta"])
 	return 0.0
 
+# Find a descendant node by name.
 func _recursive_find(node: Node, target_name: String):
 	if not node:
 		return null
@@ -445,6 +462,7 @@ func _recursive_find(node: Node, target_name: String):
 				return res
 	return null
 
+# Close the active dialogue card.
 func _dismiss_card() -> void:
 	var should_force_unpause := _active_event_id.begins_with("intro_")
 	_set_portrait_for_event({})
@@ -462,10 +480,12 @@ func _dismiss_card() -> void:
 		return
 	AudioManager.on_crisis_card_dismissed()
 
+# Remove all currently displayed choice buttons.
 func _clear_choices() -> void:
 	for child in _choices_box.get_children():
 		child.queue_free()
 
+# Pause the game while dialogue is open.
 func _pause_game() -> void:
 	if not get_tree():
 		return
@@ -476,6 +496,7 @@ func _pause_game() -> void:
 	get_tree().paused = true
 	TimeManager.set_game_speed(TimeManager.GameSpeed.PAUSED)
 
+# Restore gameplay after dialogue closes.
 func _resume_game() -> void:
 	if not get_tree():
 		return
@@ -490,6 +511,7 @@ func _resume_game() -> void:
 		get_tree().paused = false
 		TimeManager.set_game_speed(_previous_speed)
 
+# Show or hide the dialogue card container.
 func _set_card_visible(is_visible: bool) -> void:
 	if _dialogue_root:
 		_dialogue_root.visible = is_visible
@@ -523,6 +545,7 @@ func _set_card_visible(is_visible: bool) -> void:
 						and first_btn.focus_mode != Control.FOCUS_NONE:
 					first_btn.grab_focus()
 
+# Trigger any audio tied to a dialogue event.
 func _play_event_specific_sfx(event_id: String) -> void:
 	match event_id:
 		"the_vasquez_offer":
@@ -532,6 +555,7 @@ func _play_event_specific_sfx(event_id: String) -> void:
 		_:
 			return
 
+# Open a special dialogue card for a named death.
 func show_death_card(portrait_key: String, char_name: String, char_role: String, prompt_text: String) -> void:
 	var event_data: Dictionary = {
 		"setup_text": prompt_text,

@@ -1,3 +1,4 @@
+# MERIDIAN Archive Hall terminal UI for showing messages
 extends CanvasLayer
 
 var _root:          Control       = null
@@ -13,6 +14,7 @@ var _scroll:        ScrollContainer = null
 var _messages:      Array = []   # filtered messages available today
 var _current_index: int   = 0
 
+# Initialize the terminal UI and load its message set.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 130
@@ -23,6 +25,7 @@ func _ready() -> void:
 # UI CONSTRUCTION
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Build the terminal UI nodes programmatically
 func _build_ui() -> void:
 	_root = Control.new()
 	_root.anchor_left   = 0.5
@@ -159,6 +162,7 @@ func _build_ui() -> void:
 	_next_btn.pressed.connect(_on_next)
 	nav.add_child(_next_btn)
 
+# Create one terminal navigation button.
 func _make_nav_btn(txt: String) -> Button:
 	var btn := Button.new()
 	btn.text               = txt
@@ -188,6 +192,7 @@ func _make_nav_btn(txt: String) -> Button:
 # PUBLIC API
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Public: open the terminal and display available messages
 func open_terminal() -> void:
 	_load_messages()
 	_current_index = 0
@@ -208,6 +213,7 @@ func open_terminal() -> void:
 	if _scroll:
 		_scroll.scroll_vertical = 0
 
+# Public: close the terminal with a fade
 func close_terminal() -> void:
 	if _root:
 		var t := create_tween()
@@ -218,6 +224,7 @@ func close_terminal() -> void:
 # MESSAGE LOADING — filters by current day range and trust status
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Load message list from JSON, filtered by day and trust state
 func _load_messages() -> void:
 	_messages.clear()
 
@@ -260,6 +267,7 @@ func _load_messages() -> void:
 		return int(a_range[0]) < int(b_range[0])
 	)
 
+# Helper: check whether a message should display on the current day
 func _is_in_day_range(msg: Dictionary, current_day: int) -> bool:
 	var day_range: Array = msg.get("display_day_range", [1, 35])
 	if day_range.size() < 2:
@@ -270,6 +278,7 @@ func _is_in_day_range(msg: Dictionary, current_day: int) -> bool:
 # DISPLAY
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Render the currently selected message in the UI
 func _display_current() -> void:
 	if _messages.is_empty():
 		_show_empty_state()
@@ -289,6 +298,7 @@ func _display_current() -> void:
 	if _scroll:
 		_scroll.scroll_vertical = 0
 
+# Display a friendly empty message when no transmissions are available
 func _show_empty_state() -> void:
 	var trusted: bool = GameManager.meridian_trusted if GameManager else false
 	_title_lbl.text = "TERMINAL — NO TRANSMISSIONS AVAILABLE"
@@ -311,6 +321,7 @@ func _show_empty_state() -> void:
 	if _prev_btn: _prev_btn.disabled = true
 	if _next_btn: _next_btn.disabled = true
 
+# Update the access/trust status label based on GameManager flags
 func _update_status_label() -> void:
 	if not _status_lbl:
 		return
@@ -326,12 +337,14 @@ func _update_status_label() -> void:
 # NAVIGATION
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Navigate to previous message
 func _on_prev() -> void:
 	if _current_index > 0:
 		_current_index -= 1
 		_display_current()
 		if AudioManager: AudioManager.play_ui_sfx("click")
 
+# Navigate to next message
 func _on_next() -> void:
 	if _current_index < _messages.size() - 1:
 		_current_index += 1

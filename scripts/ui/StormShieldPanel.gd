@@ -1,3 +1,4 @@
+# UI panel for shielding buildings ahead of the storm (Day 35 mechanic)
 extends CanvasLayer
 
 const C_BG      := Color(0.03, 0.04, 0.10, 0.95)
@@ -12,6 +13,7 @@ var _root:       Control = null
 var _list_vbox:  VBoxContainer = null
 var _bs:         Node = null
 
+# Initialize and connect to TimeManager for storm day updates
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 1   
@@ -22,6 +24,7 @@ func _ready() -> void:
 	if TimeManager:
 		TimeManager.day_changed.connect(_on_day_changed)
 
+# Construct the shield panel UI elements
 func _build_ui() -> void:
 	_root = Control.new()
 	_root.anchor_left   = 0.0
@@ -96,6 +99,7 @@ func _build_ui() -> void:
 	_list_vbox.mouse_filter          = Control.MOUSE_FILTER_IGNORE
 	scroll.add_child(_list_vbox)
 
+# Called when the day advances to show/hide and refresh the panel
 func _on_day_changed(day: int) -> void:
 	if day == GameConstants.STORM_START_DAY:
 		visible = true
@@ -107,6 +111,7 @@ func _on_day_changed(day: int) -> void:
 	if day >= GameConstants.STORM_HIT_DAY:
 		visible = false
 
+# Repopulate the building list showing shield status and days remaining
 func _refresh_list(current_day: int) -> void:
 	if not _list_vbox: return
 	for child in _list_vbox.get_children():
@@ -167,6 +172,7 @@ func _refresh_list(current_day: int) -> void:
 			state_lbl.text = "Exposed"
 			state_lbl.add_theme_color_override("font_color", C_EXPOSED)
 
+# Reset visibility and clear the list for a fresh game
 func reset_for_new_game() -> void:
 	visible = false
 	if _root:

@@ -1,6 +1,9 @@
 extends Node
 
+# Signals for UI and systems to respond to global game state changes
+# Emitted when the hope/order slider changes
 signal hope_order_changed(new_value: float)
+# Emitted when a named character dies
 signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -14,15 +17,22 @@ const CHARACTER_METADATA: Dictionary = {
 	"kael": {"name": "Kael", "role": "Grid-7 Director", "portrait": "res://assets/characters/Kael.png"}
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # GLOBAL GAME STATE
-# ══════════════════════════════════════════════════════════════════════════════
+# Central primitive game state exposed to systems (population, resources)
+# ═════════════════════════════════════════════════════════════════════════════=
 
+# Current total colonist count
 var current_population: int = GameConstants.STARTING_POPULATION
+# Workers available to assign to buildings
 var available_workers: int = GameConstants.STARTING_WORKERS
+# Number of currently sick colonists
 var sick_count: int = 0
+# Current in-game day
 var current_day: int = 1
+# Global materials stockpile
 var materials: int = GameConstants.STARTING_MATERIALS
+# Flag used while loading saved game state to suppress ticks
 var is_loading_game: bool = false
 
 # Float 0-100. Starts at 50 (Neutral)
@@ -37,9 +47,10 @@ var hope_order_slider: float:
 		_hope_order_slider = next_value
 		hope_order_changed.emit(_hope_order_slider)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # CHARACTER ALIVE FLAGS (All true on Day 1)
-# ══════════════════════════════════════════════════════════════════════════════
+# Simple booleans tracking whether named characters are alive
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var yuna_alive: bool = true
 var rook_alive: bool = true
@@ -60,17 +71,19 @@ var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option
 var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
 var deserters_lockdown_taken: bool = false
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # MEMORIAL WALL STATE
-# ══════════════════════════════════════════════════════════════════════════════
+# Tracks memorial wall placement and recorded named-character deaths
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var memorial_wall_built: bool = false # Set TRUE by BuildingSystem when wall placed
 var memorial_prompt_consumed: bool = false # Set TRUE after first death prompt shown and wall built
 var named_death_days: Dictionary = {} # Maps character id to day of death
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # DATA CLASS INSTANCES
-# ══════════════════════════════════════════════════════════════════════════════
+# Thin data-holder objects used by managers and UI (pop/resource/colonists)
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var population_state: PopulationStateData
 
@@ -89,20 +102,13 @@ var colonist_meridian: ColonistData
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Initialize game state managers and load persisted data.
 func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
 	TimeManager.day_changed.connect(_on_day_changed)
-	
-	print("--- GameManager Initialized ---")
-	print("Current Population: ", current_population)
-	print("Available Workers: ", available_workers)
-	print("Sick Count: ", sick_count)
-	print("Hope/Order Slider: ", hope_order_slider)
-	print("Alive Flags - Yuna: ", yuna_alive, " | Rook: ", rook_alive, " | Vasquez: ", vasquez_alive, " | Meridian: ", meridian_alive)
-	print("Current Day: ", current_day)
-	print("-------------------------------")
 
+## Reset all game state for a new session
 func reset_for_new_game() -> void:
 	current_population = GameConstants.STARTING_POPULATION
 	available_workers = GameConstants.STARTING_WORKERS
@@ -166,6 +172,7 @@ func reset_for_new_game() -> void:
 		colonist_meridian.death_cause = ""
 		colonist_meridian.memorial_text = ""
 
+## Create and initialize helper data class instances
 func _initialize_data_classes() -> void:
 	# 1. Population State
 	population_state = PopulationStateData.new()
@@ -225,9 +232,11 @@ func _initialize_data_classes() -> void:
 	colonist_meridian.role = "Fragmented AI"
 	colonist_meridian.is_alive = meridian_alive
 
+## Apply a delta to the hope/order slider (clamped)
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
 
+## Set a named character alive/dead and emit death events
 func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if current_day > 33:
 		return # Locks permanently after Day 33
@@ -259,6 +268,7 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if changed and not is_alive:
 		named_character_died.emit(lower_id)
 
+## Record a named character's death day and update flags
 func record_named_death(identifier: String) -> void:
 	if current_day > 33:
 		return 
@@ -272,6 +282,7 @@ func record_named_death(identifier: String) -> void:
 	# Set alive flag to false
 	set_character_alive(lower_id, false)
 
+## Return memorial entries for dead named characters (sorted by day)
 func get_memorial_entries() -> Array:
 	var entries: Array = []
 	
@@ -291,6 +302,7 @@ func get_memorial_entries() -> Array:
 	entries.sort_custom(func(a, b): return a.day < b.day)
 	return entries
 
+# Handler for TimeManager day changed events
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
 
@@ -303,10 +315,13 @@ func ensure_saves_dir() -> void:
 	if not DirAccess.dir_exists_absolute(SAVES_DIR):
 		DirAccess.make_dir_absolute(SAVES_DIR)
 
+# Serialise the current game into a save file.
 func save_game(filename: String) -> void:
 	ensure_saves_dir()
 	
 	var main_node = get_tree().root.get_node_or_null("Main")
+	if not main_node:
+		main_node = get_tree().root.find_child("Main", true, false)
 	if not main_node:
 		for child in get_tree().root.get_children():
 			if child.has_node("BuildingSystem") and child.has_node("GameWorld/GridSystem"):
@@ -395,6 +410,7 @@ func save_game(filename: String) -> void:
 			"auto_rationing_active": auto_ration
 		},
 		"buildings": serialized_buildings,
+		"fired_events": CrisisEventSystem.get_fired_events_state() if CrisisEventSystem else {},
 		"journal_entries": journal_entries_data,
 		"tutorial_shown_flags": TutorialManager.shown_flags if TutorialManager else {},
 	}
@@ -404,13 +420,12 @@ func save_game(filename: String) -> void:
 	if file:
 		file.store_string(JSON.stringify(data))
 		file.close()
-		print("Game saved successfully to: ", file_path)
 	else:
 		push_error("Failed to open file for writing: ", file_path)
 
+# Load game state from a save file.
 func load_game(filepath: String) -> void:
 	if not FileAccess.file_exists(filepath):
-		print("Save file not found at: ", filepath)
 		return
 		
 	is_loading_game = true
@@ -500,6 +515,8 @@ func load_game(filepath: String) -> void:
 
 	var main_node = get_tree().root.get_node_or_null("Main")
 	if not main_node:
+		main_node = get_tree().root.find_child("Main", true, false)
+	if not main_node:
 		for child in get_tree().root.get_children():
 			if child.has_node("BuildingSystem") and child.has_node("GameWorld/GridSystem"):
 				main_node = child
@@ -510,11 +527,20 @@ func load_game(filepath: String) -> void:
 	if main_node:
 		building_sys = main_node.get_node_or_null("BuildingSystem")
 		grid_manager = main_node.get_node_or_null("GameWorld/GridSystem")
+
+	for _i in range(60):
+		var building_ready = building_sys and "load_ready" in building_sys and building_sys.load_ready
+		var grid_ready = grid_manager and "load_ready" in grid_manager and grid_manager.load_ready
+		if building_ready and grid_ready:
+			break
+		await get_tree().process_frame
+
 	if building_sys and grid_manager:
 		# First clear the board natively
 		grid_manager.clear_grid()
 		building_sys.active_buildings.clear()
 
+		var saved_buildings: Array = data.get("buildings", [])
 		var b_arr = data.get("buildings", [])
 		for b in b_arr:
 			var pos = Vector2i(b.get("grid_x", 0), b.get("grid_y", 0))
@@ -539,6 +565,11 @@ func load_game(filepath: String) -> void:
 
 			# Safely spawn it physically and then rewrite the visual configuration.
 			grid_manager.spawn_building_from_save(b_type_str, pos)
+
+			# If the placement signal fired before BuildingSystem connected, rebuild the
+			# data entry directly so load restores the colony state deterministically.
+			if not building_sys.active_buildings.has(pos):
+				building_sys._on_building_placed(b_type_str, pos)
 			
 			if building_sys.active_buildings.has(pos):
 				var b_data = building_sys.active_buildings[pos]
@@ -552,7 +583,120 @@ func load_game(filepath: String) -> void:
 				if b_data.is_damaged:
 					building_sys.set_building_damaged(pos, true)
 				# Refresh visuals after load
+				# Re-apply any upgrade-side effects that are normally applied at runtime
+				if b_data.is_upgraded:
+					match b_data.building_type:
+						BuildingData.BuildingType.COAL_GENERATOR:
+							b_data.base_production_power = GameConstants.COAL_POWER_T2
+						BuildingData.BuildingType.GEOTHERMAL_TAP:
+							b_data.base_production_power = GameConstants.GEOTHERMAL_POWER_T2
+						BuildingData.BuildingType.HYDROPONIC_BAY:
+							b_data.base_production_food = GameConstants.UPGRADED_FOOD_RATE
+						BuildingData.BuildingType.RATION_STORE:
+							if ResourceManager:
+								ResourceManager.on_ration_store_built(true)
+						_:
+							pass
+				# Refresh visuals after load
 				building_sys.update_building_visual(pos)
+
+		await get_tree().process_frame
+
+		# Reconcile once more after the scene tree has had a frame to finish
+		# delivering the building_placed signal and any deferred _ready work.
+		for b in saved_buildings:
+			var pos := Vector2i(b.get("grid_x", 0), b.get("grid_y", 0))
+			var ty := int(b.get("type", 0))
+			var type_map: Dictionary = {
+				BuildingData.BuildingType.COAL_GENERATOR:  "coal",
+				BuildingData.BuildingType.GEOTHERMAL_TAP:  "geothermal",
+				BuildingData.BuildingType.HYDROPONIC_BAY:  "hydro",
+				BuildingData.BuildingType.RATION_STORE:    "ration",
+				BuildingData.BuildingType.WATER_RECYCLER:  "water",
+				BuildingData.BuildingType.MED_CLINIC:      "med",
+				BuildingData.BuildingType.SHELTER_BLOCK:   "shelter",
+				BuildingData.BuildingType.ARCHIVE_HALL:    "archive",
+				BuildingData.BuildingType.MEMORIAL_WALL:   "memorial",
+			}
+			var b_type_str: String = type_map.get(ty, "")
+			if b_type_str == "":
+				continue
+
+			var b_data: BuildingData = building_sys.active_buildings.get(pos, null)
+			if b_data == null:
+				b_data = BuildingData.new()
+				b_data.grid_position = pos
+				match b_type_str:
+					"coal":
+						b_data.building_type = BuildingData.BuildingType.COAL_GENERATOR
+						b_data.building_name = "Coal Generator"
+						b_data.worker_capacity = GameConstants.COAL_GENERATOR_SLOTS
+						b_data.base_production_power = GameConstants.COAL_POWER_T1
+					"geothermal":
+						b_data.building_type = BuildingData.BuildingType.GEOTHERMAL_TAP
+						b_data.building_name = "Geothermal Tap"
+						b_data.worker_capacity = GameConstants.GEOTHERMAL_WORKER_SLOTS
+						b_data.base_production_power = GameConstants.GEOTHERMAL_POWER_T1
+					"hydro":
+						b_data.building_type = BuildingData.BuildingType.HYDROPONIC_BAY
+						b_data.building_name = "Hydroponic Bay"
+						b_data.worker_capacity = GameConstants.HYDROPONIC_BAY_SLOTS
+						b_data.base_production_food = GameConstants.BASE_FOOD_RATE
+					"ration":
+						b_data.building_type = BuildingData.BuildingType.RATION_STORE
+						b_data.building_name = "Ration Store"
+						b_data.worker_capacity = GameConstants.RATION_STORE_SLOTS
+						b_data.power_draw = GameConstants.RATION_STORE_POWER_DRAW
+					"water":
+						b_data.building_type = BuildingData.BuildingType.WATER_RECYCLER
+						b_data.building_name = "Water Recycler"
+						b_data.worker_capacity = GameConstants.WATER_RECYCLER_SLOTS
+						b_data.power_draw = GameConstants.WATER_RECYCLER_POWER_DRAW
+					"med":
+						b_data.building_type = BuildingData.BuildingType.MED_CLINIC
+						b_data.building_name = "Med Clinic"
+						b_data.worker_capacity = GameConstants.MED_CLINIC_SLOTS
+						b_data.power_draw = GameConstants.MED_CLINIC_POWER_DRAW
+					"shelter":
+						b_data.building_type = BuildingData.BuildingType.SHELTER_BLOCK
+						b_data.building_name = "Shelter Block"
+						b_data.worker_capacity = GameConstants.SHELTER_BLOCK_SLOTS
+						b_data.power_draw = GameConstants.SHELTER_POWER_DRAW
+					"archive":
+						b_data.building_type = BuildingData.BuildingType.ARCHIVE_HALL
+						b_data.building_name = "Archive Hall"
+						b_data.worker_capacity = GameConstants.ARCHIVE_HALL_SLOTS
+						b_data.power_draw = GameConstants.ARCHIVE_HALL_POWER_DRAW
+					"memorial":
+						b_data.building_type = BuildingData.BuildingType.MEMORIAL_WALL
+						b_data.building_name = "Memorial Wall"
+						b_data.worker_capacity = 0
+						b_data.power_draw = 0.0
+					_:
+						pass
+				building_sys.active_buildings[pos] = b_data
+				b_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type_str, Vector2i(1, 1))
+
+			b_data.workers_assigned = b.get("workers", 0)
+			b_data.is_upgraded = b.get("is_upgraded", false)
+			b_data.is_damaged = b.get("is_damaged", false)
+			b_data.is_shielded = b.get("is_shielded", false)
+			b_data.is_shielding = b.get("is_shielding", false)
+			b_data.shield_days_accumulated = b.get("shield_days_accumulated", 0)
+			if b_data.is_upgraded:
+				match b_data.building_type:
+					BuildingData.BuildingType.COAL_GENERATOR:
+						b_data.base_production_power = GameConstants.COAL_POWER_T2
+					BuildingData.BuildingType.GEOTHERMAL_TAP:
+						b_data.base_production_power = GameConstants.GEOTHERMAL_POWER_T2
+					BuildingData.BuildingType.HYDROPONIC_BAY:
+						b_data.base_production_food = GameConstants.UPGRADED_FOOD_RATE
+					BuildingData.BuildingType.RATION_STORE:
+						if ResourceManager:
+							ResourceManager.on_ration_store_built(true)
+					_:
+						pass
+			building_sys.update_building_visual(pos)
 
 		# Reconcile ration store capacity with saved values and upgrade state
 		if ResourceManager:
@@ -563,10 +707,18 @@ func load_game(filepath: String) -> void:
 			ResourceManager.restore_ration_store_from_save(saved_buffer, saved_max, has_store, is_upgraded)
 
 	# Restore journal entries after world state is fully restored
-	var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
+	var journal_node = null
+	if main_node:
+		journal_node = main_node.get_node_or_null("UILayer/ColonyJournal")
+	if journal_node == null:
+		journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	var journal_data: Variant = data.get("journal_entries", [])
 	if journal_node and journal_node.has_method("deserialise"):
 		journal_node.deserialise(journal_data)
+
+	# Restore crisis event fired-state so events don't re-fire after load
+	var fired_state = data.get("fired_events", {})
+	if typeof(fired_state) == TYPE_DICTIONARY and CrisisEventSystem:
+		CrisisEventSystem.set_fired_events_state(fired_state)
 	
 	is_loading_game = false
-	print("Game loaded successfully from: ", filepath)

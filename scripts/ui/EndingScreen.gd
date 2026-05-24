@@ -1,7 +1,9 @@
 extends Control
 
+# Emitted when credits roll completes
 signal credits_finished
 
+# Map ending keys to video filename prefixes
 const ENDING_VIDEO_PREFIX := {
 	EndingManager.ENDING_THE_SIGNAL: "signal",
 	EndingManager.ENDING_THE_QUIET: "quiet",
@@ -13,6 +15,7 @@ const SKIP_DELAY_SEC: float = 5.0
 const DEFAULT_VIDEO_SIZE: Vector2 = Vector2(1934.0, 1080.0)
 const MENU_FADE_DURATION_SEC: float = 0.6
 
+# Node references
 @onready var video_player: VideoStreamPlayer = $EndingVideo
 @onready var skip_prompt: Label = $SkipPrompt
 @onready var end_card: Control = $EndCard
@@ -21,6 +24,7 @@ const MENU_FADE_DURATION_SEC: float = 0.6
 @onready var credits_roll: Control = $CreditsRoll
 @onready var _fade_layer: ColorRect = null
 
+# Runtime state
 var _elapsed: float = 0.0
 var _skip_enabled: bool = false
 var _ending_key: String = ""
@@ -32,6 +36,7 @@ var _continue_hover_tween: Tween
 var _fade_tween: Tween
 var return_to_main_menu_after_credits: bool = true
 
+# Prepare the screen for showing menu-mode credits
 func reset_for_menu_credits() -> void:
 	visible = true
 	_ending_key = ""
@@ -55,6 +60,7 @@ func reset_for_menu_credits() -> void:
 		_fade_layer.visible = false
 		_fade_layer.modulate.a = 0.0
 
+# Connect signals and initialize nodes
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process(true)
@@ -84,6 +90,7 @@ func _ready() -> void:
 	if get_viewport() and not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
 		get_viewport().size_changed.connect(_on_viewport_size_changed)
 
+# Handle skip prompt timing while videos play
 func _process(delta: float) -> void:
 	if not visible or end_card.visible or (credits_roll and credits_roll.visible):
 		return
@@ -93,6 +100,7 @@ func _process(delta: float) -> void:
 		skip_prompt.visible = true
 		_start_skip_prompt_fx()
 
+# Allow hitting space to skip the ending after delay
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or end_card.visible or (credits_roll and credits_roll.visible):
 		return
@@ -102,11 +110,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_SPACE:
 			_show_end_card()
 
+# Entry point called by EndingManager to start the ending sequence
 func _on_ending_determined(ending_key: String, rook_alive: bool) -> void:
 	_ending_key = ending_key
 	_rook_alive = rook_alive
 	_start_ending()
 
+# Start playing the ending video and pause game time
 func _start_ending() -> void:
 	visible = true
 	end_card.visible = false
@@ -142,9 +152,11 @@ func _start_ending() -> void:
 	await get_tree().process_frame
 	_fit_video_to_viewport()
 
+# Video playback finished; show end card
 func _on_video_finished() -> void:
 	_show_end_card()
 
+# Reveal the end card UI with continue/credits options
 func _show_end_card() -> void:
 	if end_card.visible:
 		return
@@ -160,10 +172,12 @@ func _show_end_card() -> void:
 		continue_button.visible = true
 		_start_continue_idle_fx()
 
+# Set end card text based on ending index
 func _set_end_card_text() -> void:
 	var ending_number := _get_ending_number(_ending_key, _rook_alive)
 	end_card_text.text = "You have unlocked Ending %d out of 7 endings" % ending_number
 
+# Continue from end card into credits roll
 func _on_continue_pressed() -> void:
 	if not end_card.visible:
 		return
@@ -179,6 +193,7 @@ func _on_continue_pressed() -> void:
 	if AudioManager and AudioManager.track_3:
 		AudioManager.play_music(AudioManager.track_3)
 
+# Start rolling credits (used from menu or end card)
 func start_credits_roll(return_to_menu: bool = true) -> void:
 	reset_for_menu_credits()
 	return_to_main_menu_after_credits = return_to_menu
@@ -189,6 +204,7 @@ func start_credits_roll(return_to_menu: bool = true) -> void:
 	if AudioManager and AudioManager.track_3:
 		AudioManager.play_music(AudioManager.track_3)
 
+# Handler when credits roll finishes
 func _on_credits_finished() -> void:
 	if not return_to_main_menu_after_credits:
 		visible = false
@@ -198,6 +214,7 @@ func _on_credits_finished() -> void:
 		return
 	await _fade_to_menu()
 
+# Fade back to main menu and restore game state
 func _return_to_main_menu() -> void:
 	visible = false
 	if credits_roll:
@@ -224,6 +241,7 @@ func _return_to_main_menu() -> void:
 	else:
 		push_warning("EndingScreen: Main not found for returning to menu")
 
+# Ensure a full-screen fade layer exists for transitions
 func _ensure_fade_layer() -> void:
 	if _fade_layer and is_instance_valid(_fade_layer):
 		return
@@ -237,6 +255,7 @@ func _ensure_fade_layer() -> void:
 	add_child(_fade_layer)
 	move_child(_fade_layer, get_child_count() - 1)
 
+# Fade the screen to black, return to menu, then fade back
 func _fade_to_menu() -> void:
 	_ensure_fade_layer()
 	if _fade_tween:
@@ -253,6 +272,7 @@ func _fade_to_menu() -> void:
 	await _fade_tween.finished
 	_fade_layer.visible = false
 
+# Resolve which ending video path to load for an ending key
 func _get_video_path(ending_key: String, rook_alive: bool) -> String:
 	var prefix: String = ENDING_VIDEO_PREFIX.get(ending_key, "")
 	if prefix == "signal":
@@ -262,6 +282,7 @@ func _get_video_path(ending_key: String, rook_alive: bool) -> String:
 	var suffix := "rookalive" if rook_alive else "rookdead"
 	return "res://assets/ending_videos/%s_%s.ogv" % [prefix, suffix]
 
+# Map ending keys and rook state to a numeric ending index
 func _get_ending_number(ending_key: String, rook_alive: bool) -> int:
 	match ending_key:
 		EndingManager.ENDING_THE_QUIET:
@@ -275,10 +296,12 @@ func _get_ending_number(ending_key: String, rook_alive: bool) -> int:
 		_:
 			return 0
 
+# Keep video scaled correctly when viewport size changes
 func _on_viewport_size_changed() -> void:
 	if visible and not end_card.visible:
 		_fit_video_to_viewport()
 
+# Compute scale/position to center the video in the viewport
 func _fit_video_to_viewport() -> void:
 	if not video_player:
 		return
@@ -298,6 +321,7 @@ func _fit_video_to_viewport() -> void:
 	video_player.scale = Vector2(scale_factor, scale_factor)
 	video_player.position = (viewport_size - scaled_size) * 0.5
 
+# Start pulsing tween for the skip prompt label
 func _start_skip_prompt_fx() -> void:
 	if not skip_prompt:
 		return
@@ -308,6 +332,7 @@ func _start_skip_prompt_fx() -> void:
 	_skip_tween.tween_property(skip_prompt, "modulate:a", 1.0, 0.6)
 	_skip_tween.tween_property(skip_prompt, "modulate:a", 0.2, 0.6)
 
+# Stop the skip prompt tween and reset alpha
 func _stop_skip_prompt_fx() -> void:
 	if _skip_tween:
 		_skip_tween.kill()
@@ -315,14 +340,17 @@ func _stop_skip_prompt_fx() -> void:
 	if skip_prompt:
 		skip_prompt.modulate.a = 1.0
 
+# UI hover handlers for the continue button
 func _on_continue_mouse_entered() -> void:
 	_stop_continue_idle_fx()
 	if continue_button:
 		continue_button.modulate.a = 1.0
 
+# UI hover handlers for the continue button
 func _on_continue_mouse_exited() -> void:
 	_start_continue_idle_fx()
 
+# Start idle tween for continue button to draw attention
 func _start_continue_idle_fx() -> void:
 	if not continue_button:
 		return
@@ -333,6 +361,7 @@ func _start_continue_idle_fx() -> void:
 	_continue_hover_tween.tween_property(continue_button, "modulate:a", 1.0, 0.6)
 	_continue_hover_tween.tween_property(continue_button, "modulate:a", 0.7, 0.6)
 
+# Stop idle tween and restore continue button alpha
 func _stop_continue_idle_fx() -> void:
 	if _continue_hover_tween:
 		_continue_hover_tween.kill()

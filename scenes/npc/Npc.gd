@@ -1,5 +1,6 @@
 extends CharacterBody2D
 
+# Simple NPC AI: wandering, idling, or walking to a building
 enum State { WANDER, IDLE, GO_TO_BUILDING }
 var current_state: State = State.WANDER
 var spawn_building: Node2D
@@ -11,29 +12,31 @@ var behavior_timer: Timer
 var idle_anim = "idle"
 var move_anim = "moving"
 
+# Initialize the NPC, resolve animation names, and start the behavior timer.
 func _ready():
 	z_index = 100 # Ensure NPCs overlay the buildings
 	target_position = global_position
-	
+    
 	if animated_sprite and animated_sprite.sprite_frames:
 		for anim in animated_sprite.sprite_frames.get_animation_names():
 			if "idle" in anim.to_lower():
 				idle_anim = anim
 			elif "moving" in anim.to_lower() or anim == "new_animation":
 				move_anim = anim
-				
+                
 	behavior_timer = Timer.new()
 	behavior_timer.wait_time = GameConstants.NPC_BEHAVIOR_CHANGE_TIME
 	behavior_timer.autostart = true
 	behavior_timer.timeout.connect(_on_behavior_timer_timeout)
 	add_child(behavior_timer)
-	
+    
 	_on_behavior_timer_timeout()
 
+# Pick the next behavior and compute a target position for the NPC.
 func _on_behavior_timer_timeout():
 	var choices = [State.WANDER, State.IDLE, State.GO_TO_BUILDING]
 	current_state = choices[randi() % choices.size()]
-	
+    
 	match current_state:
 		State.WANDER:
 			var rand_x = randf_range(-GameConstants.NPC_WANDER_RADIUS, GameConstants.NPC_WANDER_RADIUS)
@@ -49,7 +52,7 @@ func _on_behavior_timer_timeout():
 				if bs != null and bs.active_buildings.size() > 0:
 					var buildings = bs.active_buildings.values()
 					var b = buildings[randi() % buildings.size()]
-					
+                    
 					if bs.grid_manager and bs.grid_manager.occupied_cells.has(b.grid_position):
 						var building_node = bs.grid_manager.occupied_cells[b.grid_position]
 						target_position = building_node.global_position
@@ -58,17 +61,18 @@ func _on_behavior_timer_timeout():
 					else:
 						target_position = global_position
 
+# Move the NPC toward the target position and free it when it reaches a building.
 func _physics_process(_delta):
 	if current_state == State.WANDER or current_state == State.GO_TO_BUILDING:
 		if global_position.distance_to(target_position) > 5.0:
 			var dir = global_position.direction_to(target_position)
 			velocity = dir * GameConstants.NPC_WALK_SPEED
-			
+            
 			if dir.x != 0:
 				animated_sprite.flip_h = dir.x > 0 # Assuming sprite faces left by default
 				# Wait, usually flip_h = true means flipped horizontally.
 				# We will just flip based on movement.
-			
+                
 			animated_sprite.play(move_anim)
 			move_and_slide()
 		else:

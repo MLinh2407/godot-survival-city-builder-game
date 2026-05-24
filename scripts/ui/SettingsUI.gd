@@ -1,5 +1,7 @@
+# Settings UI handling audio volumes and save/load dialog
 extends CanvasLayer
 
+# Emitted when the user selects a save file to load
 signal load_file_selected(path: String)
 
 @onready var master_slider = %MasterSlider
@@ -8,6 +10,7 @@ signal load_file_selected(path: String)
 
 var file_dialog: FileDialog
 
+# Initialize the settings panel, wire sliders, and create the save-file dialog.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Ensure menu runs while game is paused
 	visible = false
@@ -54,6 +57,7 @@ func _ready() -> void:
 	file_dialog.file_selected.connect(_on_file_selected)
 	add_child(file_dialog)
 
+# Close menu on cancel input
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
@@ -61,26 +65,31 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		toggle_menu()
 
+# Toggle visibility and pause state of the menu
 func toggle_menu() -> void:
 	visible = !visible
 	var tree := get_tree()
 	if tree:
 		tree.paused = visible
 
+# Open file dialog to load a save file
 func load_settings() -> void:
 	# Trigger the FileDialog instead of audio loading
 	_check_save_dir()
 	file_dialog.current_dir = "user://saves"
 	file_dialog.popup_centered()
 
+# Ensure `user://saves` exists before showing file dialog
 func _check_save_dir() -> void:
 	if not DirAccess.dir_exists_absolute("user://saves"):
 		DirAccess.make_dir_absolute("user://saves")
 
+# Relay selected path via signal and hide menu
 func _on_file_selected(path: String) -> void:
 	emit_signal("load_file_selected", path)
 	toggle_menu() # hide menu after load
 
+# Save the game with an auto-generated timestamped filename
 func _on_save_button_pressed() -> void:
 	if GameManager:
 		# Auto-generate a save name
@@ -103,6 +112,7 @@ func _on_save_button_pressed() -> void:
 		tween.parallel().tween_property(success_lbl, "modulate:a", 0.0, 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tween.tween_callback(success_lbl.queue_free)
 
+# Initialize slider values from the AudioServer bus volumes
 func _sync_sliders_from_audio_server() -> void:
 	var m = AudioServer.get_bus_index("Master")
 	var mu = AudioServer.get_bus_index("Music")
@@ -112,6 +122,7 @@ func _sync_sliders_from_audio_server() -> void:
 	if mu >= 0: music_slider.value = db_to_linear(AudioServer.get_bus_volume_db(mu))
 	if s >= 0: sfx_slider.value = db_to_linear(AudioServer.get_bus_volume_db(s))
 
+# Apply linear slider value to AudioServer (mute below threshold)
 func _apply_volume(bus_name: String, value_linear: float) -> void:
 	var bus_idx = AudioServer.get_bus_index(bus_name)
 	if bus_idx >= 0:
@@ -121,18 +132,23 @@ func _apply_volume(bus_name: String, value_linear: float) -> void:
 			AudioServer.set_bus_mute(bus_idx, false)
 			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(value_linear))
 
+# Apply the master slider value to the Master bus.
 func _on_master_changed(value: float) -> void:
 	_apply_volume("Master", value)
 
+# Apply the music slider value to the Music bus.
 func _on_music_changed(value: float) -> void:
 	_apply_volume("Music", value)
 
+# Apply the SFX slider value to the SFX bus.
 func _on_sfx_changed(value: float) -> void:
 	_apply_volume("SFX", value)
 
+# Close button handler
 func _on_close_button_pressed() -> void:
 	toggle_menu()
 
+# Return the player to the main menu or reload scene
 func _on_return_to_menu_pressed() -> void:
 	toggle_menu()
 	var main_scene = get_tree().root.get_node_or_null("Main")
@@ -143,6 +159,7 @@ func _on_return_to_menu_pressed() -> void:
 		main_scene.call("show_main_menu_from_ending")
 	else:
 		get_tree().reload_current_scene()
+# Dynamically add a toggle for showing/hiding tutorial prompts
 func _setup_tutorial_toggle() -> void:
 	# Create toggle dynamically — adds below the volume sliders
 	var container := get_node_or_null("%SFXSlider")

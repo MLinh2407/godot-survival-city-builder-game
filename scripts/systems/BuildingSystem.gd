@@ -1,18 +1,33 @@
 extends Node
 class_name BuildingSystem
 
+# BuildingSystem orchestrates placed buildings, staffing, damage, upgrades, and visuals
+# Emitted when worker counts change (UI update)
 signal workers_changed
-signal building_selected_data(b_data: BuildingData) 
+# Emitted to supply UI with the selected building's data
+signal building_selected_data(b_data: BuildingData)
+# Emitted when a building's visual/operational state changes
 signal building_state_changed(grid_pos: Vector2i)
 # signal building_upgraded
 # signal building_damaged
 
+ # Active building data keyed by grid position
 var active_buildings: Dictionary = {}
+# Track previous powered state to detect changes for SFX
 var _prev_powered_states: Dictionary = {}
+# Cooldown to avoid spamming power on/off SFX
 var _power_sfx_cooldown: float = 0.0
+# Currently selected building grid position and selection flag
 var current_selected_grid_pos: Vector2i = Vector2i.ZERO
 var has_selected_building: bool = false
+# Reset/loading flags to avoid emitting events during teardown/load
 var _is_resetting: bool = false
+var load_ready: bool = false
+# Debounce timestamps for rapid worker add/remove UI inputs
+var _last_assign_worker_msec: int = -1
+var _last_remove_worker_msec: int = -1
+
+const WORKER_ACTION_DEBOUNCE_MS: int = 75
 
 # Status badge labels — one Label per placed building, keyed by grid_pos
 var _status_badges: Dictionary = {}
@@ -58,10 +73,12 @@ const JournalEntryData = preload("res://scripts/data/JournalEntry.gd")
 
 var floating_text_scene = preload("res://scenes/UI/FloatingText.tscn")
 
+ # Per-frame update for cooldown timers (e.g., power SFX debounce)
 func _process(delta: float) -> void:
 	if _power_sfx_cooldown > 0.0:
 		_power_sfx_cooldown -= delta
 
+ # Initialize BuildingSystem, connect GridManager signals and autoloads
 func _ready() -> void:
 	if grid_manager:
 		grid_manager.building_placed.connect(_on_building_placed)
@@ -71,7 +88,7 @@ func _ready() -> void:
 	else:
 		push_error("BuildingSystem: GridManager is not assigned!")
 
-	# Wait one frame so all Autoloads are fully ready before registering
+	# Initialize BuildingSystem: wait one frame then register autoload hooks
 	await get_tree().process_frame
 	ResourceManager.register_building_system(self)
 	PopulationManager.register_building_system(self)
@@ -114,7 +131,10 @@ func _ready() -> void:
 							placed_node.set_building_state("tier1")
 				# Ensure centralized tint selection is applied
 				update_building_visual(pos)
+	load_ready = true
 
+
+ # Reset all building state for a new game
 func reset_for_new_game() -> void:
 	_is_resetting = true
 	_power_sfx_cooldown = 0.0
@@ -142,8 +162,9 @@ func reset_for_new_game() -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 # DAILY TICK — tracks unstaffed days for damage and Water Recycler disease
 # ══════════════════════════════════════════════════════════════════════════════
-
 func _on_day_changed(_day: int) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	for grid_pos in active_buildings:
 		var b: BuildingData = active_buildings[grid_pos]
 
@@ -165,15 +186,10 @@ func _on_day_changed(_day: int) -> void:
 			# Building damage: any building at 0 workers for BUILDING_DAMAGE_DAYS
 			if b.days_unstaffed >= GameConstants.BUILDING_DAMAGE_DAYS and not b.is_damaged:
 				# Log resource state and building output before applying damage
-				if ResourceManager:
-					print("[DBG] Damage BEFORE at %s | net_power=%.2f power_capacity=%.2f power_draw=%.2f materials=%d food=%.2f morale=%.2f" % [str(grid_pos), ResourceManager.net_power, ResourceManager.power_capacity, ResourceManager.power_draw, ResourceManager.materials, ResourceManager.food, ResourceManager.morale])
-					var before_out = get_effective_output(grid_pos)
-					print("[DBG] Building BEFORE output: %s" % [str(before_out)])
 
 				# Apply damage
 				set_building_damaged(grid_pos, true)
 				AudioManager.play_build_sfx("damage")
-				print("BuildingSystem: [%s] has become damaged from neglect." % b.building_name)
 				var journal_node = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 				var entry_text := b.building_name + " has fallen into disrepair. " + "No one has been assigned there in days."
 				if journal_node and journal_node.has_method("add_entry"):
@@ -187,9 +203,6 @@ func _on_day_changed(_day: int) -> void:
 						ResourceManager.calculate_power()
 					# Emit a resources update to keep HUD in sync
 					ResourceManager.resources_changed.emit(ResourceManager.net_power, ResourceManager.food, ResourceManager.morale, ResourceManager.materials)
-					print("[DBG] Damage AFTER at %s | net_power=%.2f power_capacity=%.2f power_draw=%.2f materials=%d food=%.2f morale=%.2f" % [str(grid_pos), ResourceManager.net_power, ResourceManager.power_capacity, ResourceManager.power_draw, ResourceManager.materials, ResourceManager.food, ResourceManager.morale])
-					var after_out = get_effective_output(grid_pos)
-					print("[DBG] Building AFTER output: %s" % [str(after_out)])
 		else:
 			# Reset counters when staffed
 			b.days_unstaffed = 0
@@ -197,7 +210,7 @@ func _on_day_changed(_day: int) -> void:
 		
 		# ── Storm shielding progress tick ─────────────────────────────────────
 		# Only runs during the preparation window (Days 26–34)
-		var current_day: int = TimeManager.current_day if TimeManager else 0
+		var current_day: int = _day
 		if current_day >= GameConstants.STORM_START_DAY and current_day < GameConstants.STORM_HIT_DAY:
 			for shield_pos in active_buildings:
 				var sb: BuildingData = active_buildings[shield_pos]
@@ -206,13 +219,10 @@ func _on_day_changed(_day: int) -> void:
 				# Only accumulate if the building has at least one worker assigned
 				if sb.workers_assigned > 0:
 					sb.shield_days_accumulated += 1
-					print("BuildingSystem: [%s] shielding progress %d/%d worker-days" \
-						% [sb.building_name, sb.shield_days_accumulated, GameConstants.STORM_SHIELD_WORKER_DAYS])
 					if sb.shield_days_accumulated >= GameConstants.STORM_SHIELD_WORKER_DAYS:
 						sb.is_shielding = false
 						sb.is_shielded = true
 						_refresh_badge(shield_pos)
-						print("BuildingSystem: ✅ [%s] is now fully shielded." % sb.building_name)
 						building_state_changed.emit(shield_pos)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -225,10 +235,8 @@ func _on_building_selected(grid_pos: Vector2i) -> void:
 	current_selected_grid_pos = grid_pos
 	var b: BuildingData = active_buildings[grid_pos]
 	building_selected_data.emit(b)
-	
-	print("BuildingSystem: Selected [%s] | Workers: %d/%d | Output: %d%%" \
-		% [b.building_name, b.workers_assigned, b.worker_capacity, int(b.staffing_ratio * 100)])
 
+ # Clear current selection and notify listeners
 func _on_building_deselected() -> void:
 	has_selected_building = false
 	current_selected_grid_pos = Vector2i.ZERO
@@ -251,7 +259,6 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			if GameManager.memorial_wall_built:
 				if grid_manager:
 					grid_manager.remove_building(grid_pos)
-				print("BuildingSystem: Memorial Wall is unique and already built.")
 				return
 
 			var any_dead: bool = (not GameManager.yuna_alive) or \
@@ -262,7 +269,6 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 				# Undo the GridManager placement immediately
 				if grid_manager:
 					grid_manager.remove_building(grid_pos)
-				print("BuildingSystem: Memorial Wall cannot be placed — no named character has died yet.")
 				return
 
 		# Archive Hall: one per colony
@@ -280,7 +286,6 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			if grid_manager:
 				grid_manager.remove_building(grid_pos)
 			spawn_floating_text(grid_pos, "Not enough materials!", Color(1.0, 0.45, 0.2))
-			print("BuildingSystem: Cannot place [%s] — need %d materials." % [b_type, build_cost])
 			return
 	
 	match b_type:
@@ -367,8 +372,6 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 	new_data.footprint_size = grid_manager.BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
 	# Connect staffing_changed for this instance so visuals update on worker assignment
 	new_data.staffing_changed.connect(Callable(self, "_on_staffing_changed").bind(grid_pos))
-	print("BuildingSystem: Registered [%s] at %s | Slots: %d | Base power: %.1f | Base food: %.1f" \
-		% [new_data.building_name, grid_pos, new_data.worker_capacity, new_data.base_production_power, new_data.base_production_food])
 
 	# Ensure visuals are correct on placement
 	update_building_visual(grid_pos)
@@ -409,17 +412,17 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 			if active_buildings.has(_auto_sel_pos):
 				_on_building_selected(_auto_sel_pos))
 
+ # Handle building removal, refunds workers, updates resources and visuals
 func _on_building_removed(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
-
-	if _is_resetting:
+	if (GameManager and GameManager.is_loading_game) or _is_resetting:
 		AudioManager.remove_ambient(grid_pos)
 		active_buildings.erase(grid_pos)
 		if current_selected_grid_pos == grid_pos:
 			_on_building_deselected()
 		return
-		
+
 	var b_data: BuildingData = active_buildings[grid_pos]
 	var removed_ration_store: bool = b_data.building_type == BuildingData.BuildingType.RATION_STORE
 	
@@ -431,8 +434,6 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 		spawn_floating_text(grid_pos,
 			"+%d workers returned" % b_data.workers_assigned,
 			Color(0.55, 0.90, 0.62))
-		print("BuildingSystem: Returned %d workers from demolished [%s]" \
-			% [b_data.workers_assigned, b_data.building_name])
 			
 	AudioManager.play_build_sfx("remove")
 	AudioManager.remove_ambient(grid_pos)
@@ -476,20 +477,40 @@ func _on_building_removed(grid_pos: Vector2i) -> void:
 # WORKER ASSIGNMENT
 # ══════════════════════════════════════════════════════════════════════════════
 func assign_worker() -> void:
+	_assign_worker_internal(true)
+
+# Assign up to `count` workers immediately, bypassing the rapid-click debounce.
+func assign_workers(count: int) -> int:
+	if count <= 0:
+		return 0
+
+	var assigned_count: int = 0
+	while assigned_count < count:
+		if not _assign_worker_internal(false):
+			break
+		assigned_count += 1
+
+	return assigned_count
+
+func _assign_worker_internal(apply_debounce: bool) -> bool:
+	if apply_debounce:
+		var now_msec := Time.get_ticks_msec()
+		if now_msec - _last_assign_worker_msec < WORKER_ACTION_DEBOUNCE_MS:
+			return false
+		_last_assign_worker_msec = now_msec
+
 	if not has_selected_building:
-		return
+		return false
 	if not active_buildings.has(current_selected_grid_pos):
-		return
+		return false
 		
 	var b_data: BuildingData = active_buildings[current_selected_grid_pos]
 	
 	if b_data.workers_assigned >= b_data.worker_capacity:
-		print("BuildingSystem: [%s] is fully staffed." % b_data.building_name)
-		return
+		return false
 		
 	if GameManager.available_workers <= 0:
-		print("BuildingSystem: No available workers in pool.")
-		return
+		return false
 		
 	b_data.workers_assigned                        += 1
 	spawn_floating_text(current_selected_grid_pos, "+1 Worker", Color.GREEN)
@@ -499,19 +520,21 @@ func assign_worker() -> void:
 	
 	workers_changed.emit()
 	b_data.staffing_changed.emit(b_data.workers_assigned, b_data.worker_capacity) 
-	
-	print("BuildingSystem: Assigned worker to [%s] | %d/%d | Output: %d%% | Pool left: %d" \
-		% [b_data.building_name, b_data.workers_assigned, b_data.worker_capacity, int(b_data.staffing_ratio * 100), GameManager.available_workers])
+	return true
 
 # Called by UI +/- buttons to remove a worker
 func remove_worker(grid_pos: Vector2i) -> void:
+	var now_msec := Time.get_ticks_msec()
+	if now_msec - _last_remove_worker_msec < WORKER_ACTION_DEBOUNCE_MS:
+		return
+	_last_remove_worker_msec = now_msec
+
 	if not has_selected_building:
 		return
 	if not active_buildings.has(grid_pos): return
 	var b_data = active_buildings[grid_pos]
 	
 	if b_data.workers_assigned <= 0:
-		print("BuildingSystem: [%s] has no workers to remove." % b_data.building_name)
 		return
 	
 	b_data.workers_assigned                        -= 1
@@ -522,11 +545,8 @@ func remove_worker(grid_pos: Vector2i) -> void:
 	
 	workers_changed.emit()
 	b_data.staffing_changed.emit(b_data.workers_assigned, b_data.worker_capacity) 
-	
-	print("BuildingSystem: Removed worker from [%s] | %d/%d | Output: %d%% | Pool left: %d" \
-		% [b_data.building_name, b_data.workers_assigned, b_data.worker_capacity, int(b_data.staffing_ratio * 100), GameManager.available_workers])
 
-# Call this to change the damaged state of a building and swap its sprite
+# Toggle damaged state for a building and apply tile/sprite changes
 func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	if not active_buildings.has(grid_pos): return
 	var b_data = active_buildings[grid_pos]
@@ -573,7 +593,6 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	if not is_damaged:
 		b_data.days_unstaffed = 0
 		b_data.days_unstaffed_for_disease = 0
-		print("BuildingSystem: Cleared damage at", grid_pos, "— reset days_unstaffed counters")
 
 		# Recalculate power so `is_powered` flags reflect restored output
 		if ResourceManager:
@@ -586,10 +605,9 @@ func set_building_damaged(grid_pos: Vector2i, is_damaged: bool) -> void:
 	# Notify listeners that this building's visual state changed
 	emit_signal("building_state_changed", grid_pos)
 
-	print("BuildingSystem: Changed damaged state to ", is_damaged, " at ", grid_pos)
-
 	_refresh_badge(grid_pos)
 	
+ # Debug helper: mark a random building as damaged
 func set_building_damaged_randomly() -> void:
 	if active_buildings.is_empty(): return
 	var keys = active_buildings.keys()
@@ -597,6 +615,7 @@ func set_building_damaged_randomly() -> void:
 	var target_pos = keys[randi() % keys.size()]
 	set_building_damaged(target_pos, true)
 
+ # Utility: count built Med Clinics
 func get_med_clinic_count() -> int:
 	var count: int = 0
 	for pos in active_buildings:
@@ -625,9 +644,6 @@ func get_effective_output(grid_pos: Vector2i) -> Dictionary:
 	if b.is_damaged:
 		efficiency *= GameConstants.BUILDING_DAMAGE_OUTPUT
 		
-	if GameManager.resource_morale.current_value < GameConstants.MORALE_EFFICIENCY_THRESHOLD:
-		efficiency *= GameConstants.MORALE_EFFICIENCY_MULTIPLIER
-		
 	# Buildings must have power (or be a power producer themselves) to operate
 	if b.is_powered or b.base_production_power > 0:
 		result.power  = b.base_production_power * efficiency
@@ -636,6 +652,7 @@ func get_effective_output(grid_pos: Vector2i) -> Dictionary:
 		
 	return result
 
+ # Return outputs for all buildings (used by debug/UI)
 func get_all_outputs() -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	for grid_pos in active_buildings.keys():
@@ -646,6 +663,7 @@ func get_all_outputs() -> Array[Dictionary]:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # VISUAL UPDATE: centralised sprite selection and tinting
+# ══════════════════════════════════════════════════════════════════════════════
 func update_building_visual(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos): return
 	var b = active_buildings[grid_pos]
@@ -706,10 +724,8 @@ func apply_upgrade_visual(grid_pos: Vector2i) -> void:
 			sprite.texture = T2_SPRITES[b.building_type]
 
 	update_building_visual(grid_pos)
-
-	print("BuildingSystem: apply_upgrade_visual complete at %s | building: %s" \
-		% [str(grid_pos), b.building_name])
 	
+ # React to resource changes to update power state visuals and SFX
 func _on_resources_changed(_power: float, _food: float, _morale: float, _materials: int) -> void:
 	for pos in active_buildings.keys():
 		var b: BuildingData = active_buildings[pos]
@@ -735,13 +751,15 @@ func _on_resources_changed(_power: float, _food: float, _morale: float, _materia
 		for badge_pos in active_buildings:
 			_refresh_badge(badge_pos)
 
-func _on_staffing_changed(grid_pos: Vector2i, _current: int, _capacity: int) -> void:
+ # Callback when a building's staffing changes
+func _on_staffing_changed(_current: int, _capacity: int, grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		return
 	var b: BuildingData = active_buildings[grid_pos]
 	AudioManager.update_ambient(grid_pos, b.building_type, _should_ambient_play(b))
 	update_building_visual(grid_pos)
 
+ # Update building state when a named character dies (narrative hooks)
 func _on_named_character_died(char_name: String) -> void:
 	if char_name == "yuna":
 		var changed = false
@@ -779,6 +797,7 @@ func get_med_clinic_staffing_ratio() -> float:
 				return b.staffing_ratio
 	return 0.0
 
+# Count assigned workers for a building type.
 func get_workers_for_building_type(type: BuildingData.BuildingType) -> int:
 	var total: int = 0
 	for pos in active_buildings:
@@ -786,12 +805,14 @@ func get_workers_for_building_type(type: BuildingData.BuildingType) -> int:
 			total += active_buildings[pos].workers_assigned
 	return total
 
+# Check whether a building type exists.
 func has_building(type: BuildingData.BuildingType) -> bool:
 	for pos in active_buildings:
 		if active_buildings[pos].building_type == type:
 			return true
 	return false
 
+# Check whether a building type has any upgrade.
 func is_building_upgraded(type: BuildingData.BuildingType) -> bool:
 	for pos in active_buildings:
 		if active_buildings[pos].building_type == type and active_buildings[pos].is_upgraded:
@@ -845,6 +866,7 @@ func spawn_floating_text(grid_pos: Vector2i, text: String, color: Color) -> void
 	grid_manager.add_child(fct)
 	fct.setup(text, color)
 
+# Spawn upgrade particles for a building type.
 func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.BuildingType) -> void:
 	if not grid_manager:
 		return
@@ -892,9 +914,7 @@ func spawn_upgrade_particles(grid_pos: Vector2i, building_type: BuildingData.Bui
 	)
 	cleanup_timer.timeout.connect(particles.queue_free)
 
-	print("BuildingSystem: Upgrade particles spawned at %s | color: %s" \
-		% [str(grid_pos), str(particle_color)])
-
+# Start shielding a building if it qualifies.
 func begin_shield(grid_pos: Vector2i) -> bool:
 	if not active_buildings.has(grid_pos):
 		return false
@@ -903,12 +923,10 @@ func begin_shield(grid_pos: Vector2i) -> bool:
 	
 	# Already shielded or shielding in progress
 	if b.is_shielded or b.is_shielding:
-		print("BuildingSystem: [%s] is already shielded or shielding in progress." % b.building_name)
 		return false
 	
 	# Check materials
 	if not ResourceManager.consume_materials(GameConstants.STORM_SHIELD_COST):
-		print("BuildingSystem: Not enough materials to shield [%s]." % b.building_name)
 		return false
 	
 	b.is_shielding = true
@@ -916,19 +934,15 @@ func begin_shield(grid_pos: Vector2i) -> bool:
 	
 	AudioManager.play_build_sfx("shield_apply")
 	
-	print("BuildingSystem: Shielding started on [%s] | Cost: %d materials" \
-		% [b.building_name, GameConstants.STORM_SHIELD_COST])
-	
 	building_state_changed.emit(grid_pos)
 	return true
 
+# Power down any buildings that missed shielding.
 func shutdown_unshielded_buildings() -> void:
-	print("BuildingSystem: Storm hit — shutting down unshielded buildings.")
 	for grid_pos in active_buildings:
 		var b: BuildingData = active_buildings[grid_pos]
 		if not b.is_shielded:
 			b.is_powered = false
-			print("BuildingSystem: [%s] went offline — unshielded." % b.building_name)
 			update_building_visual(grid_pos)
 			AudioManager.stop_ambient(grid_pos)
 	# Recalculate so HUD reflects the new power state
@@ -971,6 +985,7 @@ func _get_or_create_badge(grid_pos: Vector2i) -> Label:
 	_status_badges[grid_pos] = lbl
 	return lbl
 
+# Remove the status badge for one building.
 func _remove_badge(grid_pos: Vector2i) -> void:
 	if not _status_badges.has(grid_pos):
 		return
@@ -979,6 +994,7 @@ func _remove_badge(grid_pos: Vector2i) -> void:
 		lbl.queue_free()
 	_status_badges.erase(grid_pos)
 
+# Update a building's status badge text and style.
 func _refresh_badge(grid_pos: Vector2i) -> void:
 	if not active_buildings.has(grid_pos):
 		_remove_badge(grid_pos)
@@ -1018,18 +1034,17 @@ func _refresh_badge(grid_pos: Vector2i) -> void:
 		lbl.position = world_pos + Vector2(-10, -70)
 	lbl.visible = true
 
+# Refresh every visible building badge.
 func refresh_all_badges() -> void:
 	for pos in active_buildings:
 		_refresh_badge(pos)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# DEBUG / TESTING ONLY — remove in Week 6 when real UI is ready
-# ══════════════════════════════════════════════════════════════════════════════
+# Handle building-system input shortcuts.
 func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.pressed:
+	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 		
-	if event.keycode == KEY_EQUAL:   # '+' key
+	if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:   # '+' key
 		assign_worker()
-	if event.keycode == KEY_MINUS:   # '-' key
+	elif event.keycode == KEY_MINUS or event.keycode == KEY_KP_SUBTRACT:   # '-' key
 		remove_worker(current_selected_grid_pos)

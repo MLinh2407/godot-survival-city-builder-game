@@ -1,10 +1,12 @@
 extends Control
 
+# Main menu signals for external hooks
 signal start_new_game
 signal credits
 signal open_settings
 signal exit_game
 
+# Node references for background and UI buttons
 @onready var live_bg: TextureRect = $LiveBackground
 @onready var live_bg_node2d: Node2D = $LiveBackgroundNode2D
 
@@ -24,11 +26,13 @@ var _input_lock_timer: SceneTreeTimer
 var _input_lock_retry_timer: SceneTreeTimer
 var _credits_roll_active: bool = false
 
+# Paths to scenes and resources used by the menu
 var settings_scene_path: String = "res://scenes/main/SettingsUI.tscn"
 var main_scene_path: String = "res://scenes/main/Main.tscn"
 var main_scene_packed: PackedScene = preload("res://scenes/main/Main.tscn")
 const MENU_CURSOR_PATH: String = "res://assets/ui/main_menu/Hand.png"
 
+# Initialize main menu visuals, buttons and background
 func _ready() -> void:
 	randomize()
 	_setup_custom_cursor()
@@ -59,6 +63,7 @@ func _ready() -> void:
 	_setup_title_outline()
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
+# Create a shader outline copy of the title texture for glow effect
 func _setup_title_outline() -> void:
 	if title_rect == null:
 		return
@@ -96,6 +101,7 @@ func _setup_title_outline() -> void:
 	title_rect.add_child(outline)
 	title_rect.move_child(outline, 0)
 
+# Temporarily disable input on the menu for `duration_sec`
 func set_input_lock(duration_sec: float) -> void:
 	if duration_sec <= 0.0:
 		_input_locked_until_msec = 0
@@ -109,6 +115,7 @@ func set_input_lock(duration_sec: float) -> void:
 	_input_lock_timer = get_tree().create_timer(duration_sec, true)
 	_input_lock_timer.timeout.connect(_on_input_lock_timeout)
 
+# Check whether input is currently allowed (considering locks)
 func _can_accept_input() -> bool:
 	if _input_locked_until_msec == 0:
 		return true
@@ -118,9 +125,11 @@ func _can_accept_input() -> bool:
 		return true
 	return false
 
+# Timer callback used to re-check unlocking conditions
 func _on_input_lock_timeout() -> void:
 	_attempt_unlock()
 
+# Attempt to unlock input early if player pressed a confirm key
 func _attempt_unlock() -> void:
 	if Input.is_action_pressed("ui_accept") or Input.is_action_pressed("ui_select") or Input.is_key_pressed(KEY_SPACE):
 		_schedule_unlock_retry()
@@ -131,6 +140,7 @@ func _attempt_unlock() -> void:
 		if b:
 			b.release_focus()
 
+# Schedule retry timers while waiting for player input to unlock
 func _schedule_unlock_retry() -> void:
 	if _input_lock_retry_timer:
 		_input_lock_retry_timer.timeout.disconnect(_on_unlock_retry_timeout)
@@ -138,14 +148,17 @@ func _schedule_unlock_retry() -> void:
 	_input_lock_retry_timer = get_tree().create_timer(0.1, true)
 	_input_lock_retry_timer.timeout.connect(_on_unlock_retry_timeout)
 
+# Retry callback to re-attempt unlocking
 func _on_unlock_retry_timeout() -> void:
 	_attempt_unlock()
 
+# Enable or disable menu buttons
 func _set_buttons_enabled(enabled: bool) -> void:
 	for b in _buttons:
 		if b:
 			b.disabled = not enabled
 
+# Wire up button signals and hover handlers
 func _connect_buttons() -> void:
 	if btn_new:
 		btn_new.pressed.connect(Callable(self, "_on_new_game_pressed"))
@@ -164,14 +177,17 @@ func _connect_buttons() -> void:
 		btn_exit.mouse_entered.connect(Callable(self, "_on_button_mouse_entered").bind("Exit", btn_exit))
 		btn_exit.mouse_exited.connect(Callable(self, "_on_button_mouse_exited").bind("Exit", btn_exit))
 
+# Mouse enter handler plays hover animation and SFX
 func _on_button_mouse_entered(_button_id: String, button: Button) -> void:
 	_animate_button_hover(button, true)
 	if AudioManager and AudioManager.has_method("play_ui_sfx"):
 		AudioManager.play_ui_sfx("hover")
 
+# Mouse exit handler stops hover animation
 func _on_button_mouse_exited(_button_id: String, button: Button) -> void:
 	_animate_button_hover(button, false)
 
+# Tween button scale and color on hover
 func _animate_button_hover(button: Button, is_hovered: bool) -> void:
 	if button == null:
 		return
@@ -194,6 +210,7 @@ func _animate_button_hover(button: Button, is_hovered: bool) -> void:
 	tween.parallel().tween_property(button, "modulate", target_modulate, 0.12)
 	_button_tweens[tween_key] = tween
 
+# Load and set a custom cursor texture for the menu
 func _setup_custom_cursor() -> void:
 	if not ResourceLoader.exists(MENU_CURSOR_PATH):
 		push_warning("MainMenu: cursor not found at %s" % MENU_CURSOR_PATH)
@@ -205,6 +222,7 @@ func _setup_custom_cursor() -> void:
 	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_ARROW)
 	Input.set_custom_mouse_cursor(cursor_texture, Input.CURSOR_POINTING_HAND)
 
+# Create or configure a blur shader material used for effects
 func _make_blur_material(blur_radius: float = 1.6, tint: Color = Color(0.55, 0.88, 1.0, 0.9)) -> ShaderMaterial:
 	if _blur_shader == null:
 		var shader_path := "res://assets/shaders/menu_blur.gdshader"
@@ -219,6 +237,7 @@ func _make_blur_material(blur_radius: float = 1.6, tint: Color = Color(0.55, 0.8
 		blur_mat.set_shader_parameter("tint", tint)
 	return blur_mat
 
+# Create a file dialog for loading standalone saves from the menu
 func _setup_standalone_load_dialog() -> void:
 	if _standalone_load_dialog:
 		return
@@ -234,6 +253,7 @@ func _setup_standalone_load_dialog() -> void:
 	_standalone_load_dialog.file_selected.connect(_on_standalone_load_file_selected)
 	add_child(_standalone_load_dialog)
 
+# Populate the menu background from res://assets/ui/live_background
 func _setup_background() -> void:
 	var folder := "res://assets/ui/live_background"
 	var dir = DirAccess.open(folder)
@@ -308,6 +328,7 @@ func _setup_background() -> void:
 		else:
 			push_warning("MainMenu: unsupported background resource type for %s" % pick)
 
+# New Game button pressed handler; starts a new game flow
 func _on_new_game_pressed() -> void:
 	if not _can_accept_input():
 		return
@@ -322,6 +343,7 @@ func _on_new_game_pressed() -> void:
 		else:
 			push_warning("MainMenu: main scene not found at %s" % main_scene_path)
 
+# Credits button pressed handler; either emits signal or runs standalone credits
 func _on_credits_pressed() -> void:
 	if not _can_accept_input():
 		return
@@ -343,6 +365,7 @@ func _on_credits_pressed() -> void:
 		else:
 			_open_standalone_credits_roll()
 
+# Load and instantiate credits scene when no listener is connected
 func _open_standalone_credits_roll() -> void:
 	if _standalone_credits_screen and is_instance_valid(_standalone_credits_screen):
 		if _standalone_credits_screen.has_method("start_credits_roll"):
@@ -367,12 +390,14 @@ func _open_standalone_credits_roll() -> void:
 	if _standalone_credits_screen.has_method("start_credits_roll"):
 		_standalone_credits_screen.call("start_credits_roll", false)
 
+# Clean up after standalone credits and resume menu state
 func _on_standalone_credits_finished() -> void:
 	if _standalone_credits_screen and is_instance_valid(_standalone_credits_screen):
 		_standalone_credits_screen.queue_free()
 		_standalone_credits_screen = null
 	resume_after_credits()
 
+# Restore menu state and music after credits finish
 func resume_after_credits() -> void:
 	_credits_roll_active = false
 	_set_buttons_enabled(true)
@@ -384,6 +409,7 @@ func resume_after_credits() -> void:
 		elif AudioManager.has_method("play_music"):
 			AudioManager.play_music(AudioManager.track_4)
 
+# Handle user selecting a save file to load from the standalone dialog
 func _on_standalone_load_file_selected(path: String) -> void:
 	if main_scene_packed == null:
 		push_warning("MainMenu: main scene not found at %s" % main_scene_path)
@@ -391,11 +417,13 @@ func _on_standalone_load_file_selected(path: String) -> void:
 	get_tree().set_meta("launch_load_game_path", path)
 	call_deferred("_launch_standalone_load_game")
 
+# Launch the main scene and instruct autoloads to load the chosen save
 func _launch_standalone_load_game() -> void:
 	var tree := get_tree()
 	if tree:
 		tree.change_scene_to_packed(main_scene_packed)
 
+# Settings button pressed handler; open settings UI or emit signal
 func _on_settings_pressed() -> void:
 	if not _can_accept_input():
 		return
@@ -421,6 +449,7 @@ func _on_settings_pressed() -> void:
 		else:
 			push_warning("MainMenu: settings scene not found at %s" % settings_scene_path)
 
+# Exit the game from the main menu.
 func _on_exit_pressed() -> void:
 	if not _can_accept_input():
 		return
@@ -430,6 +459,7 @@ func _on_exit_pressed() -> void:
 	if _get_signal_listener_count("exit_game") == 0:
 		get_tree().quit()
 
+# Count the listeners connected to one signal.
 func _get_signal_listener_count(signal_name: StringName) -> int:
 	if not has_signal(signal_name):
 		return 0

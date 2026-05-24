@@ -5,6 +5,7 @@ const SPEED = 300.0
 const JUMP_VELOCITY = -400.0
 
 
+# Apply gravity, jump input, and horizontal movement for the placeholder player.
 func _physics_process(delta: float) -> void:
 	# Add the gravity.
 	if not is_on_floor():

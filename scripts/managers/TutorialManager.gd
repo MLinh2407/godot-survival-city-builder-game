@@ -27,6 +27,7 @@ var _upgrade_nudge_done: bool = false
 
 # ── Init ──────────────────────────────────────────────────────────────────────
 
+# Load tutorial config and wire global signal listeners.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_config()
@@ -42,6 +43,7 @@ func _ready() -> void:
 	# Scene-specific signals are connected lazily
 	call_deferred("_try_connect_scene_signals")
 
+# Clear all tutorial state for a fresh run.
 func reset_for_new_game() -> void:
 	shown_flags.clear()
 	_mark_queue.clear()
@@ -60,6 +62,7 @@ func reset_for_new_game() -> void:
 
 # ── Scene signal wiring ───────────────────────────────────────────────────────
 
+# Connect scene-specific signals once the main scene is available.
 func _try_connect_scene_signals() -> void:
 	if _scene_signals_connected:
 		return
@@ -105,6 +108,7 @@ func _try_connect_scene_signals() -> void:
 # Fires when the game unpauses. We use the FIRST real unpause after intro cards
 # to show the HUD explanation marks (Phase 0).
 
+# React when time resumes and the tutorial can progress.
 func _on_speed_changed(old_speed: int, new_speed: int) -> void:
 	if not tutorial_enabled or not _is_in_gameplay():
 		return
@@ -121,6 +125,7 @@ func _on_speed_changed(old_speed: int, new_speed: int) -> void:
 # ── DialogueEngine.card_dismissed ─────────────────────────────────────────────
 # We use this to detect when both intro cards have finished.
 
+# Advance the intro sequence once both opening cards are gone.
 func _on_card_dismissed() -> void:
 	if not tutorial_enabled or _intro_done or not _is_in_gameplay():
 		return
@@ -136,6 +141,7 @@ func _on_card_dismissed() -> void:
 
 # ── TimeManager.day_changed ───────────────────────────────────────────────────
 
+# Fire day-based tutorial beats on key campaign days.
 func _on_day_changed(new_day: int) -> void:
 	if not tutorial_enabled or not _is_in_gameplay():
 		return
@@ -158,6 +164,7 @@ func _on_day_changed(new_day: int) -> void:
 
 # ── ResourceManager.resources_changed ────────────────────────────────────────
 
+# React to resource thresholds that unlock tutorial beats.
 func _on_resources_changed(_power: float, food: float, morale: float,
 		_materials: int) -> void:
 	if not tutorial_enabled:
@@ -187,6 +194,7 @@ func _on_resources_changed(_power: float, food: float, morale: float,
 
 # ── PopulationManager.population_changed ─────────────────────────────────────
 
+# React to population changes that unlock tutorial beats.
 func _on_population_changed() -> void:
 	if not tutorial_enabled:
 		return
@@ -201,6 +209,7 @@ func _on_population_changed() -> void:
 
 # ── PopulationManager.outbreak_started ───────────────────────────────────────
 
+# Explain disease mechanics when the first outbreak starts.
 func _on_outbreak_started(sick_count: int) -> void:
 	if not tutorial_enabled:
 		return
@@ -210,7 +219,10 @@ func _on_outbreak_started(sick_count: int) -> void:
 
 # ── GridManager.building_placed ───────────────────────────────────────────────
 
+# Respond to the first building placement and type-specific unlocks.
 func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
+	if GameManager and GameManager.is_loading_game:
+		return
 	if not tutorial_enabled:
 		return
 
@@ -250,6 +262,7 @@ func _on_building_placed(b_type: String, grid_pos: Vector2i) -> void:
 
 # ── _auto_open_inspector_for_pos ─────────────────────────────────────────────
 
+# Open the inspector automatically after the first building placement.
 func _auto_open_inspector_for_pos(grid_pos: Vector2i) -> void:
 	if not tutorial_enabled or _first_inspector_opened:
 		return
@@ -278,6 +291,7 @@ func _auto_open_inspector_for_pos(grid_pos: Vector2i) -> void:
 
 # ── BuildingSystem.building_selected_data ────────────────────────────────────
 
+# Explain the inspector the first time a building is selected.
 func _on_building_selected(b_data: BuildingData) -> void:
 	if not tutorial_enabled or b_data == null:
 		return
@@ -293,6 +307,7 @@ func _on_building_selected(b_data: BuildingData) -> void:
 
 # ── BuildMenu.build_menu_opened ───────────────────────────────────────────────
 
+# Introduce the build menu the first time it opens.
 func _on_build_menu_opened() -> void:
 	if not tutorial_enabled:
 		return
@@ -303,6 +318,7 @@ func _on_build_menu_opened() -> void:
 
 # ── DialogueEngine.choice_made ────────────────────────────────────────────────
 
+# React to important choice-card outcomes.
 func _on_choice_made(event_id: String, _choice_id: String,
 		_choice_data: Dictionary) -> void:
 	if not tutorial_enabled:
@@ -325,6 +341,7 @@ func _on_choice_made(event_id: String, _choice_id: String,
 
 # ── GameManager.named_character_died ─────────────────────────────────────────
 
+# Unlock the memorial tutorial when the first named character dies.
 func _on_character_died(_char_name: String) -> void:
 	if not tutorial_enabled:
 		return
@@ -339,6 +356,7 @@ func _on_character_died(_char_name: String) -> void:
 
 # ── Phase 0 — HUD explanation (fires after intro cards dismiss) ───────────────
 
+# Queue the Phase 0 HUD explanation marks.
 func _fire_phase_0() -> void:
 	# Queue all Phase 0 marks sequentially
 	_enqueue_mark("phase0_time", "Main/UILayer/HUD/TimeLabel", "This tracks the current day and time. Use 1 and 2 to control game speed, or Space to pause.", "below")
@@ -372,6 +390,7 @@ func _fire_phase_0() -> void:
 
 # ── Phase 1 — First Build Actions ────────────────────────────────────────────
 
+# Prompt the player to open the build menu.
 func _beat_1_1_build_menu_prompt() -> void:
 	_enqueue_mark(
 		"build_menu_prompt",
@@ -381,6 +400,7 @@ func _beat_1_1_build_menu_prompt() -> void:
 		"above"
 	)
 
+# Explain the build menu tier groupings.
 func _beat_1_2_build_menu_tiers() -> void:
 	_fire_journal(
 		"build_menu_tiers",
@@ -392,6 +412,7 @@ func _beat_1_2_build_menu_tiers() -> void:
 		"the grouping tells you what matters now."
 	)
 
+# Explain what happens after the first building is placed.
 func _beat_1_3_first_placement() -> void:
 	_fire_journal(
 		"first_placement",
@@ -403,6 +424,7 @@ func _beat_1_3_first_placement() -> void:
 		"assign workers right now."
 	)
 
+# Teach the building inspector and worker assignment flow.
 func _beat_1_5_inspector() -> void:
 	if _has_shown("inspector_opened"):
 		return
@@ -433,6 +455,7 @@ func _beat_1_5_inspector() -> void:
 			"5 of 10 workers produces exactly 50 percent output."
 		)
 
+# Warn that powered buildings need a running generator.
 func _beat_1_7_power_dependency() -> void:
 	_enqueue_mark(
 		"power_dependency_warning",
@@ -444,6 +467,7 @@ func _beat_1_7_power_dependency() -> void:
 
 # ── Phase 2 — Survival Foundations ───────────────────────────────────────────
 
+# Explain why the Water Recycler must stay staffed.
 func _beat_2_1_water_recycler() -> void:
 	_fire_journal(
 		"water_recycler_placed",
@@ -453,6 +477,7 @@ func _beat_2_1_water_recycler() -> void:
 		"a disease outbreak fires automatically. No exceptions."
 	)
 
+# Explain how the Hydroponic Bay affects food production.
 func _beat_2_2_hydroponic_bay() -> void:
 	_fire_journal(
 		"hydroponic_bay_placed",
@@ -463,6 +488,7 @@ func _beat_2_2_hydroponic_bay() -> void:
 		"next to the bar tells you whether you are gaining or losing each day."
 	)
 
+# Warn when morale drops into the efficiency penalty zone.
 func _beat_2_5_morale_efficiency(current_morale: float) -> void:
 	_enqueue_mark(
 		"morale_efficiency_warning",
@@ -473,6 +499,7 @@ func _beat_2_5_morale_efficiency(current_morale: float) -> void:
 		"below"
 	)
 
+# Warn when an unstaffed building is close to being damaged.
 func _beat_2_6_building_unstaffed(building_name: String) -> void:
 	_fire_journal(
 		"building_damage_warning_" + building_name,
@@ -482,6 +509,7 @@ func _beat_2_6_building_unstaffed(building_name: String) -> void:
 		"even when re-staffed, until you spend Materials to repair it."
 	)
 
+# Scan for buildings that have been neglected long enough to damage.
 func _check_building_damage_warning() -> void:
 	var bs = _get_node("Main/BuildingSystem")
 	if not bs:
@@ -498,11 +526,13 @@ func _check_building_damage_warning() -> void:
 
 # ── Phase 3 — First Crisis ────────────────────────────────────────────────────
 
+# Reserve the cold-night follow-up beat for the day-three crisis.
 func _beat_3_1_after_cold_night() -> void:
 	# The Cold Night fires on Day 3. After it resolves, point at the slider.
 	# This is queued but only fires if Cold Night actually fired today.
 	pass  
 
+# Explain how the Hope/Order slider shapes the ending.
 func _beat_3_2_hope_order_slider() -> void:
 	_enqueue_mark(
 		"hope_order_explanation",
@@ -516,6 +546,7 @@ func _beat_3_2_hope_order_slider() -> void:
 
 # ── Phase 4 — Mid-Game Unlocks ────────────────────────────────────────────────
 
+# Explain colony cohesion after the deserter event.
 func _beat_4_1_deserters_context() -> void:
 	if not _has_shown("deserters_context") and ResourceManager.morale < 50.0:
 		_fire_journal(
@@ -526,6 +557,7 @@ func _beat_4_1_deserters_context() -> void:
 			"Every person who leaves or dies is someone the colony cannot get back."
 		)
 
+# Explain why the Med Clinic matters in the midgame.
 func _beat_4_2_med_clinic() -> void:
 	_fire_journal(
 		"med_clinic_placed",
@@ -536,6 +568,7 @@ func _beat_4_2_med_clinic() -> void:
 		"Without it, the sick die one to three at a time until the pool empties."
 	)
 
+# Explain the Ration Store buffer after it is built.
 func _beat_4_3_ration_store() -> void:
 	await get_tree().create_timer(0.5, false, false, true).timeout
 	_enqueue_mark(
@@ -548,6 +581,7 @@ func _beat_4_3_ration_store() -> void:
 		"below"
 	)
 
+# Explain the auto-rationing penalty and why it matters.
 func _beat_4_4_auto_rationing() -> void:
 	_fire_journal(
 		"auto_rationing_active",
@@ -558,10 +592,12 @@ func _beat_4_4_auto_rationing() -> void:
 		"Restore food production to deactivate it."
 	)
 
+# Reserve the fever context beat for the scripted outbreak.
 func _beat_4_5_fever_context() -> void:
 	# Fires alongside the Day 16 Fever outbreak
 	pass  
 
+# Explain how disease works once the outbreak begins.
 func _beat_4_5_disease_mechanics(_sick_count: int) -> void:
 	_enqueue_mark(
 		"disease_mechanics",
@@ -573,6 +609,7 @@ func _beat_4_5_disease_mechanics(_sick_count: int) -> void:
 		"below"
 	)
 
+# Nudge the player toward a useful building upgrade.
 func _beat_4_6_upgrade_nudge() -> void:
 	if _has_shown("upgrade_nudge"):
 		return
@@ -592,6 +629,7 @@ func _beat_4_6_upgrade_nudge() -> void:
 		"The Med Clinic upgrade matters especially before Day 20."
 	)
 
+# Explain the consequence of trusting or rejecting MERIDIAN.
 func _beat_4_7_meridian_consequence() -> void:
 	var trusted: bool = GameManager.meridian_trusted
 	if trusted:
@@ -612,6 +650,7 @@ func _beat_4_7_meridian_consequence() -> void:
 			"The 20 percent efficiency boost will not apply."
 		)
 
+# Explain what the Archive Hall unlocks.
 func _beat_4_8_archive_hall() -> void:
 	_fire_journal(
 		"archive_hall_placed",
@@ -624,6 +663,7 @@ func _beat_4_8_archive_hall() -> void:
 
 # ── Phase 5 — Late Game ───────────────────────────────────────────────────────
 
+# Explain why Rook's militia choice matters later.
 func _beat_5_1_rooks_militia() -> void:
 	_fire_journal(
 		"rooks_militia_consequence",
@@ -634,6 +674,7 @@ func _beat_5_1_rooks_militia() -> void:
 		"If you stopped the militia, a reconciliation window opens before Day 33."
 	)
 
+# Warn the player about the approaching storm.
 func _beat_5_2_storm_warning() -> void:
 	if _has_shown("storm_warning_explained"):
 		return
@@ -659,6 +700,7 @@ func _beat_5_2_storm_warning() -> void:
 		"The Storm Shield Panel on the left tracks every building's status."
 	)
 
+# Explain how to shield a building.
 func _beat_5_3_shield_button() -> void:
 	_fire_journal(
 		"shield_button_explanation",
@@ -669,6 +711,7 @@ func _beat_5_3_shield_button() -> void:
 		"Shielded buildings show a green tick in the Storm Shield Panel."
 	)
 
+# Explain which buildings should be shielded first.
 func _beat_5_5_priority_shielding() -> void:
 	if _has_shown("priority_shielding"):
 		return
@@ -682,6 +725,7 @@ func _beat_5_5_priority_shielding() -> void:
 		"protect the food."
 	)
 
+# Explain how the ending calculation is derived.
 func _beat_5_6_ending_calculation() -> void:
 	if _has_shown("ending_calculation"):
 		return
@@ -696,6 +740,7 @@ func _beat_5_6_ending_calculation() -> void:
 		"You have been building toward this since Day 1."
 	)
 
+# Explain when the Memorial Wall becomes available.
 func _beat_5_7_memorial_unlocked() -> void:
 	_fire_journal(
 		"memorial_wall_unlocked",
@@ -705,6 +750,7 @@ func _beat_5_7_memorial_unlocked() -> void:
 		"Clicking it opens the stone plaque with every lost character's name and the day they died."
 	)
 
+# Explain the memorial wall's permanent morale value.
 func _beat_5_7_memorial_built() -> void:
 	_fire_journal(
 		"memorial_wall_placed",
@@ -715,6 +761,7 @@ func _beat_5_7_memorial_built() -> void:
 
 # ── Phase 6 — Persistent Critical Warnings ────────────────────────────────────
 
+# Warn the player when power has failed.
 func _beat_6_1_power_failure() -> void:
 	_enqueue_mark(
 		"power_failure_warning",
@@ -725,6 +772,7 @@ func _beat_6_1_power_failure() -> void:
 		"below"
 	)
 
+# Warn the player when food reaches zero.
 func _beat_6_2_food_zero() -> void:
 	_enqueue_mark(
 		"food_zero_warning",
@@ -735,6 +783,7 @@ func _beat_6_2_food_zero() -> void:
 		"below"
 	)
 
+# Warn the player when the worker pool is critically low.
 func _beat_6_3_workers_low(workers: int) -> void:
 	_fire_journal(
 		"workers_low_warning",
@@ -745,6 +794,7 @@ func _beat_6_3_workers_low(workers: int) -> void:
 		"Raise Morale and resolve any active disease outbreak."
 	)
 
+# Warn the player when morale is low enough to trigger desertion.
 func _beat_6_4_morale_desertion() -> void:
 	_enqueue_mark(
 		"morale_desertion_warning",
@@ -760,6 +810,7 @@ func _beat_6_4_morale_desertion() -> void:
 # COACH MARK QUEUE SYSTEM
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Queue a coach mark and show it when the screen is free.
 func _enqueue_mark(id: String, target_path: String, text: String,
 		direction: String = "below", node_ref: Control = null) -> void:
 	if not tutorial_enabled or _has_shown(id):
@@ -774,6 +825,7 @@ func _enqueue_mark(id: String, target_path: String, text: String,
 	})
 	_try_show_next()
 
+# Show the next queued coach mark or release the time lock.
 func _try_show_next() -> void:
 	if _active_mark and is_instance_valid(_active_mark):
 		return
@@ -820,6 +872,7 @@ func _try_show_next() -> void:
 	)
 	_active_mark = mark
 
+# Pause game speed while a tutorial mark is active.
 func _start_tutorial_time_lock() -> void:
 	if _tutorial_time_lock:
 		return
@@ -834,6 +887,7 @@ func _start_tutorial_time_lock() -> void:
 		else:
 			_was_time_frozen_by_tutorial = false
 
+# Restore the previous game speed after tutorial marks finish.
 func _stop_tutorial_time_lock() -> void:
 	if not _tutorial_time_lock:
 		return
@@ -847,7 +901,7 @@ func _stop_tutorial_time_lock() -> void:
 		_suppress_tutorial_speed_change = false
 	_was_time_frozen_by_tutorial = false
 
-## Await until the mark queue is empty (for sequencing Phase 0 → Phase 1.1)
+# Wait until the mark queue is empty so the next beat can trigger.
 func _wait_for_queue_empty() -> void:
 	while not _mark_queue.is_empty() \
 			or (_active_mark and is_instance_valid(_active_mark)):
@@ -857,6 +911,7 @@ func _wait_for_queue_empty() -> void:
 # JOURNAL NUDGE
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Add a journal entry for a tutorial beat if it has not already fired.
 func _fire_journal(slug: String, title: String, body: String) -> void:
 	if not tutorial_enabled or _has_shown(slug):
 		return
@@ -871,9 +926,11 @@ func _fire_journal(slug: String, title: String, body: String) -> void:
 # FLAG HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Check whether a tutorial beat has already been shown.
 func _has_shown(id: String) -> bool:
 	return shown_flags.get(id, false)
 
+# Mark a tutorial beat as shown.
 func _mark_shown(id: String) -> void:
 	shown_flags[id] = true
 
@@ -881,9 +938,11 @@ func _mark_shown(id: String) -> void:
 # NODE HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Resolve a node path from the root scene tree.
 func _get_node(path: String) -> Node:
 	return get_tree().root.get_node_or_null(path)
 
+# Find the building inspector from any known scene path.
 func _find_inspector() -> Control:
 	var paths := [
 		"Main/UILayer/BuildingInspector",
@@ -904,6 +963,7 @@ func _find_inspector() -> Control:
 
 # ── _exit_build_mode_safe ─────────────────────────────────────────────────────
 
+# Exit build or decoration mode if the grid is currently active.
 func _exit_build_mode_safe() -> void:
 	var grid = _get_node("Main/GameWorld/GridSystem")
 	if grid:
@@ -918,6 +978,7 @@ func _exit_build_mode_safe() -> void:
 	if bm and bm.get("is_open") == true and bm.has_method("close"):
 		bm.close()
 
+# React when a building's state changes and a tutorial beat is pending.
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	if not tutorial_enabled or not _is_in_gameplay():
 		return
@@ -938,6 +999,7 @@ func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	elif b.is_shielded and not _has_shown("badge_shielded"):
 		_enqueue_mark("badge_shielded", "", b.building_name + " is fully SHIELDED (✅). It will survive the storm.", "below")
 
+# React when an intro or choice card opens.
 func _on_card_opened(event_id: String) -> void:
 	if not tutorial_enabled or not _is_in_gameplay():
 		return
@@ -949,6 +1011,7 @@ func _on_card_opened(event_id: String) -> void:
 			"right"
 		)
 
+# Return true when the main gameplay scene is active.
 func _is_in_gameplay() -> bool:
 	var main = _get_node("Main")
 	if main and "_has_started_gameplay" in main:
@@ -959,11 +1022,13 @@ func _is_in_gameplay() -> bool:
 # CONFIG 
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Load tutorial config from disk if it exists.
 func _load_config() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(CONFIG_PATH) == OK:
 		tutorial_enabled = cfg.get_value("tutorial", "enabled", true)
 
+# Persist tutorial config to disk.
 func save_config() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("tutorial", "enabled", tutorial_enabled)

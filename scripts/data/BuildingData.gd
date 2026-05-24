@@ -1,23 +1,24 @@
 # Represents a single placed building instance on the isometric grid
-# The BuildingSystem creates one BuildingData per placed building
+# The BuildingSystem creates one `BuildingData` per placed building
 
 class_name BuildingData
 extends Resource
 
 @warning_ignore("unused_signal")
+# Emitted when staffing changes so UI can update badges and counts
 signal staffing_changed(current: int, capacity: int)
 
-# Building type enum 
+# Building type enum (used for typed checks across systems)
 enum BuildingType {
-	COAL_GENERATOR,   # 0
-	GEOTHERMAL_TAP,   # 1
-	HYDROPONIC_BAY,   # 2
-	RATION_STORE,     # 3
-	WATER_RECYCLER,   # 4
-	MED_CLINIC,       # 5
-	SHELTER_BLOCK,    # 6
-	ARCHIVE_HALL,     # 7
-	MEMORIAL_WALL     # 8
+    COAL_GENERATOR,   # 0
+    GEOTHERMAL_TAP,   # 1
+    HYDROPONIC_BAY,   # 2
+    RATION_STORE,     # 3
+    WATER_RECYCLER,   # 4
+    MED_CLINIC,       # 5
+    SHELTER_BLOCK,    # 6
+    ARCHIVE_HALL,     # 7
+    MEMORIAL_WALL     # 8
 }
 
 # Category enum (for build menu tier grouping)
@@ -34,7 +35,7 @@ enum BuildingCategory {
 @export var building_name: String = ""
 @export var category: BuildingCategory = BuildingCategory.POWER
 
-# Grid position
+# Grid position of this building instance
 @export var grid_position: Vector2i = Vector2i.ZERO  
 
 # Archive Hall and Memorial Wall (limited to 1 per colony)
@@ -48,7 +49,7 @@ enum BuildingCategory {
 @export var worker_capacity: int = 0      # Max workers this building accepts
 @export var workers_assigned: int = 0     # Current workers assigned by player
 
-# Output scales proportionally with staffing
+# Output scales proportionally with staffing and is reduced by low Morale
 var staffing_ratio: float:
     get:
         var ratio: float = 1.0

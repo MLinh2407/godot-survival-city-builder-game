@@ -1,13 +1,16 @@
 extends Panel
 
+# Simple modal panel showing memorial entries (named character deaths)
 @onready var _entry_list: VBoxContainer = %EntryList
 @onready var _close_button: Button = %CloseButton
 
+# Modal state and previous time/speed tracking
 var _is_open: bool = false
 var _was_tree_paused: bool = false
 var _previous_speed: int = TimeManager.GameSpeed.NORMAL
 var _modal_backdrop: ColorRect = null
 
+# Initialize the memorial panel and default it closed.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -23,6 +26,7 @@ func _ready() -> void:
 	visible = false
 	_is_open = false
 
+# Ensure a full-screen semi-opaque backdrop sits behind the panel
 func _ensure_modal_backdrop() -> void:
 	if _modal_backdrop and is_instance_valid(_modal_backdrop):
 		return
@@ -47,6 +51,7 @@ func _ensure_modal_backdrop() -> void:
 	parent_node.add_child(_modal_backdrop)
 	_raise_modal_nodes()
 
+# Reorder siblings so backdrop and this panel are top-most
 func _raise_modal_nodes() -> void:
 	if not _modal_backdrop or not is_instance_valid(_modal_backdrop):
 		return
@@ -128,6 +133,7 @@ func _add_entry_display(entry: Dictionary) -> void:
 func _on_close_pressed() -> void:
 	close_memorial()
 
+# ESC key closes the panel when open
 func _unhandled_input(event: InputEvent) -> void:
 	if not _is_open:
 		return
@@ -138,5 +144,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			close_memorial()
 
+# Report whether the memorial panel is open.
 func is_open() -> bool:
 	return _is_open

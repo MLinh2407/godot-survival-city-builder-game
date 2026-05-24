@@ -1,12 +1,16 @@
 extends Node
 
+# Central registry of tile atlas coordinates used by tile painting and decals
+
 # ─────────────────────────────────────────────────────────────────────────────
-# SOURCE ID
+# SOURCE ID for floor TileMap (used with set_cell / get_cell)
+# Used as the first argument to TileMapLayer.set_cell/get_cell
 # ─────────────────────────────────────────────────────────────────────────────
 const FLOOR_SOURCE_ID: int = 0
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LAYER 0 — Void (auto pre-filled on startup across entire map)
+# LAYER 0 — Void tile used to represent out-of-bounds / empty floor
+# (auto-filled on startup across entire map)
 # ─────────────────────────────────────────────────────────────────────────────
 const M8_VOID:              Vector2i = Vector2i(3, 1)
 
@@ -38,15 +42,15 @@ const M13_WATER_R:          Vector2i = Vector2i(1, 4)
 const M14_DEBRIS:           Vector2i = Vector2i(2, 4)  
 const M15_FOUNDATION:       Vector2i = Vector2i(3, 4) 
 
-# Player-placed decoration tiles
+# Player-placed decoration tiles (used by build menu)
 const M9A_NEON_H:           Vector2i = Vector2i(0, 2)
 const M9B_NEON_D:           Vector2i = Vector2i(1, 2)
 const M10_CABLE_H:          Vector2i = Vector2i(2, 2)
 const M11_CABLE_D:          Vector2i = Vector2i(3, 2)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DECORATION TYPE → ATLAS COORDS
-# Keys must exactly match the decoration type strings used in BuildMenu.gd
+# DECORATION TYPE → ATLAS COORDS mapping for quick lookup by build menu
+# Keys must match decoration type strings in `BuildMenu.gd`
 # ─────────────────────────────────────────────────────────────────────────────
 const DECORATION_TILE_MAP: Dictionary = {
 	"neon_h":  M9A_NEON_H,

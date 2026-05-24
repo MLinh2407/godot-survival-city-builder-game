@@ -1,12 +1,17 @@
 class_name GridManager
 extends Node2D
 
+## Manages building placement, removal, selection, and related signals
 signal building_placed(type: String, grid_pos: Vector2i)
+# Emitted when a building is removed from the grid
 signal building_removed(grid_pos: Vector2i)
+# Emitted when a building is selected by the player
 signal building_selected(grid_pos: Vector2i)
+# Emitted when selection is cleared
 signal building_deselected()
 
 # ── Footprint sizes ──────────────────────────────────────────────────────────
+# (tile footprints for each building type)
 const BUILDING_FOOTPRINTS: Dictionary = {
 	"coal":       Vector2i(2, 2),
 	"geothermal": Vector2i(2, 2),   
@@ -19,17 +24,21 @@ const BUILDING_FOOTPRINTS: Dictionary = {
 	"memorial":   Vector2i(2, 2),   
 }
 
+## World grid bounds (min/max anchors)
 const GRID_BOUNDS_MIN = Vector2i(-40, -40)
 const GRID_BOUNDS_MAX = Vector2i(40,  40)
 
 const BUILDING_GROUND_FACTOR: float = 0.25    
 const BUILDING_PLACE_FACTOR:  float = 0.18  
 
+## Radius for pre-filling the void tiles around the map
 const VOID_FILL_RADIUS: int = 200   
 
+# Runtime maps: anchor -> node, cell -> anchor, anchor -> type
 var occupied_cells:  Dictionary = {}   
 var cell_to_anchor:  Dictionary = {}   
 var anchor_to_type:  Dictionary = {}   
+var load_ready: bool = false
 
 @onready var base_grid:          TileMapLayer = $BaseGrid
 @onready var void_layer:          TileMapLayer = $VoidLayer
@@ -40,6 +49,7 @@ var anchor_to_type:  Dictionary = {}
 @export  var building_container: Node2D
 @export  var building_scenes:    Dictionary   = {}
 
+## Current build mode selection (type and scene)
 var current_build_type:  String      = ""
 var current_build_scene: PackedScene = null
 
@@ -64,6 +74,7 @@ var _demolish_arm_label:    Label    = null
 
 var _hover_tip_panel:  Panel    = null
 var _hover_tip_timer:  float    = 0.0
+# Delay before showing the hover tooltip (seconds)
 const HOVER_TIP_DELAY: float    = 0.45
 
 var _shake_offset: Vector2 = Vector2.ZERO
@@ -85,6 +96,7 @@ var _selected_anchor:     Vector2i = Vector2i(-9999, -9999)
 
 # ── _ready ───────────────────────────────────────────────────────────────────
 func _ready() -> void:
+	# Initialize nodes, overlays and listeners
 	ghost_sprite.visible    = false
 	hover_cursor.visible    = false
 	ghost_sprite.z_index    = 100
@@ -128,6 +140,7 @@ func _ready() -> void:
 
 	_setup_place_preview()
 
+# Create the place-preview label used during building placement
 func _setup_place_preview() -> void:
 	_place_preview_label = Label.new()
 	_place_preview_label.z_index       = 150
@@ -139,6 +152,7 @@ func _setup_place_preview() -> void:
 		Color(0.0, 0.96, 1.0, 0.92))
 	add_child(_place_preview_label)
 
+# Update the placement preview text, colour and position
 func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> void:
 	if not _place_preview_label:
 		return
@@ -213,6 +227,7 @@ func _update_place_preview(anchor: Vector2i, b_type: String, valid: bool) -> voi
 	elif bg_node:
 		bg_node.visible = false
 
+# Return vertical offset override for specific building types
 func _get_type_y_offset_override(b_type: String) -> float:
 	match b_type:
 		"coal":	return - 6.0	
@@ -221,6 +236,7 @@ func _get_type_y_offset_override(b_type: String) -> float:
 
 # ── Void pre-fill ─────────────────────────────────────────────────────────────
 func _prefill_void() -> void:
+	# Pre-fill the void layer with placeholder tiles to avoid empty gaps
 	if not void_layer:
 		push_warning("GridManager: $VoidLayer not found — skipping void pre-fill.")
 		return
@@ -235,32 +251,35 @@ func _prefill_void() -> void:
 			)
 			filled += 1
 
-	print("GridManager: Void pre-fill complete — %d cells." % filled)
+	load_ready = true
 
 # ── Footprint helpers ─────────────────────────────────────────────────────────
 func get_footprint_cells(anchor: Vector2i, b_type: String) -> Array[Vector2i]:
-	var size:  Vector2i        = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
+	var footprint_size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
 	var cells: Array[Vector2i] = []
-	for dy in range(size.y):
-		for dx in range(size.x):
+	for dy in range(footprint_size.y):
+		for dx in range(footprint_size.x):
 			cells.append(anchor + Vector2i(dx, dy))
 	return cells
 
+ # Get pixel offset needed to visually centre multi-tile footprints
 func get_footprint_centre_offset(b_type: String) -> Vector2:
-	var size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
-	if size == Vector2i(1, 1):
+	var footprint_size: Vector2i = BUILDING_FOOTPRINTS.get(b_type, Vector2i(1, 1))
+	if footprint_size == Vector2i(1, 1):
 		return Vector2.ZERO
 	var origin: Vector2 = base_grid.map_to_local(Vector2i(0, 0))
 	var sum:    Vector2 = Vector2.ZERO
 	var count:  int     = 0
-	for dy in range(size.y):
-		for dx in range(size.x):
+	for dy in range(footprint_size.y):
+		for dx in range(footprint_size.x):
 			sum   += base_grid.map_to_local(Vector2i(dx, dy)) - origin
 			count += 1
-	return sum / float(count)
+	return sum / float(count)  # Calculate average position for multi-tile footprints
 
+# Look up the building type at an anchor cell.
 func _get_type_for_anchor(anchor: Vector2i) -> String:
-	return anchor_to_type.get(anchor, "")
+	# Lookup the building type stored for an anchor
+	return anchor_to_type.get(anchor, "") 
 
 # ── Scale & offset helpers ────────────────────────────────────────────────────
 func _get_scale_for_type(b_type: String, b_sprite: Sprite2D) -> float:
@@ -270,6 +289,7 @@ func _get_scale_for_type(b_type: String, b_sprite: Sprite2D) -> float:
 		return target_px / float(b_sprite.texture.get_width())
 	return target_px / float(GameConstants.BUILDING_SPRITE_SIZE)
 
+ # Compute vertical offset to align sprite visually on the ground
 func _get_y_offset(b_sprite: Sprite2D, scale_factor: float, ground_factor: float = BUILDING_GROUND_FACTOR) -> float:
 	if b_sprite and b_sprite.texture:
 		return -float(b_sprite.texture.get_height()) * scale_factor * ground_factor
@@ -324,12 +344,14 @@ func _rebuild_footprint_overlay(anchor: Vector2i, b_type: String, valid: bool) -
 		else:
 			_draw_blocker_highlights(anchor, b_type)
 
+# Remove the footprint overlay visuals
 func _clear_footprint_overlay() -> void:
 	if _footprint_node.get_child_count() == 0:
 		_last_fp_anchor = Vector2i(-9999, -9999)
 		return
 	_clear_node(_footprint_node)
 	_last_fp_anchor = Vector2i(-9999, -9999)
+
 
 # ── Build mode ────────────────────────────────────────────────────────────────
 func enter_build_mode(b_type: String) -> void:
@@ -351,6 +373,8 @@ func enter_build_mode(b_type: String) -> void:
 	ghost_sprite.modulate = Color(1.0, 1.0, 1.0, 0.70)
 	ghost_sprite.visible  = true
 
+
+# Exit build mode and clear preview/overlays
 func exit_build_mode() -> void:
 	current_build_type    = ""
 	current_build_scene   = null
@@ -557,8 +581,6 @@ func place_building(anchor: Vector2i) -> void:
 				TileRegistry.FLOOR_SOURCE_ID,
 				TileRegistry.M7_MEMORIAL_GROUND
 			)
-			print("GridManager: M7 set at cell %s | source %d | atlas %s" \
-				% [cell, TileRegistry.FLOOR_SOURCE_ID, TileRegistry.M7_MEMORIAL_GROUND])  # Debug
 	
 	building_placed.emit(current_build_type, anchor)
 	_clear_footprint_overlay()
@@ -566,6 +588,7 @@ func place_building(anchor: Vector2i) -> void:
 
 	if occupied_cells.has(anchor):
 			building_selected.emit(anchor)
+# Remove a building and clean up associated state and tiles
 func remove_building(anchor: Vector2i) -> void:
 	if not occupied_cells.has(anchor): return
 
@@ -618,10 +641,12 @@ func remove_building(anchor: Vector2i) -> void:
 
 	building_removed.emit(anchor)
 
+# Remove all buildings from the grid
 func clear_grid() -> void:
 	for anchor in occupied_cells.keys().duplicate():
 		remove_building(anchor)
 
+# Reset grid manager state for a new game/session
 func reset_for_new_game() -> void:
 	exit_build_mode()
 	_cancel_demolish()
@@ -642,6 +667,7 @@ func reset_for_new_game() -> void:
 	if special_floor_layer:
 		special_floor_layer.clear()
 
+# Spawn building nodes from saved data without animations
 func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
 	if not building_scenes.has(b_type):
 		push_error("GridManager: unknown type for save spawn: " + b_type)
@@ -651,8 +677,8 @@ func spawn_building_from_save(b_type: String, anchor: Vector2i) -> void:
 	var sf: float           = _get_scale_for_type(b_type, b_sprite)
 	new_building.scale      = Vector2(sf, sf)
 	new_building.position = base_grid.map_to_local(anchor)        \
-                      + get_footprint_centre_offset(b_type)   \
-                      + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR) \
+					  + get_footprint_centre_offset(b_type)   \
+					  + Vector2(0.0, _get_y_offset(b_sprite, sf, BUILDING_PLACE_FACTOR) \
 					  + _get_type_y_offset_override(b_type))
 
 	building_container.add_child(new_building)
@@ -715,6 +741,7 @@ func _on_selection_changed(anchor: Vector2i) -> void:
 
 	_draw_selection_outline(anchor, _get_type_for_anchor(anchor))
 
+# Clear visuals when no cell is selected.
 func _on_selection_cleared() -> void:
 	if _selected_building_node != null:
 		_apply_building_modulate(_selected_building_node, NORMAL_MODULATE)
@@ -733,6 +760,7 @@ func _apply_building_modulate(node: Node2D, color: Color) -> void:
 	else:
 		node.modulate = color
 
+ # Play a small shake animation on the ghost preview to indicate invalid placement
 func _shake_ghost() -> void:
 	var tween: Tween = create_tween()
 	var shake_x: float = 6.0  
@@ -743,9 +771,11 @@ func _shake_ghost() -> void:
 	tween.tween_method(_set_shake_offset, -shake_x, shake_x, 0.03)
 	tween.tween_method(_set_shake_offset, shake_x, 0.0, 0.03)
 
+ # Helper used by the shake tween to set current offset
 func _set_shake_offset(value: float) -> void:
 	_shake_offset = Vector2(value, 0.0)
 
+ # Highlight anchors that are blocking a placement with red overlays
 func _draw_blocker_highlights(anchor: Vector2i, b_type: String) -> void:
 	_clear_node(_blocker_highlight)
 
@@ -794,11 +824,13 @@ func _draw_blocker_highlights(anchor: Vector2i, b_type: String) -> void:
 			border.default_color = Color(1.0, 0.20, 0.20, 1.0)
 			_blocker_highlight.add_child(border)
 
+ # Clear any blocker highlight visuals
 func _clear_blocker_highlight() -> void:
 	_clear_node(_blocker_highlight)
 
 # ── Demolition arc visual ─────────────────────────────────────────────────────
 
+ # Create the visual hold-to-demolish arc UI above a building
 func _spawn_demolish_arc(anchor: Vector2i) -> void:
 	_clear_demolish_arc()
 	var b_type: String   = _get_type_for_anchor(anchor)
@@ -829,6 +861,7 @@ func _spawn_demolish_arc(anchor: Vector2i) -> void:
 	label.position                = Vector2(-14, -6)
 	_demolish_arc.add_child(label)
 
+ # Update the demolish progress arc according to hold progress (0..1)
 func _update_demolish_arc(progress: float) -> void:
 	if _demolish_arc == null: return
 	var progress_node: Node2D = _demolish_arc.get_node_or_null("Progress")
@@ -840,7 +873,7 @@ func _update_demolish_arc(progress: float) -> void:
 	var arc := _make_arc_polygon(0.0, progress, 14.0, 10.0, Color(1.0, 0.25, 0.25, 0.90))
 	progress_node.add_child(arc)
 
-# Builds a filled arc as a Polygon2D.
+# Builds a filled arc as a Polygon2D for demolish visuals
 func _make_arc_polygon(from_t: float, to_t: float, outer_r: float, inner_r: float, color: Color) -> Polygon2D:
 	var steps:      int   = 32
 	var start_angle: float = -PI * 0.5                         
@@ -862,11 +895,13 @@ func _make_arc_polygon(from_t: float, to_t: float, outer_r: float, inner_r: floa
 	poly.color   = color
 	return poly
 
+# Remove the demolish arc UI node
 func _clear_demolish_arc() -> void:
 	if _demolish_arc != null:
 		_demolish_arc.queue_free()
 		_demolish_arc = null
 
+# Cancel any active demolish action
 func _cancel_demolish() -> void:
 	_demolish_active  = false
 	_demolish_timer   = 0.0
@@ -896,6 +931,7 @@ func arm_demolish(anchor: Vector2i) -> void:
 	t.tween_interval(12.0)
 	t.tween_callback(disarm_demolish)
 
+# Disarm any pending demolish action and hide hints
 func disarm_demolish() -> void:
 	_demolish_armed        = false
 	_demolish_armed_anchor = Vector2i(-9999, -9999)
@@ -903,6 +939,7 @@ func disarm_demolish() -> void:
 		_demolish_arm_label.visible = false
 	_cancel_demolish()
 
+# Complete demolish after hold duration elapsed
 func _complete_demolish() -> void:
 	var anchor: Vector2i = _demolish_anchor
 	_cancel_demolish()
@@ -910,6 +947,7 @@ func _complete_demolish() -> void:
 		remove_building(anchor)
 		AudioManager.play_build_sfx("remove")
 
+# Build the hover tooltip panel used when hovering buildings
 func _setup_hover_tooltip() -> void:
 	_hover_tip_panel               = Panel.new()
 	_hover_tip_panel.z_index       = 250
@@ -936,6 +974,7 @@ func _setup_hover_tooltip() -> void:
 
 	add_child(_hover_tip_panel)
 
+# Populate and show the hover tooltip for a building anchor
 func _show_hover_tip(anchor: Vector2i) -> void:
 	if not _hover_tip_panel: return
 	var b_data = null
@@ -1003,6 +1042,7 @@ func _show_hover_tip(anchor: Vector2i) -> void:
 	_hover_tip_panel.position = local_mouse + Vector2(16, -80)
 	_hover_tip_panel.visible  = true
 
+# Helper to add a styled label into the hover VBox
 func _tip_label(parent: VBoxContainer, text: String,
 		color: Color, size: int, bold: bool) -> void:
 	var lbl := Label.new()
@@ -1086,6 +1126,7 @@ func _get_snap_anchor(cursor_anchor: Vector2i) -> Vector2i:
 
 	return best_anchor
 
+# Count adjacent tiles (non-footprint) next to a footprint — used by snap logic
 func _count_adjacencies(anchor: Vector2i, b_type: String) -> int:
 	var footprint_cells: Array[Vector2i] = get_footprint_cells(anchor, b_type)
 	var fp_set: Dictionary = {}

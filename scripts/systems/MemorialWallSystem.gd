@@ -6,6 +6,7 @@ var _dialogue_engine: Node
 var _game_manager: Node
 var _grid_manager: Node
 
+# Resolve runtime dependencies and wire death/dialogue callbacks.
 func _ready() -> void:
 	_game_manager = GameManager
 	_dialogue_engine = get_tree().root.get_node_or_null("Main/Events/DialogueEngine")
@@ -24,15 +25,15 @@ func _ready() -> void:
 		if not _dialogue_engine.choice_made.is_connected(_on_dialogue_choice_made):
 			_dialogue_engine.choice_made.connect(_on_dialogue_choice_made)
 
-## Triggered when any named character dies
+# Triggered when any named character dies.
 func _on_character_died(character_id: String) -> void:
-	# Not show prompt if wall already built 
+	# Not show prompt if wall already built
 	if GameManager.memorial_wall_built:
 		return
 	
 	_show_death_prompt(character_id)
 
-## Show the death prompt card
+# Show the memorial prompt card for the fallen character.
 func _show_death_prompt(character_id: String) -> void:
 	if not _dialogue_engine:
 		_dialogue_engine = get_tree().root.get_node_or_null("Main/Events/DialogueEngine")
@@ -65,6 +66,7 @@ func _show_death_prompt(character_id: String) -> void:
 	
 	death_prompt_shown.emit(lower_id)
 
+# React to the acknowledgement choice by entering memorial build mode.
 func _on_dialogue_choice_made(event_id: String, choice_id: String, _choice_data: Dictionary) -> void:
 	if not event_id.begins_with("death_card_"):
 		return
@@ -79,6 +81,6 @@ func _on_dialogue_choice_made(event_id: String, choice_id: String, _choice_data:
 	if _grid_manager and _grid_manager.has_method("enter_build_mode"):
 		_grid_manager.enter_build_mode("memorial")
 
-## Called by BuildingSystem when Memorial Wall is placed
+# Mark the memorial wall as built so the prompt will not reappear.
 func mark_memorial_built() -> void:
 	GameManager.memorial_wall_built = true

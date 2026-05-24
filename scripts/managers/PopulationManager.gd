@@ -1,18 +1,27 @@
 extends Node
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SIGNALS
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
+# SIGNALS: population events, outbreaks and deaths
+# Emitted to notify UI and systems about population changes and crises
+# ═════════════════════════════════════════════════════════════════════════════=
 signal population_changed
+# Emitted when an outbreak begins; payload = newly sick worker count
 signal outbreak_started(sick_count: int)
 signal outbreak_ended()
+# Emitted when a named character dies
 signal character_died(char_name: String)
+# Emitted when colonists die (count and cause)
 signal colonist_died(count: int, cause: String)
+# Emitted when workers desert en masse (count)
 signal worker_deserted(count: int)
+# Emitted when starvation kills colonists (count)
 signal starvation_deaths(count: int)
-signal population_zero() # Triggers Game Over
+# Emitted when population reaches zero (game over)
+signal population_zero()
 
+ # Counter for consecutive days without food (used to trigger starvation)
 var consecutive_days_starving: int = 0
+ # Counter for consecutive days water recycler has no staff (disease risk)
 var consecutive_days_water_unstaffed: int = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -23,13 +32,12 @@ func _ready() -> void:
 	pop_data.total_population  = GameConstants.STARTING_POPULATION
 	pop_data.available_workers = GameConstants.STARTING_WORKERS
 	pop_data.sick_count        = 0
-	print("PopulationManager ready | Pop: %d | Workers: %d" \
-		% [pop_data.total_population, pop_data.available_workers])
 
-	# Wire daily tick — this is what was missing
+	# Wire daily tick
 	await get_tree().process_frame
 	TimeManager.day_changed.connect(process_daily_population_tick)
 
+# Reset population state for a new game.
 func reset_for_new_game() -> void:
 	consecutive_days_starving = 0
 	consecutive_days_water_unstaffed = 0
@@ -46,17 +54,19 @@ func reset_for_new_game() -> void:
 	GameManager.sick_count = 0
 	population_changed.emit()
 
-# Called by BuildingSystem registration 
+# Cached BuildingSystem reference registered on startup.
 var building_system = null
+# Register the BuildingSystem so population logic can query buildings.
 func register_building_system(bs) -> void:
 	building_system = bs
-	print("PopulationManager: BuildingSystem registered.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN TICK (Called by DayNightCycle.gd when a new day starts)
 # ══════════════════════════════════════════════════════════════════════════════
+# Process the daily population tick for disease, starvation, and desertion.
 func process_daily_population_tick(new_day: int) -> void:
-	print("\n--- PopulationManager: Processing Day ", new_day, " ---")
+	if GameManager and GameManager.is_loading_game:
+		return
 	
 	var pop_data = GameManager.population_state
 	
@@ -87,8 +97,6 @@ func process_daily_population_tick(new_day: int) -> void:
 	
 	_recalculate_workers(pop_data)
 	population_changed.emit()
-	
-	print("END OF DAY | Pop: ", pop_data.total_population, " | Workers: ", pop_data.available_workers, " | Sick: ", pop_data.sick_count)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. THE DISEASE TICK & TRIGGER
@@ -123,8 +131,8 @@ func trigger_outbreak() -> void:
 	
 	outbreak_started.emit(actual_sick)
 	AudioManager.play_event_sfx("disease_start")
-	print("🚨 OUTBREAK STARTED: ", actual_sick, " workers fell ill.")
 
+# Resolve disease progression, either curing or killing sick colonists.
 func _process_disease_tick(pop_data: PopulationStateData) -> void:
 	if pop_data.sick_count <= 0:
 		pop_data.outbreak_active = false
@@ -144,7 +152,6 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		var cured: int = mini(GameConstants.DISEASE_TREATMENT_RATE, pop_data.sick_count)
 		pop_data.sick_count -= cured
 		pop_data.available_workers += cured  
-		print("🏥 TREATMENT: Med Clinic cured ", cured, " colonists.")
 	else:
 		var deaths: int = randi_range(GameConstants.DISEASE_DEATH_RATE_MIN, GameConstants.DISEASE_DEATH_RATE_MAX)
 		deaths = mini(deaths, pop_data.sick_count)
@@ -152,7 +159,6 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		pop_data.sick_count -= deaths
 		pop_data.total_population = maxi(0, pop_data.total_population - deaths)
 		colonist_died.emit(deaths, "Disease")
-		print("💀 DEATH: ", deaths, " colonists died from Disease.")
 		AudioManager.play_event_sfx("death_colonist")
 		
 		# GAME OVER CATCH
@@ -164,7 +170,6 @@ func _process_disease_tick(pop_data: PopulationStateData) -> void:
 		pop_data.outbreak_active = false
 		outbreak_ended.emit()
 		AudioManager.play_event_sfx("disease_end")
-		print("✅ OUTBREAK RESOLVED.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 2. THE STARVATION TICK
@@ -200,7 +205,6 @@ func _process_desertion_tick(pop_data: PopulationStateData) -> void:
 			pop_data.available_workers = maxi(0, pop_data.available_workers - deserters)
 			pop_data.total_population = maxi(0, pop_data.total_population - deserters)
 			worker_deserted.emit(deserters)
-			print("🏃 DESERTION: ", deserters, " workers deserted due to low morale.")
 			AudioManager.play_event_sfx("desertion")
 
 			if pop_data.total_population == 0:
@@ -248,12 +252,12 @@ func _remove_colonists(pop_data: PopulationStateData, amount: int, cause: String
 	pop_data.available_workers = maxi(0, pop_data.available_workers - worker_deaths)
 	
 	colonist_died.emit(amount, cause)
-	print("💀 DEATH: ", amount, " colonists died from ", cause)
 	AudioManager.play_event_sfx("death_colonist")
 
 	if pop_data.total_population == 0:
 		population_zero.emit()
 
+# Recalculate available workers and sync totals back to GameManager.
 func _recalculate_workers(pop_data: PopulationStateData) -> void:
 	var healthy_pop = pop_data.total_population - pop_data.sick_count
 	var absolute_max = mini(healthy_pop, GameConstants.MAX_WORKERS_LATE_GAME)
