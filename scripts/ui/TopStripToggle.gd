@@ -1,6 +1,7 @@
 class_name TopStripToggle
 extends Node
 
+# Top HUD strip toggle and tooltip handling
 @onready var hide_button = $HideUIButton
 @onready var show_button = $ShowUIButton
 @onready var top_strip_panel = $"../TopStripPanel"
@@ -43,6 +44,7 @@ var _tooltip_max_chars: int = 28
 
 const ANIMATION_DURATION = 0.15
 
+# Initialize the top strip, connect hover signals and create tooltip panel
 func _ready() -> void:
 	# Collect all panel elements for animation
 	panel_elements = [
@@ -124,18 +126,21 @@ func _ready() -> void:
 		journal_button.mouse_entered.connect(Callable(self, "_on_icon_mouse_entered").bind("Journal", journal_button))
 		journal_button.mouse_exited.connect(Callable(self, "_on_icon_mouse_exited").bind(journal_button))
 
+# Hide the resources HUD strip
 func _on_hide_ui_pressed() -> void:
 	_animate_hide_resources_panel()
 	hide_button.visible = false
 	show_button.visible = true
 	is_panel_visible = false
 
+# Show the resources HUD strip
 func _on_show_ui_pressed() -> void:
 	_animate_show_resources_panel()
 	show_button.visible = false
 	hide_button.visible = true
 	is_panel_visible = true
 
+# Animate collapse of the top strip elements
 func _animate_hide_resources_panel() -> void:
 	var tween = create_tween()
 	tween.set_parallel(true)
@@ -155,6 +160,7 @@ func _animate_hide_resources_panel() -> void:
 	await tween.finished
 	_hide_resources_panel()
 
+# Animate expansion of the top strip elements
 func _animate_show_resources_panel() -> void:
 	# Make elements visible with starting scale and alpha
 	for element in panel_elements:
@@ -174,6 +180,7 @@ func _animate_show_resources_panel() -> void:
 		tween.tween_property(element, "scale", Vector2(1.0, 1.0), ANIMATION_DURATION)
 		tween.tween_property(element, "modulate:a", 1.0, ANIMATION_DURATION)
 
+# Make all top-strip UI elements invisible
 func _hide_resources_panel() -> void:
 	top_strip_panel.visible = false
 	top_strip_glow.visible = false
@@ -202,6 +209,7 @@ func _hide_resources_panel() -> void:
 	sick_icon.visible = false
 	disease_label.visible = false
 
+# Make all top-strip UI elements visible
 func _show_resources_panel() -> void:
 	top_strip_panel.visible = true
 	top_strip_glow.visible = true
@@ -230,6 +238,7 @@ func _show_resources_panel() -> void:
 	sick_icon.visible = true
 	disease_label.visible = true
 
+# Show tooltip and scale icon on hover
 func _on_icon_mouse_entered(text: String, icon: Control) -> void:
 	if tooltip_panel and tooltip_label:
 		tooltip_label.text = _wrap_tooltip_text(text, _tooltip_max_chars)
@@ -240,16 +249,19 @@ func _on_icon_mouse_entered(text: String, icon: Control) -> void:
 		call_deferred("_position_tooltip_at_mouse")
 	icon.scale = Vector2(1.08, 1.08)
 
+# Hide tooltip and restore icon scale on hover exit
 func _on_icon_mouse_exited(icon: Control) -> void:
 	if tooltip_panel:
 		tooltip_panel.visible = false
 	icon.scale = Vector2(1, 1)
 	last_hover_icon = null
 
+# Keep tooltip positioned near mouse each frame
 func _process(_delta: float) -> void:
 	if tooltip_panel and tooltip_panel.visible:
 		_position_tooltip_at_mouse()
 
+# Compute and clamp tooltip position based on hovered icon / mouse
 func _position_tooltip_at_mouse() -> void:
 	if not tooltip_panel:
 		return
@@ -285,6 +297,7 @@ func _position_tooltip_at_mouse() -> void:
 
 	tooltip_panel.global_position = desired
 
+# Resize tooltip panel to fit wrapped label text
 func _update_tooltip_size() -> void:
 	if not tooltip_label or not tooltip_panel:
 		return
@@ -293,6 +306,7 @@ func _update_tooltip_size() -> void:
 	var tp_size: Vector2 = Vector2(min(label_min.x + _tooltip_padding.x * 2, _tooltip_max_width), label_min.y + _tooltip_padding.y * 2)
 	tooltip_panel.custom_minimum_size = tp_size
 
+# Soft-wrap tooltip text across lines at `max_chars`
 func _wrap_tooltip_text(text: String, max_chars: int) -> String:
 	if text.length() <= max_chars:
 		return text

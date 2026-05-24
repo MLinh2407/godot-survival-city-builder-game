@@ -6,35 +6,49 @@ extends Node
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Node references (cached on first use) ─────────────────────────────────────
+# Cached reference to the game's GridSystem node
 var _grid_sys:    Node         = null
+# Cached reference to the BaseGrid TileMapLayer for floor tiles
 var _base_grid:   TileMapLayer = null
+# Cached reference to the DecalLayer TileMapLayer for overlays/decals
 var _decal_layer: TileMapLayer = null
 
 # ── M2: Water Recycler surround cells ────────────────────────────────────────
+# Wet-concrete cells placed around each water recycler (keyed by anchor)
 var _wr_m2_cells: Dictionary = {}
 
 # ── M2: Passive moisture spread ───────────────────────────────────────────────
+# Auto-placed M2 cells from passive moisture accumulation
 var _auto_m2_cells: Array[Vector2i] = []
+# Day counter to track when to run moisture spread
 var _moisture_day_counter: int      = 0
+# Days between passive moisture growth passes
 const MOISTURE_INTERVAL:   int      = 5     
+# Max fraction of colony floor that may be M2 via passive spread
 const MAX_M2_COVERAGE:     float    = 0.15  
 
 # ── M4: Revert map — stores previous atlas before M4 overwrites ───────────────
+# Map from cell -> previous atlas to allow reverting cracked tiles
 var _m4_revert_map: Dictionary = {}
 
 # ── M14: Currently placed debris cells ────────────────────────────────────────
+# Cells that currently have debris decals placed
 var _m14_cells: Array[Vector2i] = []
+# Max fraction of floor that may be covered with debris decals
 const MAX_M14_COVERAGE: float   = 0.20
 
 # ── Colony search bounds ──────────────────────────────────────────────────────
+# Bounds used when scanning the colony for tile-placement candidates
 var _colony_min: Vector2i = Vector2i(-40, -40)  
 var _colony_max: Vector2i = Vector2i(40, 40)    
+# Fraction of area considered "outer" for moisture placement
 const OUTER_ZONE_FRACTION: float = 0.30  
 
 # ══════════════════════════════════════════════════════════════════════════════
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Initialize TilePainter and connect day-change events
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -42,6 +56,7 @@ func _ready() -> void:
 	if TimeManager:
 		TimeManager.day_changed.connect(_on_day_changed)
 
+# Cache references to required nodes (GridSystem, BaseGrid, DecalLayer)
 func _cache_refs() -> void:
 	if _grid_sys and _base_grid and _decal_layer:
 		return  
@@ -59,7 +74,7 @@ func _cache_refs() -> void:
 # PUBLIC API — called by BuildingSystem after placement / removal / damage
 # ══════════════════════════════════════════════════════════════════════════════
 
-## Call after any building is placed on the grid.
+# Call after any building is placed on the grid.
 func on_building_placed(b_type: String, anchor: Vector2i) -> void:
 	_cache_refs()
 	if not _refs_valid():
@@ -71,7 +86,7 @@ func on_building_placed(b_type: String, anchor: Vector2i) -> void:
 			_place_m4_coal_exhaust(anchor)
 	_run_debris_pass()
 
-## Call after any building is removed from the grid.
+# Call after any building is removed from the grid.
 func on_building_removed(b_type: String, anchor: Vector2i) -> void:
 	_cache_refs()
 	if not _refs_valid():
@@ -81,27 +96,28 @@ func on_building_removed(b_type: String, anchor: Vector2i) -> void:
 			_revert_m2_water_recycler(anchor)
 	_run_debris_pass()
 
-## Call when a building becomes damaged (unstaffed too long).
+# Call when a building becomes damaged (unstaffed too long).
 func on_building_damaged(anchor: Vector2i, b_type: String) -> void:
 	_cache_refs()
 	if not _refs_valid():
 		return
 	_place_m4_on_footprint(anchor, b_type)
 
-## Call when a building is repaired.
+# Call when a building is repaired.
 func on_building_repaired(anchor: Vector2i, b_type: String) -> void:
 	_cache_refs()
 	if not _refs_valid():
 		return
 	_revert_m4_footprint(anchor, b_type)
 
-## Call when the unrest riot sub-event fires.
+# Call when the unrest riot sub-event fires.
 func on_unrest_riot() -> void:
 	_cache_refs()
 	if not _refs_valid():
 		return
 	_place_m4_riot()
 
+# Reset all painting state when starting a new game
 func reset_for_new_game() -> void:
 	_cache_refs()
 	if not _refs_valid(): return
@@ -136,6 +152,7 @@ func reset_for_new_game() -> void:
 # M2 — WET CONCRETE
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Place surrounding wet-concrete tiles for a water recycler footprint
 func _place_m2_around_water_recycler(anchor: Vector2i) -> void:
 	var footprint: Array[Vector2i] = _grid_sys.get_footprint_cells(anchor, "water")
 	# Build a set for fast lookup
@@ -158,6 +175,7 @@ func _place_m2_around_water_recycler(anchor: Vector2i) -> void:
 
 	_wr_m2_cells[anchor] = placed
 
+# Revert M2 wet-concrete placed around a water recycler
 func _revert_m2_water_recycler(anchor: Vector2i) -> void:
 	if not _wr_m2_cells.has(anchor):
 		return
@@ -194,6 +212,7 @@ func _run_moisture_spread() -> void:
 			_auto_m2_cells.append(cell)
 			added += 1
 
+# Find candidate tiles for passive moisture spread
 func _get_moisture_candidates() -> Array[Vector2i]:
 	var results: Array[Vector2i] = []
 
@@ -317,6 +336,7 @@ func _place_m4_riot() -> void:
 # M14 — DEBRIS SCATTER
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Run a debris placement pass, growing small clusters of M14 decals
 func _run_debris_pass() -> void:
 	if not _decal_layer:
 		return
@@ -366,6 +386,7 @@ func _run_debris_pass() -> void:
 			_m14_cells.append(cluster_cell)
 			placed += 1
 
+# Find cells suitable for debris decal placement
 func _find_debris_candidates() -> Array[Vector2i]:
 	var results: Array[Vector2i] = []
 	for x in range(_colony_min.x, _colony_max.x):
@@ -383,6 +404,7 @@ func _find_debris_candidates() -> Array[Vector2i]:
 			results.append(cell)
 	return results
 
+# Returns true if a cell has a building or edge/rock/void neighbour
 func _has_building_or_edge_neighbour(cell: Vector2i) -> bool:
 	var dirs: Array[Vector2i] = [
 		Vector2i(1, 0), Vector2i(-1, 0),
@@ -399,8 +421,7 @@ func _has_building_or_edge_neighbour(cell: Vector2i) -> bool:
 			return true
 	return false
 
-## Grow a debris cluster from `origin_cell` up to `size` cells,
-## staying within the provided `pool` of valid candidates.
+# Grow a debris cluster from `origin_cell` up to `size` cells within `pool`
 func _grow_cluster(
 		origin_cell: Vector2i,
 		size: int,
@@ -444,6 +465,7 @@ func _grow_cluster(
 # DAILY TICK
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Day-change handler: advance moisture counter and run spread when due
 func _on_day_changed(_new_day: int) -> void:
 	_moisture_day_counter += 1
 	if _moisture_day_counter >= MOISTURE_INTERVAL:
@@ -456,22 +478,22 @@ func _on_day_changed(_new_day: int) -> void:
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Check that cached node references are valid
 func _refs_valid() -> bool:
 	return _grid_sys != null and _base_grid != null
 
+# Set a base floor tile on the BaseGrid TileMap
 func _set_base_tile(cell: Vector2i, atlas: Vector2i) -> void:
 	_base_grid.set_cell(cell, TileRegistry.FLOOR_SOURCE_ID, atlas)
 
-## Returns the atlas coords of the tile on BaseGrid at `cell`,
-## or Vector2i(-1, -1) if the cell is empty or outside the tileset.
+# Safely get atlas coords at `cell`, or Vector2i(-1,-1) if missing/out of range
 func _safe_get_base_atlas(cell: Vector2i) -> Vector2i:
 	var source: int = _base_grid.get_cell_source_id(cell)
 	if source == -1:
 		return Vector2i(-1, -1)
 	return _base_grid.get_cell_atlas_coords(cell)
 
-## Returns the cells forming a ring around `footprint` up to `radius` tiles out.
-## Cells that are part of `fp_set` are excluded.
+# Return cells forming a ring around `footprint` up to `radius`, excluding `fp_set`
 func _get_surrounding_ring(
 		footprint: Array[Vector2i],
 		fp_set: Dictionary,
@@ -495,7 +517,7 @@ func _get_surrounding_ring(
 		result.append(cell)
 	return result
 
-## Count tiles on BaseGrid within colony bounds that match `atlas`.
+# Count tiles on BaseGrid within colony bounds that match `atlas`
 func _count_base_tiles_matching(atlas: Vector2i) -> int:
 	var count: int = 0
 	for x in range(_colony_min.x, _colony_max.x):
@@ -504,7 +526,7 @@ func _count_base_tiles_matching(atlas: Vector2i) -> int:
 				count += 1
 	return count
 
-## Count empty (no building) floor cells within colony bounds.
+# Count empty colony floor cells (no building) suitable for decals/debris
 func _count_empty_floor_cells() -> int:
 	var count: int = 0
 	for x in range(_colony_min.x, _colony_max.x):

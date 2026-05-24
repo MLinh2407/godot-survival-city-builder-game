@@ -1,14 +1,14 @@
 # Represents one of the 5 named characters
-# Used by Memorial Wall system, ending_manager.gd, character death prompt 
+# Used by the Memorial Wall system, `EndingManager`, and death prompts
 
 class_name ColonistData
 extends Resource
 
-# Identity 
+# Identity
 @export var character_name: String = ""        # "Yuna Tran", "Rook", "Director Vasquez", "MERIDIAN"
 @export var role: String = ""                  # e.g. "Head medic, former Tier-1 hospital doctor"
 
-# Alive flag 
+# Alive flag
 # GameManager reads these from an array of ColonistData
 @export var alive_flag_key: String = ""        # "yuna_alive", "rook_alive", etc.
 @export var is_alive: bool = true              # Initialised TRUE on Day 1 for all characters

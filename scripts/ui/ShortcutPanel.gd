@@ -1,7 +1,9 @@
+# Small helper panel showing keyboard/mouse shortcuts
 extends CanvasLayer
 
 var _root: Control = null
 
+# Shortcut label definitions used to populate the UI
 const SHORTCUTS: Array = [
 	["SPACE",      "Pause / Unpause"],
 	["1",          "Normal speed (1×)"],
@@ -17,12 +19,14 @@ const SHORTCUTS: Array = [
 	["Right-click","Cancel placement / remove (hold)"],
 ]
 
+# Initialize panel nodes and hide
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 200
 	_build_ui()
 	visible = false
 
+# Build the UI layout for the shortcuts list
 func _build_ui() -> void:
 	_root = Control.new()
 	_root.anchor_left   = 0.5
@@ -138,6 +142,7 @@ func _build_ui() -> void:
 	close_btn.pressed.connect(hide_panel)
 	footer.add_child(close_btn)
 
+# Show the shortcuts overlay with fade-in
 func show_panel() -> void:
 	visible = true
 	if _root:
@@ -145,12 +150,14 @@ func show_panel() -> void:
 		var t := create_tween()
 		t.tween_property(_root, "modulate:a", 1.0, 0.14)
 
+# Hide the shortcuts overlay with fade-out
 func hide_panel() -> void:
 	if _root:
 		var t := create_tween()
 		t.tween_property(_root, "modulate:a", 0.0, 0.10)
 		t.tween_callback(func(): visible = false)
 
+# Toggle visibility of the panel
 func toggle() -> void:
 	if visible: hide_panel()
 	else:        show_panel()

@@ -1,5 +1,7 @@
 extends Node
 
+ # AudioManager: handles music, SFX, ambient loops and urgent alerts
+ # Dedicated players used by various SFX/music systems
 var critical_warning_player: AudioStreamPlayer
 var ui_sfx_player: AudioStreamPlayer
 var music_player_a: AudioStreamPlayer
@@ -13,6 +15,7 @@ var rain_player: AudioStreamPlayer
 var _rain_active: bool = false
 
 
+ # Preloaded music tracks used for menu/scene transitions
 var track_1: AudioStream = preload("res://assets/audio/music/Track_1.mp3")
 var track_2: AudioStream = preload("res://assets/audio/music/Track_2.mp3")
 var track_3: AudioStream = preload("res://assets/audio/music/Track_3.mp3")
@@ -64,6 +67,7 @@ var sfx_ambient_rain:           AudioStream = preload("res://assets/audio/sfx/am
 
 # Dictionary: Vector2i grid_pos → AudioStreamPlayer
 # One ambient player per placed building instance on the grid
+ # Ambient players mapping: grid_pos -> AudioStreamPlayer per building
 var _ambient_players: Dictionary = {}
 var _startup_music_timer: Timer
 var _menu_music_locked: bool = false
@@ -71,6 +75,7 @@ var _music_fade_tween: Tween
 
 const STARTUP_MUSIC_DELAY_SEC: float = 2.2
 
+ # Reset audio state for a new game/session
 func reset_for_new_game() -> void:
 	stop_rain()
 	_menu_music_locked = false
@@ -82,6 +87,7 @@ func reset_for_new_game() -> void:
 		_music_fade_tween.kill()
 		_music_fade_tween = null
 
+ # Play build-related short SFX groups (place, upgrade, remove, etc.)
 func play_build_sfx(type: String) -> void:
 	var stream: AudioStream = null
 	match type:
@@ -126,6 +132,7 @@ func play_build_sfx(type: String) -> void:
 				add_child(_build_sfx_stop_timer)
 				_build_sfx_stop_timer.timeout.connect(Callable(self, "_on_build_sfx_timeout").bind(build_sfx_player))
 
+ # Play UI card open/dismiss SFX
 func play_ui_card_sfx(type: String) -> void:
 	var stream: AudioStream = null
 	match type:
@@ -137,6 +144,7 @@ func play_ui_card_sfx(type: String) -> void:
 		ui_sfx_player.stream = stream
 		ui_sfx_player.play()
 
+ # Initialize audio players and connect relevant signals
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Keep playing when paused
 	
@@ -194,10 +202,12 @@ func _ready() -> void:
 		TimeManager.storm_warning_issued.connect(_on_storm_warning)
 		TimeManager.storm_hit.connect(_on_storm_hit)
 
+ # Play an urgent critical warning SFX
 func play_critical_warning() -> void:
 	if critical_warning_player and critical_warning_player.stream and not critical_warning_player.playing:
 		critical_warning_player.play()
 
+ # Play common UI SFX (hover, click, journal, etc.)
 func play_ui_sfx(type: String) -> void:
 	match type:
 		"hover":
@@ -234,6 +244,7 @@ func play_ui_sfx(type: String) -> void:
 		_:
 			return
 			
+ # Play event-specific SFX (storms, deaths, crises)
 func play_event_sfx(type: String) -> void:
 	var stream: AudioStream = null
 	match type:
@@ -254,6 +265,7 @@ func play_event_sfx(type: String) -> void:
 		ui_sfx_player.stream = stream
 		ui_sfx_player.play()
 
+ # Start rain ambient loop and fade it in
 func start_rain() -> void:
 	if _rain_active:
 		return
@@ -266,6 +278,7 @@ func start_rain() -> void:
 	var target_db: float = linear_to_db(GameConstants.RAIN_VOLUME_RATIO)
 	tween.tween_property(rain_player, "volume_db", target_db, GameConstants.AMBIENT_FADE_IN)
 
+ # Stop rain ambient loop and fade it out
 func stop_rain() -> void:
 	if not _rain_active:
 		return
@@ -276,10 +289,12 @@ func stop_rain() -> void:
 	tween.tween_property(rain_player, "volume_db", -80.0, GameConstants.AMBIENT_FADE_OUT)
 	tween.tween_callback(rain_player.stop)
 
+ # Restart rain loop if still active when playback ends
 func _on_rain_finished() -> void:
 	if _rain_active and rain_player:
 		rain_player.play()
 
+# Pick the ambient stream for a building type.
 func _get_ambient_stream(building_type: BuildingData.BuildingType) -> AudioStream:
 	match building_type:
 		BuildingData.BuildingType.COAL_GENERATOR:   return sfx_ambient_generator
@@ -334,7 +349,7 @@ func stop_ambient(grid_pos: Vector2i) -> void:
 	tween.tween_property(p, "volume_db", -80.0, GameConstants.AMBIENT_FADE_OUT)
 	tween.tween_callback(p.stop)
 
-# Called when a building is permanently removed from the grid.
+# Called when a building is permanently removed from the grid — fade and free
 func remove_ambient(grid_pos: Vector2i) -> void:
 	if not _ambient_players.has(grid_pos):
 		return
@@ -351,12 +366,14 @@ func remove_ambient(grid_pos: Vector2i) -> void:
 		_ambient_players.erase(grid_pos)
 	)
 
+# Refresh ambient audio state for a building.
 func update_ambient(grid_pos: Vector2i, building_type: BuildingData.BuildingType, should_play: bool) -> void:
 	if should_play:
 		start_ambient(grid_pos, building_type)
 	else:
 		stop_ambient(grid_pos)
 
+ # Immediately play a music stream on the active music player
 func play_music(stream: AudioStream) -> void:
 	_kill_music_fade_tween()
 	# Stop the other player to prevent overlapping audio
@@ -373,9 +390,11 @@ func play_music(stream: AudioStream) -> void:
 		music_player_b.play()
 		music_player_b.volume_db = 0.0
 
+ # Return true if either music player is currently playing
 func _is_any_music_playing() -> bool:
 	return (music_player_a and music_player_a.playing) or (music_player_b and music_player_b.playing)
 
+# Check whether the given track is already playing.
 func _is_track_currently_playing(track: AudioStream) -> bool:
 	if not track:
 		return false
@@ -385,6 +404,7 @@ func _is_track_currently_playing(track: AudioStream) -> bool:
 		return true
 	return false
 
+# Queue the delayed menu music start.
 func _schedule_startup_music() -> void:
 	_cancel_startup_music_timer()
 	_startup_music_timer = Timer.new()
@@ -394,12 +414,14 @@ func _schedule_startup_music() -> void:
 	add_child(_startup_music_timer)
 	_startup_music_timer.timeout.connect(_on_startup_music_timer_timeout)
 
+# Cancel any pending startup music timer.
 func _cancel_startup_music_timer() -> void:
 	if _startup_music_timer:
 		_startup_music_timer.stop()
 		_startup_music_timer.queue_free()
 		_startup_music_timer = null
 
+# Start music when the startup timer expires.
 func _on_startup_music_timer_timeout() -> void:
 	_startup_music_timer = null
 	if _menu_music_locked:
@@ -408,9 +430,11 @@ func _on_startup_music_timer_timeout() -> void:
 		return
 	play_music(track_1)
 
+# Lock or unlock menu music playback.
 func set_menu_music_locked(locked: bool) -> void:
 	_menu_music_locked = locked
 
+# Fade out the active music players.
 func fade_out_music(duration: float = 1.5) -> void:
 	if not _is_any_music_playing():
 		return
@@ -423,6 +447,7 @@ func fade_out_music(duration: float = 1.5) -> void:
 	if music_player_b and music_player_b.playing:
 		tween.parallel().tween_property(music_player_b, "volume_db", -80.0, duration)
 		tween.parallel().tween_callback(music_player_b.stop)
+# Fade out all music and stop playback.
 func silence_music(fade_duration: float = 0.35) -> void:
 	fade_duration = maxf(fade_duration, 0.0)
 	if fade_duration <= 0.0:
@@ -435,6 +460,7 @@ func silence_music(fade_duration: float = 0.35) -> void:
 	_fade_out_and_stop_player(music_player_a, fade_duration)
 	_fade_out_and_stop_player(music_player_b, fade_duration)
 
+# Fade one player to silence and stop it.
 func _fade_out_and_stop_player(player: AudioStreamPlayer, fade_duration: float) -> void:
 	if player == null:
 		return
@@ -446,12 +472,14 @@ func _fade_out_and_stop_player(player: AudioStreamPlayer, fade_duration: float) 
 	tween.tween_property(player, "volume_db", -40.0, fade_duration)
 	tween.tween_callback(Callable(self, "_stop_and_reset_music_player").bind(player))
 
+# Stop a music player and restore its volume.
 func _stop_and_reset_music_player(player: AudioStreamPlayer) -> void:
 	if player == null:
 		return
 	player.stop()
 	player.volume_db = 0.0
 
+ # Crossfade between music tracks over `duration` seconds
 func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
 	_kill_music_fade_tween()
 	var tween = create_tween()
@@ -478,11 +506,13 @@ func crossfade_to(stream: AudioStream, duration: float = 2.0) -> void:
 		
 	is_playing_a = not is_playing_a
 
+# Cancel any active music fade tween.
 func _kill_music_fade_tween() -> void:
 	if _music_fade_tween:
 		_music_fade_tween.kill()
 		_music_fade_tween = null
 
+# Duck the music when a crisis card opens.
 func on_crisis_card_opened() -> void:
 	if _menu_music_locked:
 		return
@@ -494,6 +524,7 @@ func on_crisis_card_opened() -> void:
 	else:
 		play_music(track_2)
 
+# Restore music after a crisis card closes.
 func on_crisis_card_dismissed() -> void:
 	if _menu_music_locked:
 		return
@@ -502,6 +533,7 @@ func on_crisis_card_dismissed() -> void:
 	else:
 		play_music(track_1)
 
+# Stop a build sound once its timeout expires.
 func _on_build_sfx_timeout(player: AudioStreamPlayer) -> void:
 	if player and player.playing:
 		player.stop()
@@ -509,20 +541,24 @@ func _on_build_sfx_timeout(player: AudioStreamPlayer) -> void:
 		_build_sfx_stop_timer.queue_free()
 		_build_sfx_stop_timer = null
 
+# Play the storm warning cue.
 func _on_storm_warning() -> void:
 	play_event_sfx("storm_warning")
 
+# Play the storm impact cue.
 func _on_storm_hit() -> void:
 	play_event_sfx("storm_hit")
 	if _menu_music_locked:
 		return
 	crossfade_to(track_1, 1.5)
 
+# Keep the A music player looping.
 func _on_music_player_a_finished() -> void:
 	# Loops at the stream level, restart on finish to guarantee looping
 	if music_player_a and music_player_a.stream:
 		music_player_a.play()
 
+# Keep the B music player looping.
 func _on_music_player_b_finished() -> void:
 	if music_player_b and music_player_b.stream:
 		music_player_b.play()

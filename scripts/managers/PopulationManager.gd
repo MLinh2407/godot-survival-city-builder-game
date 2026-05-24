@@ -1,18 +1,27 @@
 extends Node
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SIGNALS
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
+# SIGNALS: population events, outbreaks and deaths
+# Emitted to notify UI and systems about population changes and crises
+# ═════════════════════════════════════════════════════════════════════════════=
 signal population_changed
+# Emitted when an outbreak begins; payload = newly sick worker count
 signal outbreak_started(sick_count: int)
 signal outbreak_ended()
+# Emitted when a named character dies
 signal character_died(char_name: String)
+# Emitted when colonists die (count and cause)
 signal colonist_died(count: int, cause: String)
+# Emitted when workers desert en masse (count)
 signal worker_deserted(count: int)
+# Emitted when starvation kills colonists (count)
 signal starvation_deaths(count: int)
-signal population_zero() # Triggers Game Over
+# Emitted when population reaches zero (game over)
+signal population_zero()
 
+ # Counter for consecutive days without food (used to trigger starvation)
 var consecutive_days_starving: int = 0
+ # Counter for consecutive days water recycler has no staff (disease risk)
 var consecutive_days_water_unstaffed: int = 0
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -26,10 +35,11 @@ func _ready() -> void:
 	print("PopulationManager ready | Pop: %d | Workers: %d" \
 		% [pop_data.total_population, pop_data.available_workers])
 
-	# Wire daily tick — this is what was missing
+	# Wire daily tick
 	await get_tree().process_frame
 	TimeManager.day_changed.connect(process_daily_population_tick)
 
+# Reset population state for a new game.
 func reset_for_new_game() -> void:
 	consecutive_days_starving = 0
 	consecutive_days_water_unstaffed = 0
@@ -46,8 +56,9 @@ func reset_for_new_game() -> void:
 	GameManager.sick_count = 0
 	population_changed.emit()
 
-# Called by BuildingSystem registration 
+# Cached BuildingSystem reference registered on startup.
 var building_system = null
+# Register the BuildingSystem so population logic can query buildings.
 func register_building_system(bs) -> void:
 	building_system = bs
 	print("PopulationManager: BuildingSystem registered.")
@@ -55,6 +66,7 @@ func register_building_system(bs) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN TICK (Called by DayNightCycle.gd when a new day starts)
 # ══════════════════════════════════════════════════════════════════════════════
+# Process the daily population tick for disease, starvation, and desertion.
 func process_daily_population_tick(new_day: int) -> void:
 	if GameManager and GameManager.is_loading_game:
 		return
@@ -127,6 +139,7 @@ func trigger_outbreak() -> void:
 	AudioManager.play_event_sfx("disease_start")
 	print("🚨 OUTBREAK STARTED: ", actual_sick, " workers fell ill.")
 
+# Resolve disease progression, either curing or killing sick colonists.
 func _process_disease_tick(pop_data: PopulationStateData) -> void:
 	if pop_data.sick_count <= 0:
 		pop_data.outbreak_active = false
@@ -256,6 +269,7 @@ func _remove_colonists(pop_data: PopulationStateData, amount: int, cause: String
 	if pop_data.total_population == 0:
 		population_zero.emit()
 
+# Recalculate available workers and sync totals back to GameManager.
 func _recalculate_workers(pop_data: PopulationStateData) -> void:
 	var healthy_pop = pop_data.total_population - pop_data.sick_count
 	var absolute_max = mini(healthy_pop, GameConstants.MAX_WORKERS_LATE_GAME)

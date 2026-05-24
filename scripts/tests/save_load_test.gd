@@ -1,5 +1,7 @@
+ # Simple automated test for fired-event persistence across save/load
 extends Node
 
+# Start the save/load persistence check and exit the test scene when done.
 func _ready() -> void:
     print("[TEST] Save/Load fired-events test starting")
 

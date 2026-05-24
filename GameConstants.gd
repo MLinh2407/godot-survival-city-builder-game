@@ -1,5 +1,7 @@
 extends Node
 
+# Centralized game constants used across the project (population, time, resources, UI)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # POPULATION
 # ══════════════════════════════════════════════════════════════════════════════

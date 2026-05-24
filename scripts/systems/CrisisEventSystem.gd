@@ -13,6 +13,7 @@ var _sub_event_journals_by_id: Dictionary = {}
 var _event_journals_by_slug: Dictionary = {}
 var _dialogue_engine: Node
 
+# Initialize crisis events and subscriptions.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -28,15 +29,18 @@ func _ready() -> void:
 	if TimeManager and TimeManager.current_day == 1:
 		_on_day_changed(1)
 
+# Reset all crisis state for a new game.
 func reset_for_new_game() -> void:
 	active_food_delta = 0.0
 	active_morale_decay_mult = 1.0
 	_temporary_effects.clear()
 	_fired_events.clear()
 
+# Return the fired-event state for saves.
 func get_fired_events_state() -> Dictionary:
 	return _fired_events.duplicate(true)
 
+# Restore the fired-event state from saves.
 func set_fired_events_state(state: Dictionary) -> void:
 	if typeof(state) != TYPE_DICTIONARY:
 		_fired_events.clear()
@@ -47,12 +51,14 @@ func set_fired_events_state(state: Dictionary) -> void:
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Resolve the dialogue engine node.
 func _get_dialogue_engine() -> Node:
 	var main = get_tree().root.get_node_or_null("Main")
 	if main:
 		return main.get_node_or_null("Events/DialogueEngine")
 	return null
 
+# Ensure the dialogue engine is cached.
 func _ensure_dialogue_engine() -> void:
 	if _dialogue_engine and is_instance_valid(_dialogue_engine):
 		return
@@ -62,12 +68,14 @@ func _ensure_dialogue_engine() -> void:
 		if de.has_signal("choice_made") and not de.choice_made.is_connected(_on_choice_made):
 			de.choice_made.connect(_on_choice_made)
 
+# Resolve the building system node.
 func _get_building_system() -> Node:
 	var main = get_tree().root.get_node_or_null("Main")
 	if main:
 		return main.get_node_or_null("BuildingSystem")
 	return null
 
+# Load sub-event journal definitions.
 func _load_sub_event_journals() -> void:
 	_sub_event_journals_by_id.clear()
 	var file = FileAccess.open("res://data/sub_events.json", FileAccess.READ)
@@ -99,6 +107,7 @@ func _load_sub_event_journals() -> void:
 		if legacy_id != "":
 			_sub_event_journals_by_id[legacy_id] = journal_entry
 
+# Pull the first journal body from an outcomes list.
 func _extract_first_journal_body(outcomes: Array) -> String:
 	for outcome in outcomes:
 		if typeof(outcome) != TYPE_DICTIONARY:
@@ -108,6 +117,7 @@ func _extract_first_journal_body(outcomes: Array) -> String:
 			return body
 	return ""
 
+# Load the main event journal definitions.
 func _load_event_journals() -> void:
 	_event_journals_by_slug.clear()
 	var file = FileAccess.open("res://data/events.json", FileAccess.READ)
@@ -179,6 +189,7 @@ func _load_event_journals() -> void:
 						"body": body
 					}
 
+# Fire a sub-event journal entry.
 func _fire_sub_event_journal(
 	slug: String,
 	fallback_title: String,
@@ -201,6 +212,7 @@ func _fire_sub_event_journal(
 
 	_fire_journal(slug, title, body)
 
+# Fire a crisis event only once.
 func _fire_event_once(event_id: String) -> void:
 	if _fired_events.has(event_id):
 		return
@@ -219,6 +231,7 @@ func _fire_event_once(event_id: String) -> void:
 		else:
 			push_warning("CrisisEventSystem: dialogue engine lacks show_event method; event '%s' not shown" % event_id)
 
+# Send a journal entry through the dialogue system.
 func _fire_journal(_slug: String, title: String, body: String) -> void:
 	var journal = get_tree().root.get_node_or_null("Main/UILayer/ColonyJournal")
 	if journal and journal.has_method("add_entry"):
@@ -231,6 +244,7 @@ func _fire_journal(_slug: String, title: String, body: String) -> void:
 # DAY CHANGED
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Advance crisis handling for the new day.
 func _on_day_changed(new_day: int) -> void:
 	if GameManager and GameManager.is_loading_game:
 		return
@@ -311,6 +325,7 @@ func _on_day_changed(new_day: int) -> void:
 # AUTO-TRIGGER EVENTS (no choice card shown)
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Trigger the fever crisis sequence.
 func _handle_the_fever() -> void:
 	if _fired_events.has("the_fever"):
 		return
@@ -336,6 +351,7 @@ func _handle_the_fever() -> void:
 			""
 		)
 
+# Trigger the storm warning sequence.
 func _handle_storm_warning() -> void:
 	if _fired_events.has("the_storm_warning"):
 		return
@@ -350,6 +366,7 @@ func _handle_storm_warning() -> void:
 	)
 	# TODO: Hook into Storm Prep UI to allow per-building shielding over Days 26–34.
 
+# Trigger the last broadcast sequence.
 func _handle_last_broadcast() -> void:
 	if _fired_events.has("the_last_broadcast"):
 		return
@@ -400,9 +417,11 @@ func _handle_last_broadcast() -> void:
 # SUB-EVENT TRIGGERS
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Trigger Yuna's intro dialogue.
 func _trigger_intro_yuna(de: Node) -> void:
 	de.show_event("intro_yuna")
 
+# Trigger the unrest riot event.
 func _trigger_unrest_riot() -> void:
 	if _fired_events.has("unrest_riot"):
 		return
@@ -429,6 +448,7 @@ func _trigger_unrest_riot() -> void:
 	if TilePainter:
 		TilePainter.on_unrest_riot()
 
+# Trigger the Rook injury event.
 func _trigger_rook_injury() -> void:
 	if _fired_events.has("rook_injury"):
 		return
@@ -455,6 +475,7 @@ func _trigger_rook_injury() -> void:
 # CHOICE HANDLER
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Handle a choice selected in a crisis event.
 func _on_choice_made(event_id: String, choice_id: String, choice_data: Dictionary) -> void:
 	var outcomes: Array = choice_data.get("outcomes", [])
 	for outcome in outcomes:
@@ -464,6 +485,7 @@ func _on_choice_made(event_id: String, choice_id: String, choice_data: Dictionar
 		elif type == "resource":
 			_handle_resource_outcome(event_id, choice_id, outcome)
 
+# Apply a narrative-only event outcome.
 func _handle_narrative_outcome(event_id: String, outcome: Dictionary) -> void:
 	var raw_body = outcome.get("journal_entry", "")
 	if typeof(raw_body) != TYPE_STRING or raw_body.is_empty():
@@ -473,6 +495,7 @@ func _handle_narrative_outcome(event_id: String, outcome: Dictionary) -> void:
 	var slug = "%s_%s" % [event_id, str(TimeManager.current_day)]
 	_fire_journal(slug, title, raw_body)
 
+# Return a friendly event display name.
 func _event_display_name(event_id: String) -> String:
 	match event_id:
 		"cold_night":         return "The Cold Night"
@@ -483,6 +506,7 @@ func _event_display_name(event_id: String) -> String:
 		"rook_reconciliation":return "Rook Reconciliation"
 		_:                    return event_id.replace("_", " ").capitalize()
 
+# Apply resource changes for an event outcome.
 func _handle_resource_outcome(event_id: String, choice_id: String, outcome: Dictionary) -> void:
 	# ── Flag: Lockdown taken (Deserters B) ──────────────────────────────
 	if event_id == "the_deserters" and choice_id == "option_b":
@@ -571,6 +595,7 @@ func _handle_resource_outcome(event_id: String, choice_id: String, outcome: Dict
 # TEMPORARY EFFECT SYSTEM
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Add a temporary modifier that expires later.
 func _add_temporary_effect(target: String, value: float, duration_days: int) -> void:
 	_temporary_effects.append({
 		"target": target,
@@ -579,6 +604,7 @@ func _add_temporary_effect(target: String, value: float, duration_days: int) -> 
 	})
 	_recalc_active_modifiers()
 
+# Tick down and remove temporary modifiers.
 func _process_temporary_effects() -> void:
 	var _current_day = TimeManager.current_day if TimeManager else 0
 	var to_remove = []
@@ -623,6 +649,7 @@ func _process_temporary_effects() -> void:
 
 	_recalc_active_modifiers()
 
+# Recompute the active crisis modifiers.
 func _recalc_active_modifiers() -> void:
 	active_food_delta = 0.0
 	active_morale_decay_mult = 1.0

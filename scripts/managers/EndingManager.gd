@@ -16,12 +16,14 @@ const ENDING_THE_QUIET         := "the_quiet"
 
 var _ending_fired: bool = false
 
+# Resolve the active BuildingSystem node from the main scene.
 func _get_building_system() -> Node:
 	var main = get_tree().root.get_node_or_null("Main")
 	if main:
 		return main.get_node_or_null("BuildingSystem")
 	return null
 
+# Check whether the Archive Hall exists before secret-ending evaluation.
 func _has_archive_hall() -> bool:
 	var bs = _get_building_system()
 	if not bs or not bs.has_method("has_building"):
@@ -32,6 +34,7 @@ func _has_archive_hall() -> bool:
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Wait for the scene tree, then begin listening for storm-hit events.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -39,6 +42,7 @@ func _ready() -> void:
 		TimeManager.storm_hit.connect(_on_storm_hit)
 	print("EndingManager ready — listening for storm_hit signal.")
 
+# Clear the one-shot guard so a new run can determine an ending again.
 func reset_for_new_game() -> void:
 	_ending_fired = false
 
@@ -46,6 +50,7 @@ func reset_for_new_game() -> void:
 # STORM HIT — Day 35 trigger
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Handle the Day 35 storm, shut down buildings, and determine the ending.
 func _on_storm_hit() -> void:
 	if _ending_fired:
 		return
@@ -93,6 +98,7 @@ func _on_storm_hit() -> void:
 # ENDING DETERMINATION
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Evaluate the current state and choose which ending to fire.
 func determine_ending() -> void:
 	var survival_rate: float  = float(GameManager.current_population) / 847.0
 	var slider_value: float   = GameManager.hope_order_slider
@@ -152,6 +158,7 @@ func determine_ending() -> void:
 # Loads text from endings.json, emits signal, displays ending screen
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Load the selected ending variant, emit the signal, and add the final journal line.
 func _play_ending(key: String, rook_modifier: bool) -> void:
 	var variant_key: String = key + ("_rook_alive" if rook_modifier else "_rook_dead")
 
@@ -179,6 +186,7 @@ func _play_ending(key: String, rook_modifier: bool) -> void:
 				"Final Entry"
 			)
 
+# Load and resolve the ending data matching the chosen key and rook state.
 func _load_ending_data(key: String, rook_alive: bool) -> Dictionary:
 	var file = FileAccess.open("res://data/endings.json", FileAccess.READ)
 	if not file:

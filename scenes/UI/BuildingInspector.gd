@@ -34,6 +34,7 @@ var _mat_icon_tex: Texture2D = null
 var _mat_icon_cache: Dictionary = {}
 var _cost_content: Dictionary = {}
 
+# Initialize the building inspector panel.
 func _ready() -> void:
 	# Hide the panel by default
 	visible = false
@@ -83,6 +84,7 @@ func _ready() -> void:
 
 	_cache_material_icon()
 
+ # Build the worker assignment UI row and controls
 func _setup_worker_ui() -> void:
 	var vbox = $VBoxContainer
 
@@ -145,6 +147,7 @@ func _setup_worker_ui() -> void:
 
 	_setup_terminal_button()
 
+ # Fill all available worker slots for the current building
 func _on_fill_workers_pressed() -> void:
 	if not building_system or not current_building: return
 	var slots_needed: int = current_building.worker_capacity - current_building.workers_assigned
@@ -155,6 +158,7 @@ func _on_fill_workers_pressed() -> void:
 		_animate_btn(_worker_plus_btn)
 	_refresh_ui_text()
 
+# Create a styled worker control button.
 func _make_worker_btn(txt: String) -> Button:
 	var btn := Button.new()
 	btn.text = txt
@@ -177,18 +181,21 @@ func _make_worker_btn(txt: String) -> Button:
 	btn.mouse_entered.connect(func(): AudioManager.play_ui_sfx("hover"))
 	return btn
 
+# Increase the assigned worker count.
 func _on_worker_plus_pressed() -> void:
 	if not building_system or not current_building: return
 	building_system.assign_worker()
 	_animate_btn(_worker_plus_btn)
 	_refresh_ui_text()
 
+# Decrease the assigned worker count.
 func _on_worker_minus_pressed() -> void:
 	if not building_system or not current_building: return
 	building_system.remove_worker(current_building.grid_position)
 	_animate_btn(_worker_minus_btn)
 	_refresh_ui_text()
 
+# Animate a pressed worker button.
 func _animate_btn(btn: Button) -> void:
 	if not btn: return
 	var t := btn.create_tween()
@@ -197,6 +204,7 @@ func _animate_btn(btn: Button) -> void:
 	t.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.12) \
 	 .set_trans(Tween.TRANS_SINE)
 
+ # Create and wire the remove-building UI and confirmation dialog
 func _setup_remove_button() -> void:
 	var vbox = $VBoxContainer
 
@@ -247,6 +255,7 @@ func _setup_remove_button() -> void:
 	_confirm_dialog.confirmed.connect(_on_removal_confirmed)
 	add_child(_confirm_dialog)
 
+ # Show confirmation dialog before removing a building
 func _on_remove_pressed() -> void:
 	if not current_building: return
 	_confirm_dialog.dialog_text = (
@@ -258,6 +267,7 @@ func _on_remove_pressed() -> void:
 	)
 	_confirm_dialog.popup_centered()
 
+# Confirm and execute building removal.
 func _on_removal_confirmed() -> void:
 	if not current_building: return
 	var gm = building_system.grid_manager if building_system else null
@@ -282,10 +292,12 @@ func _on_removal_confirmed() -> void:
 			_remove_btn.disabled = false
 	)
 
+# Find the building system node.
 func _find_building_system() -> Node:
 	var root = get_tree().get_root()
 	return _search_for_building_system(root)
 
+# Search the tree for the building system.
 func _search_for_building_system(node: Node) -> Node:
 	if node != null and node.has_signal("building_selected_data") and node.has_method("get_effective_output"):
 		return node
@@ -296,6 +308,7 @@ func _search_for_building_system(node: Node) -> Node:
 				return found
 	return null
 
+# Build the terminal access button.
 func _setup_terminal_button() -> void:
 	var vbox = $VBoxContainer
 	
@@ -326,6 +339,7 @@ func _setup_terminal_button() -> void:
 	_terminal_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	vbox.add_child(_terminal_btn)
 
+# Cache the material icon texture.
 func _cache_material_icon() -> void:
 	if _mat_icon_tex:
 		return
@@ -338,12 +352,14 @@ func _cache_material_icon() -> void:
 		_mat_icon_tex = (icon_node as Sprite2D).texture
 	_mat_icon_cache.clear()
 
+# Determine the font size for a button.
 func _get_button_font_size(btn: Button) -> int:
 	var font_size := btn.get_theme_font_size("font_size")
 	if font_size <= 0:
 		font_size = 12
 	return font_size
 
+# Return a material icon scaled to height.
 func _get_scaled_mat_icon(target_h: int) -> Texture2D:
 	if not _mat_icon_tex:
 		return null
@@ -365,6 +381,7 @@ func _get_scaled_mat_icon(target_h: int) -> Texture2D:
 	return tex
 
 
+# Ensure the button has cost content nodes.
 func _ensure_cost_content(btn: Button) -> Dictionary:
 	if not btn:
 		return {}
@@ -402,11 +419,13 @@ func _ensure_cost_content(btn: Button) -> Dictionary:
 	_sync_cost_label_style(btn, lbl)
 	return _cost_content[btn]
 
+# Sync the cost label style to the button.
 func _sync_cost_label_style(btn: Button, lbl: Label) -> void:
 	var font_size := _get_button_font_size(btn)
 	lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.add_theme_color_override("font_color", btn.get_theme_color("font_color"))
 
+# Update the cost button label and icon.
 func _set_cost_button_text(btn: Button, text: String, show_icon: bool) -> void:
 	if not btn:
 		return
@@ -435,6 +454,7 @@ func _set_cost_button_text(btn: Button, text: String, show_icon: bool) -> void:
 		)
 
 
+# Open the building terminal panel.
 func _on_terminal_pressed() -> void:
 	var terminal = get_tree().root.get_node_or_null("Main/MeridianTerminal")
 	if terminal and terminal.has_method("open_terminal"):
@@ -442,6 +462,7 @@ func _on_terminal_pressed() -> void:
 	else:
 		push_warning("BuildingInspector: MeridianTerminal not found at Main/MeridianTerminal")
 
+# Reposition the panel to fit the content.
 func _reposition_for_content() -> void:
 	if _repositioning or not visible:
 		return
@@ -682,6 +703,7 @@ func _refresh_ui_text() -> void:
 
 	call_deferred("_reposition_for_content")
 
+# Update the inspector when a building state changes.
 func _on_building_state_changed(grid_pos: Vector2i) -> void:
 	# If the changed building is the current selection, refresh the UI so Repair appears
 	if current_building and current_building.grid_position == grid_pos:
@@ -697,11 +719,13 @@ func _show_panel() -> void:
 	tween.tween_property(self, "modulate:a", 1.0, 0.15)
 	call_deferred("_reposition_for_content")
 
+# Hide the inspector panel.
 func _hide_panel() -> void:
 	var tween = create_tween()
 	tween.tween_property(self, "modulate:a", 0.0, 0.15)
 	tween.tween_callback(func(): visible = false) # Hide it fully after the fade finishes
 
+# Start a building repair action.
 func _on_repair_pressed() -> void:
 	print("BuildingInspector: Repair button pressed for", current_building)
 
@@ -790,6 +814,7 @@ func _on_repair_pressed() -> void:
 		else:
 			push_warning("BuildingInspector: cannot notify BuildingSystem to clear damaged")
 
+# Start a building upgrade action.
 func _on_upgrade_pressed() -> void:
 	print("BuildingInspector: Upgrade pressed for", current_building)
 
@@ -885,6 +910,7 @@ func _on_upgrade_pressed() -> void:
 	_refresh_ui_text()
 	print("BuildingInspector: Upgrade applied to", target_building)
 
+# Toggle the building shield state.
 func _on_shield_pressed() -> void:
 	var target_building: BuildingData = current_building
 	var gm = building_system

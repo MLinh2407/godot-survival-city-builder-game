@@ -1,6 +1,9 @@
 extends Node
 
+# Signals for UI and systems to respond to global game state changes
+# Emitted when the hope/order slider changes
 signal hope_order_changed(new_value: float)
+# Emitted when a named character dies
 signal named_character_died(character_name: String)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -14,15 +17,22 @@ const CHARACTER_METADATA: Dictionary = {
 	"kael": {"name": "Kael", "role": "Grid-7 Director", "portrait": "res://assets/characters/Kael.png"}
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # GLOBAL GAME STATE
-# ══════════════════════════════════════════════════════════════════════════════
+# Central primitive game state exposed to systems (population, resources)
+# ═════════════════════════════════════════════════════════════════════════════=
 
+# Current total colonist count
 var current_population: int = GameConstants.STARTING_POPULATION
+# Workers available to assign to buildings
 var available_workers: int = GameConstants.STARTING_WORKERS
+# Number of currently sick colonists
 var sick_count: int = 0
+# Current in-game day
 var current_day: int = 1
+# Global materials stockpile
 var materials: int = GameConstants.STARTING_MATERIALS
+# Flag used while loading saved game state to suppress ticks
 var is_loading_game: bool = false
 
 # Float 0-100. Starts at 50 (Neutral)
@@ -37,9 +47,10 @@ var hope_order_slider: float:
 		_hope_order_slider = next_value
 		hope_order_changed.emit(_hope_order_slider)
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # CHARACTER ALIVE FLAGS (All true on Day 1)
-# ══════════════════════════════════════════════════════════════════════════════
+# Simple booleans tracking whether named characters are alive
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var yuna_alive: bool = true
 var rook_alive: bool = true
@@ -60,17 +71,19 @@ var meridian_trusted: bool = false # Set TRUE by CrisisEventSystem Day 21 Option
 var vasquez_intel_shared: bool = false # Set TRUE by CrisisEventSystem Vasquez counter-offer
 var deserters_lockdown_taken: bool = false
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # MEMORIAL WALL STATE
-# ══════════════════════════════════════════════════════════════════════════════
+# Tracks memorial wall placement and recorded named-character deaths
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var memorial_wall_built: bool = false # Set TRUE by BuildingSystem when wall placed
 var memorial_prompt_consumed: bool = false # Set TRUE after first death prompt shown and wall built
 var named_death_days: Dictionary = {} # Maps character id to day of death
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════=
 # DATA CLASS INSTANCES
-# ══════════════════════════════════════════════════════════════════════════════
+# Thin data-holder objects used by managers and UI (pop/resource/colonists)
+# ═════════════════════════════════════════════════════════════════════════════=
 
 var population_state: PopulationStateData
 
@@ -89,6 +102,7 @@ var colonist_meridian: ColonistData
 # INIT
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Initialize game state managers and load persisted data.
 func _ready() -> void:
 	_initialize_data_classes()
 	hope_order_slider = GameConstants.SLIDER_STARTING_VALUE
@@ -103,6 +117,7 @@ func _ready() -> void:
 	print("Current Day: ", current_day)
 	print("-------------------------------")
 
+## Reset all game state for a new session
 func reset_for_new_game() -> void:
 	current_population = GameConstants.STARTING_POPULATION
 	available_workers = GameConstants.STARTING_WORKERS
@@ -166,6 +181,7 @@ func reset_for_new_game() -> void:
 		colonist_meridian.death_cause = ""
 		colonist_meridian.memorial_text = ""
 
+## Create and initialize helper data class instances
 func _initialize_data_classes() -> void:
 	# 1. Population State
 	population_state = PopulationStateData.new()
@@ -225,9 +241,11 @@ func _initialize_data_classes() -> void:
 	colonist_meridian.role = "Fragmented AI"
 	colonist_meridian.is_alive = meridian_alive
 
+## Apply a delta to the hope/order slider (clamped)
 func apply_hope_order_delta(delta: float) -> void:
 	hope_order_slider = hope_order_slider + delta
 
+## Set a named character alive/dead and emit death events
 func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if current_day > 33:
 		return # Locks permanently after Day 33
@@ -259,6 +277,7 @@ func set_character_alive(identifier: String, is_alive: bool) -> void:
 	if changed and not is_alive:
 		named_character_died.emit(lower_id)
 
+## Record a named character's death day and update flags
 func record_named_death(identifier: String) -> void:
 	if current_day > 33:
 		return 
@@ -272,6 +291,7 @@ func record_named_death(identifier: String) -> void:
 	# Set alive flag to false
 	set_character_alive(lower_id, false)
 
+## Return memorial entries for dead named characters (sorted by day)
 func get_memorial_entries() -> Array:
 	var entries: Array = []
 	
@@ -291,6 +311,7 @@ func get_memorial_entries() -> Array:
 	entries.sort_custom(func(a, b): return a.day < b.day)
 	return entries
 
+# Handler for TimeManager day changed events
 func _on_day_changed(new_day: int) -> void:
 	current_day = new_day
 
@@ -303,6 +324,7 @@ func ensure_saves_dir() -> void:
 	if not DirAccess.dir_exists_absolute(SAVES_DIR):
 		DirAccess.make_dir_absolute(SAVES_DIR)
 
+# Serialise the current game into a save file.
 func save_game(filename: String) -> void:
 	ensure_saves_dir()
 	
@@ -411,6 +433,7 @@ func save_game(filename: String) -> void:
 	else:
 		push_error("Failed to open file for writing: ", file_path)
 
+# Load game state from a save file.
 func load_game(filepath: String) -> void:
 	if not FileAccess.file_exists(filepath):
 		print("Save file not found at: ", filepath)

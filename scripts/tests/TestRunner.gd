@@ -1,12 +1,16 @@
+# Automated playthrough test runner UI and assertions
 extends Control
 
+# Paths and filenames used by checks
 const MAIN_SCENE_PATH := "res://scenes/main/Main.tscn"
 const FIRE_EVENT_SAVE_NAME := "test_runner_fired_events.json"
 const UPGRADE_SAVE_NAME := "test_runner_upgrade_restore.json"
 
+# UI and failure collection
 var _log_label
 var _failure_messages = []
 
+# Initialize the test runner and execute checks sequentially.
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_ui()
@@ -27,6 +31,7 @@ func _ready() -> void:
 			_log("- %s" % message)
 		get_tree().quit(1)
 
+# Build a simple UI to show test output.
 func _build_ui() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -62,21 +67,25 @@ func _build_ui() -> void:
 	_log_label.bbcode_enabled = false
 	vbox.add_child(_log_label)
 
+# Append a log message to the UI and stdout.
 func _log(message: String) -> void:
 	print("[TEST] %s" % message)
 	if _log_label:
 		_log_label.append_text(message + "\n")
 
+# Mark a check as failed and record the message.
 func _fail(message: String) -> void:
 	_failure_messages.append(message)
 	_log("FAIL: %s" % message)
 
+# Assert a condition and record a failure if it is false.
 func _expect(condition: bool, message: String) -> bool:
 	if not condition:
 		_fail(message)
 		return false
 	return true
 
+# Run an async check callable and log the result.
 func _run_check(check_name: String, check_method: Callable) -> void:
 	_log("Running check: %s" % check_name)
 	var result = await check_method.call()
@@ -85,6 +94,7 @@ func _run_check(check_name: String, check_method: Callable) -> void:
 	else:
 		_fail("%s did not pass" % check_name)
 
+# Verify that core autoload singletons are present.
 func _check_autoloads() -> bool:
 	var ok := true
 	ok = _expect(GameManager != null, "GameManager autoload missing") and ok
@@ -92,6 +102,7 @@ func _check_autoloads() -> bool:
 	ok = _expect(TimeManager != null, "TimeManager autoload missing") and ok
 	return ok
 
+# Validate fired-event persistence across save and load.
 func _check_fired_event_persistence() -> bool:
 	if not _expect(GameManager != null and CrisisEventSystem != null, "Required autoloads are unavailable"):
 		return false
@@ -132,6 +143,7 @@ func _check_fired_event_persistence() -> bool:
 	_cleanup_temp_file(save_path)
 	return true
 
+# Test that building upgrades and game state restore correctly on load.
 func _check_upgrade_restore() -> bool:
 	if not _expect(GameManager != null, "GameManager autoload missing"):
 		return false
@@ -253,6 +265,7 @@ func _check_upgrade_restore() -> bool:
 	main_instance.queue_free()
 	return true
 
+# Wait for the main scene and required systems to be ready.
 func _wait_for_main_ready() -> bool:
 	for _i in range(30):
 		var main_node = get_node_or_null("Main")
@@ -263,6 +276,7 @@ func _wait_for_main_ready() -> bool:
 		await get_tree().process_frame
 	return false
 
+# Poll for a loaded building appearing at `grid_pos` after load.
 func _wait_for_loaded_building(main_instance: Node, grid_pos: Vector2i) -> bool:
 	for _i in range(60):
 		var building_system = main_instance.get_node_or_null("BuildingSystem")
@@ -273,14 +287,13 @@ func _wait_for_loaded_building(main_instance: Node, grid_pos: Vector2i) -> bool:
 	_log("Loaded building never appeared at %s" % str(grid_pos))
 	return false
 
+# Remove temporary test save files.
 func _cleanup_temp_file(save_path: String) -> void:
 	var global_path := ProjectSettings.globalize_path(save_path)
 	if FileAccess.file_exists(save_path):
 		DirAccess.remove_absolute(global_path)
 
-
-
-# Filler to force reparse
+# Filler to force reparse.
 func _test_noop() -> void:
 	# noop
 	pass
