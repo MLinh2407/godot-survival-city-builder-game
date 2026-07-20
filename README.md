@@ -59,7 +59,6 @@ git lfs install
 # Pull the actual LFS files
 git lfs pull
 ```
-
 ---
 
 ## System Requirements
@@ -70,3 +69,8 @@ git lfs pull
 | GPU | DirectX 12 capable (keep drivers up to date) |
 | RAM | 4 GB |
 | Storage | ~400 MB |
+
+---
+## License
+
+*Copyright (c) 2026 Team03 Studio. All rights reserved. This project is proprietary. Code and assets cannot be used, copied, or modified without permission.*
